@@ -1,0 +1,4 @@
+interface:
+  display_name: "Relatório Cronológico de Obra"
+  short_description: "Gera o relatório da obra a partir do WhatsApp"
+  default_prompt: "Use $relatorio-cronologico-obra para gerar o relatório cronológico desta obra a partir do zip do WhatsApp."
