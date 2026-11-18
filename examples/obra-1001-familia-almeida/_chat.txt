@@ -1,0 +1,25 @@
+[08/01/2026, 07:59:00] As mensagens e as ligações são protegidas com a criptografia de ponta a ponta.
+[08/01/2026, 08:00:01] Helena Duarte: Registro inicial da Obra 1001. Cliente: Família Almeida. Construtora: Construtora Horizonte Ltda. Engenheiro: Paulo Ribeiro. Arquitetura: Marina Costa Arquitetura. Responsável Armanilux: Helena Duarte. Endereço: Rua das Acácias, 120, São Paulo. O prazo contratual não foi lançado neste grupo.
+[08/01/2026, 09:20:11] Lucas Ferreira: Aprovo as chapas do lote 3, pedra branca, para a cozinha e os dois banheiros.
+‎<anexado: chapa-lote-3.jpg>
+[08/01/2026, 09:22:40] Carlos Mendes: Ok, obrigado.
+[09/01/2026, 11:00:04] Carlos Mendes: Solicito uma visita in loco para conferir o ambiente antes da medição.
+[13/01/2026, 10:30:18] Helena Duarte: Medição in loco realizada hoje na cozinha e nos banheiros. Segue o áudio com as cotas.
+‎<anexado: audio-medicao.opus>
+[20/01/2026, 16:40:33] Lucas Ferreira: Envio o projeto preliminar da cozinha e dos banheiros.
+‎<anexado: Projeto-preliminar-cozinha.pdf>
+[22/01/2026, 09:05:12] Marina Costa: Solicito revisão do projeto: a ilha ficou 8 cm maior que o vão combinado com a marcenaria.
+[28/01/2026, 15:10:44] Lucas Ferreira: Envio o projeto revisado R1, com a ilha ajustada.
+‎<anexado: Projeto-revisado-R1.pdf>
+[03/02/2026, 10:15:02] Carlos Mendes: Solicito nova revisão: o cliente quer a cuba deslocada 5 cm.
+[10/02/2026, 18:00:27] Lucas Ferreira: Envio o projeto revisado R2 e o memorial descritivo.
+‎<anexado: Memorial-descritivo.docx>
+[11/02/2026, 09:40:15] Paulo Ribeiro: Projeto aprovado pela engenharia e pela arquitetura. Pode seguir para produção.
+[02/03/2026, 14:00:08] Helena Duarte: Material entregue na obra hoje. A marcenaria não liberou a frente da cozinha.
+[02/03/2026, 15:20:41] Helena Duarte: Interferência de obra: contrapiso irregular na área molhada. A instalação ficou impedida neste trecho. Segue o vídeo.
+‎<anexado: video-contrapiso.mp4>
+[04/03/2026, 08:30:19] Helena Duarte: A equipe de instalação entrou na obra hoje, nos banheiros. A cozinha segue aguardando a marcenaria.
+[05/03/2026, 11:10:55] Helena Duarte: Interferência: o ponto de água da cozinha está fora de posição.
+‎<anexado: foto-ponto-hidraulico.jpg>
+[09/03/2026, 16:00:03] Carlos Mendes: A obra corrigiu o ponto de água e o contrapiso. Frente liberada.
+[12/03/2026, 17:45:36] Helena Duarte: Serviços de instalação concluídos nos banheiros e na cozinha. Validação final feita no local com o engenheiro. Falta o cliente devolver o termo assinado.

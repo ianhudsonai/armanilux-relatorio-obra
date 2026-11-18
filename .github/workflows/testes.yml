@@ -1,0 +1,23 @@
+name: Testes
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  testes:
+    name: Testes (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar dependências de teste
+        run: python -m pip install --upgrade pip python-docx matplotlib holidays pdfplumber pypdf Pillow numpy
+      - name: Rodar testes
+        run: python -m unittest discover -s tests -v

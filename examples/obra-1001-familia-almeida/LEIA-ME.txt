@@ -1,0 +1,7 @@
+Exemplo fictício
+
+A Obra 1001, a Família Almeida, a Construtora Horizonte e as pessoas desta
+conversa não existem. O arquivo serve para testar a skill e para o Rogério
+ver o formato, sem dados de cliente.
+
+Não substitua este exemplo por uma obra real dentro do repositório público.

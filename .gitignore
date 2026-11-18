@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.armanilux-relatorio/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+dist/
+build/
