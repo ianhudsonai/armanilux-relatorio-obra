@@ -8,11 +8,10 @@ claro e o relatório marca a fala como dado não identificado.
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 from pathlib import Path
 
-from common import EXT_AUDIO, EXT_VIDEO
+from common import EXT_AUDIO, EXT_VIDEO, localizar_ferramenta
 
 
 def listar_midias_de_fala(pasta_midias: Path) -> list[Path]:
@@ -27,7 +26,7 @@ def listar_midias_de_fala(pasta_midias: Path) -> list[Path]:
 
 
 def _converter_para_wav(origem: Path, destino: Path) -> bool:
-    ffmpeg = shutil.which("ffmpeg")
+    ffmpeg = localizar_ferramenta("ffmpeg")
     if not ffmpeg:
         return False
     destino.parent.mkdir(parents=True, exist_ok=True)
@@ -98,7 +97,7 @@ def transcrever_pasta(
         if arquivo.suffix.lower() in EXT_VIDEO or arquivo.suffix.lower() in {".opus", ".ogg", ".m4a", ".aac"}:
             if _converter_para_wav(arquivo, wav):
                 fonte = wav
-            elif shutil.which("ffmpeg") is None:
+            elif localizar_ferramenta("ffmpeg") is None:
                 resultados.append(
                     _registro(arquivo, "erro", erro="FFmpeg não encontrado para preparar o áudio")
                 )

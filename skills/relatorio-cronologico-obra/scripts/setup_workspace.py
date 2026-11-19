@@ -5,7 +5,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from common import SUBPASTAS, configurar_saida, pasta_padrao, sanitizar_pasta
+from common import SUBPASTAS, configurar_saida, pasta_padrao
+from config_io import nome_pasta_obra
 
 LEIA_ME = """Pasta de relatórios de obra da Armanilux
 
@@ -33,8 +34,8 @@ def garantir_raiz(caminho: Path | None = None) -> Path:
     return raiz
 
 
-def garantir_obra(raiz: Path, numero: str, cliente: str) -> Path:
-    nome = sanitizar_pasta(f"{numero} - {cliente}")
+def garantir_obra(raiz: Path, numero: str, cliente: str, modelo: str = "{numero} - {cliente}") -> Path:
+    nome = nome_pasta_obra({"modelo_pasta_obra": modelo}, numero, cliente)
     obra = raiz / nome
     for subpasta in SUBPASTAS:
         (obra / subpasta).mkdir(parents=True, exist_ok=True)

@@ -1,23 +1,28 @@
 # Relatório Cronológico de Obra — Armanilux
 
+Quem for instalar no Codex cola esta linha, neste computador (não na nuvem):
+
+```
+https://github.com/ianhudsonai/armanilux-relatorio-obra instale as skills
+```
+
+O agente lê o `AGENTS.md` e instala as duas skills. Abra um chat novo e escreva `$preparar-projeto-armanilux`. Ele faz algumas perguntas e instala o que falta. Se pedir permissão, aprove. Se o Windows mostrar **Sim** ou **Não**, clique em **Sim**.
+
+Depois, para cada obra, escreva `$relatorio-cronologico-obra` ou `faz o relatório da obra`.
+
 Esta pasta ensina o computador a ler o grupo de WhatsApp de uma obra e entregar um **Relatório Cronológico de Obra** em Word. O relatório segue as etapas A, B, C, D, E, F, G, H, I, J e L (não existe etapa K), com dias úteis de São Paulo e as fotos, áudios e vídeos citados pelo nome.
 
 Tudo roda **neste computador**. A conversa não vai para um serviço de transcrição na internet.
 
 O exemplo que vem junto é inventado (Obra 1001, Família Almeida). Não é cliente real.
 
-## Instalar (uma vez)
+## Instalar
 
-1. Baixe esta pasta pelo botão verde **Code** e depois **Download ZIP** no GitHub. Extraia. Dê dois cliques em `instalar.bat` e espere a janela dizer que terminou. Se o Windows perguntar "Deseja permitir que este aplicativo faça alterações?", clique em **Sim**. Isso é a permissão de administrador (UAC). O instalador não aperta esse botão sozinho. Se a janela não aparecer, está tudo bem.
-2. Abra o aplicativo **ChatGPT** no Windows (o aplicativo novo, não o site e não o "ChatGPT Classic"). Entre na sua conta. No menu, escolha **Codex**. Quando perguntar onde trabalhar, escolha **Este computador** (This computer), não Cloud.
-3. Cole o link abaixo e, na linha seguinte, a frase. Quando o aplicativo pedir para usar a internet, aprove.
+1. Abra o aplicativo **ChatGPT** no Windows (o aplicativo novo, não o site). Entre na sua conta. Escolha **Codex** e **Este computador**.
+2. Cole a linha do começo desta página. Quando pedir para usar a internet ou rodar um comando, aprove.
+3. Abra um chat novo e escreva `$preparar-projeto-armanilux`. Responda as perguntas. A pasta padrão é `Documentos\Armanilux`.
 
-```
-https://github.com/ianhudsonai/armanilux-relatorio-obra/tree/main/skills/relatorio-cronologico-obra
-Instale esta skill com o skill-installer
-```
-
-Se a skill não aparecer, feche o Codex e abra de novo. Para instalar outra vez, apague antes a pasta `%USERPROFILE%\.codex\skills\relatorio-cronologico-obra`.
+Não precisa procurar um arquivo para clicar. Quem já tiver esta pasta no computador pode, se quiser, dar dois cliques em `instalar.bat`. Isso só instala as ferramentas. As perguntas ficam no Codex.
 
 ## Usar no dia a dia
 
@@ -53,11 +58,11 @@ O WhatsApp do Windows **não exporta** a conversa. A exportação é no celular.
 
 ## Se algo der errado
 
-- A janela do `instalar.bat` fechou com erro: leia a última frase em vermelho. Sem internet, a instalação não termina. Rode de novo quando a rede voltar. Rodar de novo não estraga o que já foi instalado.
-- "Não encontrei o winget": instale o "Instalador de Aplicativo" pela Microsoft Store e repita o passo 1.
+- A instalação parou com erro: leia a última frase na conversa do Codex. Sem internet, ela não termina. Peça o relatório de novo quando a rede voltar. Repetir não estraga o que já foi instalado.
+- "Não encontrei o winget": instale o "Instalador de Aplicativo" pela Microsoft Store e peça o relatório outra vez.
 - A skill não aparece no Codex: feche e abra o Codex. Confira se está em **Este computador**, não em Cloud.
-- O Codex pede aprovação para usar a rede: aprove só na instalação. O relatório do dia a dia não precisa de rede, salvo a primeira vez do modelo de voz.
-- Não saiu transcrição: o Word continua válido. A fala fica marcada como `dado não identificado`. Confira se o `instalar.bat` terminou e se o FFmpeg foi encontrado.
+- O Codex pede aprovação para usar a rede ou para rodar um comando: aprove. O relatório do dia a dia não precisa de rede, salvo a primeira vez do modelo de voz.
+- Não saiu transcrição: o Word continua válido. A fala fica marcada como `dado não identificado`.
 - Não saiu PDF: normal. Use o Word.
 - O nome de um arquivo apareceu com letras trocadas (`Ã`, `├`): o script tenta corrigir. Se um anexo importante não entrou, diga o nome do arquivo na conversa do Codex.
 
@@ -71,7 +76,9 @@ This is an [Agent Skills](https://agentskills.io/specification) package aimed at
 
 `https://github.com/ianhudsonai/armanilux-relatorio-obra/tree/main/skills/relatorio-cronologico-obra`
 
-`instalar.bat` / `instalar.ps1` are idempotent: winget installs Python 3.12 and FFmpeg if missing (UAC is his click), then a venv at `%USERPROFILE%\.armanilux-relatorio\venv` gets `faster-whisper`, `python-docx`, `matplotlib`, `holidays`, `pdfplumber`, `pypdf`, Pillow and numpy.
+There are two skills. `preparar-projeto-armanilux` is once per person: questions, per-user winget, venv, ffmpeg, optional Whisper download, and `%USERPROFILE%\.armanilux-relatorio\config.json`. `relatorio-cronologico-obra` only writes the report and reads that config. Each skill folder is self-contained; the small `config_io.py` is duplicated so a copied skill does not need the other folder's code. The report skill may call the setup skill's `instalar.ps1` if both are installed and a library is missing.
+
+The one-line paste is `https://github.com/ianhudsonai/armanilux-relatorio-obra instale as skills`. `AGENTS.md` tells the agent that `$skill-installer`'s `install-skill-from-github.py` rejects a bare repo URL (`Missing --path for GitHub URL`) and that the reliable call is one `--path` with both `skills/preparar-projeto-armanilux` and `skills/relatorio-cronologico-obra`. If `~/.claude` or the `claude` command exists, the same folders also go to `~/.claude/skills`.
 
 `skills/relatorio-cronologico-obra/scripts/run_pipeline.py` creates `Documents\Armanilux\Relatorios-de-Obra\<obra - cliente>\{01-conversas,02-projetos-pdf,03-midias,04-transcricoes,05-relatorios}`, streams the zip (zip-slip is dropped; mojibake filenames are repaired), parses Android and iPhone WhatsApp exports, transcribes speech locally, pulls a few video frames, reads PDF/docx, and writes a versioned docx. Business days are `(start, end]` excluding weekends, Brazilian national holidays, Carnival Monday and Tuesday, SP state 9 July, and São Paulo city 25 January and Corpus Christi (`holidays` subdiv São Paulo Capital, plus Carnival added in code). Ash Wednesday stays a business day. Intervals are not summed into an "Armanilux delay".
 

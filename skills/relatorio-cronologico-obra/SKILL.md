@@ -1,10 +1,10 @@
 ---
 name: relatorio-cronologico-obra
-description: Gera o Relatório Cronológico de Obra da Armanilux (etapas A a L, sem etapa K) a partir do zip do WhatsApp, com transcrição local, dias úteis de São Paulo e arquivo Word. Use quando o usuário pedir o relatório da obra, o relatório cronológico, $relatorio-cronologico-obra, organizar o export do WhatsApp, transcrever áudios ou vídeos da obra, ou calcular dias úteis da instalação.
+description: Gera o Relatório Cronológico de Obra da Armanilux (etapas A a L, sem etapa K) a partir do zip do WhatsApp, com transcrição local, dias úteis de São Paulo e arquivo Word. Use quando pedirem o relatório da obra, o relatório cronológico, $relatorio-cronologico-obra, organizar o export do WhatsApp ou calcular dias úteis. Se não houver config.json, mande rodar $preparar-projeto-armanilux primeiro.
 license: MIT
 metadata:
   author: Armanilux
-  version: "1.0"
+  version: "1.2"
   idioma: pt-BR
 ---
 
@@ -21,23 +21,30 @@ Leia, antes de redigir ou corrigir o texto:
 
 O script já aplica esse formato. Não improvise outro sumário, não some intervalos como "atraso da Armanilux" e não invente data, nome ou prazo. O que não estiver no histórico fica escrito `dado não identificado`.
 
-## Onde está o Python
+## Preferências e ferramentas
 
-Prefira o interpretador criado pelo `instalar.bat`:
+Esta skill só faz o relatório. A preparação do computador é a skill `$preparar-projeto-armanilux`.
 
-`%USERPROFILE%\.armanilux-relatorio\venv\Scripts\python.exe`
+Antes de abrir o zip, leia `%USERPROFILE%\.armanilux-relatorio\config.json`. Se o arquivo não existir, pare e diga, em português, para abrir um chat e rodar `$preparar-projeto-armanilux`. Não invente pasta, nome nem função.
 
-No Linux ou no teste, use `python3`. Os comandos abaixo usam `PYTHON` para esse executável e `SKILL` para a pasta desta skill (a pasta que contém este arquivo).
+Se o arquivo existir, use `pasta_raiz`, `modelo_pasta_obra`, `nome`, `funcao` e `gerar_pdf`. O Python do relatório é `%USERPROFILE%\.armanilux-relatorio\venv\Scripts\python.exe`.
 
-Se faltar biblioteca, peça para a pessoa dar dois cliques em `instalar.bat` na pasta do repositório. Não rode `pip install` solto sem avisar. Se o Windows abrir a janela de permissão (UAC), quem clica em Sim é a pessoa; o Codex não consegue.
+Confira também se esse Python importa docx, faster_whisper, matplotlib, holidays, PIL e numpy, e se o FFmpeg está no PATH (releia o PATH do registro antes). Se faltar biblioteca ou FFmpeg, ofereça rodar o instalador da outra skill, sem pedir para a pessoa procurar arquivo:
+
+```powershell
+$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User') + ';' + "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.codex\skills\preparar-projeto-armanilux\scripts\instalar.ps1"
+```
+
+Diga só isto: vai instalar o que falta; aprove o comando; se o Windows mostrar Sim ou Não, clique em Sim. Quando terminar, releia o PATH e continue o relatório. Se a outra skill não estiver instalada, mande rodar `$preparar-projeto-armanilux` num chat novo.
+
+No Linux ou no teste, use `python3`. Nos comandos abaixo, `PYTHON` é o Python do ambiente e `SKILL` é a pasta desta skill.
 
 ## 1. Preparar a pasta
 
-Na primeira execução o script cria, se ainda não existir:
+A pasta dos relatórios é `Relatorios-de-Obra` dentro de `pasta_raiz` do config.json. Cada obra usa `modelo_pasta_obra` (padrão `{numero} - {cliente}`).
 
-`%USERPROFILE%\Documents\Armanilux\Relatorios-de-Obra\<numero> - <cliente>\`
-
-com `01-conversas`, `02-projetos-pdf`, `03-midias`, `04-transcricoes` e `05-relatorios`.
+Dentro da obra ficam `01-conversas`, `02-projetos-pdf`, `03-midias`, `04-transcricoes` e `05-relatorios`.
 
 Se a pessoa informar o número da obra e o cliente, passe `--obra` e `--cliente`. Se não informar, o script tenta ler do próprio grupo. Não chute um nome de cliente.
 
