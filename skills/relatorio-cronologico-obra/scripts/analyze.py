@@ -415,6 +415,9 @@ def confronto_contrato(eventos: list[dict], prazos: list[dict]) -> list[dict]:
                 "realizado": realizado,
                 "excedeu": realizado is not None and limite is not None and realizado > limite,
                 "fonte": prazo.get("fonte", ""),
+                # Regra escrita depois do início do período não prova que valia na época.
+                "fonte_posterior": bool(prazo.get("fonte_data") and inicio and prazo["fonte_data"] > inicio),
+                "sem_data_da_fonte": not prazo.get("fonte_data"),
             }
         )
     return saida

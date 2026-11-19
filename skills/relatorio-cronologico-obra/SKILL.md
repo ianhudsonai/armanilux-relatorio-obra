@@ -4,7 +4,7 @@ description: Gera o Relatório Cronológico de Obra da Armanilux (etapas A a L, 
 license: MIT
 metadata:
   author: Armanilux
-  version: "1.6"
+  version: "1.7"
   idioma: pt-BR
 ---
 
@@ -130,8 +130,15 @@ O relatório é curto, no formato do relatório aprovado (8665.1 V3): uma tabela
 5. **Prazo contratual.** Obrigatório procurar no grupo e nos documentos (orçamento, proposta, contrato, cronograma, mensagem de regras do grupo) prazos declarados, como "medição até 6 dias úteis após a solicitação". Só o que estiver escrito: não deduza. Para cada prazo, acrescente em `prazos_contratuais`:
 
 ```json
-{"descricao": "Projeto executivo até 6 d.u. da medição", "de": "C", "para": "D", "limite_du": 6, "fonte": "Orçamento 1001.2, impresso em 17/06/2026"}
+{"descricao": "Projeto executivo até 6 d.u. da medição", "de": "C", "para": "D", "limite_du": 6, "fonte": "Orçamento 1001.2, enviado no grupo em 17/06/2026", "fonte_data": "2026-06-17"}
 ```
+
+`fonte_data` é obrigatório: a data em que a regra apareceu no grupo (mensagem ou envio do documento), não a data impressa em outro lugar. A regra que vale para um período é a que já estava escrita quando o período começou:
+
+- Use a fonte mais recente escrita **antes** do início do período. Documento enviado depois do período (por exemplo, o orçamento de um serviço novo) não prova a regra daquela época.
+- Se duas fontes dizem coisas diferentes ("5 dias" num documento, "5 dias úteis" numa mensagem), vale a da época; a unidade (dias úteis ou corridos) vem dela. Cite a outra em `fonte` só se ajudar.
+- Se a única fonte é posterior ao início do período, mantenha o prazo só se o documento o apresenta como regra geral (por exemplo, a lista padrão de prazos do orçamento), não como prazo daquele serviço novo; o Word marca o prazo com * e explica embaixo da tabela. Nunca troque a fonte por uma posterior para mudar o resultado.
+- A remontagem imprime `Aviso de prazo: ...` para fonte posterior ao início ou sem `fonte_data`. Resolva cada aviso (procure uma fonte anterior) ou conte na resposta final por que ficou.
 
 `de` e `para` são as etapas cujo primeiro registro marca o início e o fim do prazo. Quando a obra tem várias frentes e você mediu um ciclo específico (por exemplo, a aprovação e a entrega da piscina), use `"inicio"` e `"fim"` (AAAA-MM-DD) no lugar de `de` e `para`, e diga a frente na descrição. Prazo em faixa ("20 a 25 d.u.") usa o limite maior. Prazo escrito só em "dias", sem "úteis", conta dias corridos: acrescente `"unidade": "dias_corridos"` (o número continua em `limite_du`). Sem `unidade`, vale dias úteis. O script calcula o realizado e pinta de vermelho o que passou do prazo. Sem prazo declarado, deixe a lista vazia e escreva em `lacunas_adicionais` "Prazo contratual não declarado no grupo nem nos documentos.". Em obra com várias frentes, prefira `inicio` e `fim` por frente: o primeiro registro de uma etapa pode ser de outra frente e dar um número enganoso.
 6. **Pendências e obra.** Confira `pendencias` e os campos de `obra`. `pendencias_revisadas` traz só as pendências reais (`{"item": "...", "status": "Pendente"}`); `obra_ajustes` traz `construtora`, `engenheiro`, `arquitetura`, `responsavel_armanilux` e `endereco` quando o grupo não traz em formato fixo.
@@ -155,7 +162,7 @@ Remonte o Word com o comando do passo 5. Toda remontagem grava `04-transcricoes/
 
 A conferência do script só vê data, hora e autor. Ela não vê se o texto diz o que a mensagem diz. Antes de dar o relatório por revisado, faça uma conferência de conteúdo por alguém que não escreveu o texto:
 
-- Se o seu aplicativo permitir subagentes, abra um subagente novo, sem o contexto desta conversa. Entregue a ele só os caminhos de `analise.json`, do `.txt` da conversa, de `02-projetos-pdf`, de `03-midias` e de `04-transcricoes` (com as folhas de contato), com esta tarefa: "Para cada fato em `eventos` e cada frase de `comentarios`, `diagnostico_prompt`, `pontos_criticos`, `impactos_prazo`, `conclusao_personalizada`, `recomendacoes_personalizadas`, `prazos_contratuais`, `obra_ajustes`, `pendencias_revisadas` e `lacunas_adicionais`, ache no material a mensagem, transcrição, documento ou imagem que sustenta o que está escrito. Responda, item por item: sustentado (com data, hora e autor da fonte), não sustentado, ou diferente do que a fonte diz (com o que a fonte diz). Não corrija nada."
+- Se o seu aplicativo permitir subagentes, abra um subagente novo, sem o contexto desta conversa. Entregue a ele só os caminhos de `analise.json`, do `.txt` da conversa, de `02-projetos-pdf`, de `03-midias` e de `04-transcricoes` (com as folhas de contato), com esta tarefa: "Para cada fato em `eventos` e cada frase de `comentarios`, `diagnostico_prompt`, `pontos_criticos`, `impactos_prazo`, `conclusao_personalizada`, `recomendacoes_personalizadas`, `prazos_contratuais`, `obra_ajustes`, `pendencias_revisadas` e `lacunas_adicionais`, ache no material a mensagem, transcrição, documento ou imagem que sustenta o que está escrito. Responda, item por item: sustentado (com data, hora e autor da fonte), não sustentado, ou diferente do que a fonte diz (com o que a fonte diz). Para cada item de `prazos_contratuais`, diga também se a fonte foi escrita no grupo antes do início do período medido e se alguma mensagem anterior dá outro número ou outra unidade (dias úteis ou corridos). Não corrija nada."
 - Sem subagentes, faça você mesmo uma segunda passada, item por item, procurando cada fato no `.txt`.
 
 Corrija ou tire tudo o que voltar como não sustentado ou diferente. O que não der para confirmar vira lacuna em `lacunas_adicionais`, não afirmação.
@@ -182,7 +189,7 @@ Não entregue um Word escrito à mão por fora do script. O arquivo versionado (
 
 A pessoa não precisa saber onde o arquivo fica. Entregue o Word na própria conversa: se o seu aplicativo tem uma ferramenta para enviar ou mostrar arquivo ao usuário, envie o `.docx` da linha `RELATORIO_WORD` (como anexo). Se não tem, rode a última remontagem com `--mostrar` para a pasta abrir com o arquivo selecionado. Nos dois casos, escreva também o caminho completo, numa linha só.
 
-Responda em português, curto, sem emoji. Informe o número da versão, quantas pendências ficaram com status Pendente, se a transcrição rodou, quantos fatos a conferência confirmou e quantas lacunas o relatório registra. Diga se havia prazo contratual declarado no grupo ou nos documentos; sem ele, o relatório não fala em atraso contratual.
+Responda em português, curto, sem emoji. Informe o número da versão, quantas pendências ficaram com status Pendente, se a transcrição rodou, quantos fatos a conferência confirmou e quantas lacunas o relatório registra. Diga se havia prazo contratual declarado no grupo ou nos documentos; sem ele, o relatório não fala em atraso contratual. Se ficou algum "Aviso de prazo", diga qual e por quê.
 
 Não copie a pasta da obra para o repositório público desta skill. Não publique o relatório em link aberto.
 

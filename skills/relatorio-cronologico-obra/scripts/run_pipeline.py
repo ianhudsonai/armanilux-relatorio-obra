@@ -176,8 +176,24 @@ def mostrar_no_explorer(arquivo: Path) -> None:
         subprocess.Popen(["xdg-open", str(arquivo.parent)])
 
 
+def _avisar_prazos(analise: dict) -> None:
+    """Prazo precisa de fonte escrita antes do período que ele mede; senão não prova a regra da época."""
+    from common import formatar_data
+
+    fontes = {p.get("descricao", ""): p.get("fonte_data") for p in analise.get("prazos_contratuais") or []}
+    for item in analise.get("confronto_contrato") or []:
+        if item.get("fonte_posterior"):
+            print(
+                f"Aviso de prazo: \"{item['descricao']}\": fonte de {formatar_data(fontes.get(item['descricao']))}, "
+                f"depois do início do período ({formatar_data(item['inicio'])})."
+            )
+        elif item.get("sem_data_da_fonte"):
+            print(f"Aviso de prazo: \"{item['descricao']}\": sem fonte_data.")
+
+
 def _gravar(pasta_obra: Path, analise: dict, gerar_pdf: bool = False, mostrar: bool = False) -> Path:
     _conferir(pasta_obra, analise)
+    _avisar_prazos(analise)
     figuras = pasta_obra / "05-relatorios" / "figuras"
     if "intervalos_marcos" in analise:
         marcos = analise["intervalos_marcos"]

@@ -73,6 +73,41 @@ class ConfrontoTeste(unittest.TestCase):
         relato = completar_relato({"obra": {}, "eventos": EVENTOS, "prazos_contratuais": PRAZOS[2:3]})
         self.assertEqual(relato["confronto_contrato"][0]["unidade"], "dias_uteis")
 
+    def test_fonte_escrita_depois_do_inicio_fica_marcada(self):
+        prazos = [
+            dict(PRAZOS[0], fonte_data="2026-01-02"),  # escrita antes da medição de 05/01: vale
+            dict(PRAZOS[2], fonte_data="2026-01-15"),  # orçamento postado depois de 12/01: não prova a regra da época
+            dict(PRAZOS[1]),  # sem data da fonte
+        ]
+        relato = completar_relato({"obra": {}, "eventos": EVENTOS, "prazos_contratuais": prazos})
+        marcas = [(c["fonte_posterior"], c["sem_data_da_fonte"]) for c in relato["confronto_contrato"]]
+        self.assertEqual(marcas, [(False, False), (True, False), (False, True)])
+
+    def test_word_avisa_prazo_com_fonte_posterior(self):
+        from docx import Document
+
+        import build_docx
+
+        prazos = [dict(PRAZOS[0], fonte_data="2026-01-02"), dict(PRAZOS[2], fonte_data="2026-01-15")]
+        relato = completar_relato({"obra": {"numero": "1001"}, "eventos": EVENTOS, "prazos_contratuais": prazos})
+        with TemporaryDirectory() as pasta:
+            documento = Document(str(build_docx.montar_docx(relato, Path(pasta) / "r.docx", None, None)))
+        tabela = next(t for t in documento.tables if t.rows[0].cells[0].text == "Prazo contratual de referência")
+        self.assertEqual(tabela.rows[1].cells[0].text, PRAZOS[0]["descricao"])
+        self.assertEqual(tabela.rows[2].cells[0].text, PRAZOS[2]["descricao"] + " *")
+        textos = [p.text for p in documento.paragraphs]
+        self.assertTrue(any(t.startswith("* Fonte escrita no grupo depois do início do período medido") for t in textos))
+
+    def test_sem_fonte_posterior_nao_ha_aviso(self):
+        from docx import Document
+
+        import build_docx
+
+        relato = completar_relato({"obra": {"numero": "1001"}, "eventos": EVENTOS, "prazos_contratuais": [dict(PRAZOS[0], fonte_data="2026-01-02")]})
+        with TemporaryDirectory() as pasta:
+            documento = Document(str(build_docx.montar_docx(relato, Path(pasta) / "r.docx", None, None)))
+        self.assertFalse(any(p.text.startswith("* Fonte") for p in documento.paragraphs))
+
     def test_prazo_sem_numero_nao_vira_zero(self):
         relato = completar_relato(
             {"obra": {}, "eventos": EVENTOS, "prazos_contratuais": [{"descricao": "Entrega conforme cronograma", "de": "G", "para": "H", "limite_du": "a combinar"}]}

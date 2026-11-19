@@ -73,6 +73,27 @@ class EntregaTeste(unittest.TestCase):
                 self.assertEqual(run_pipeline.executar(["--rebuild-only", "--obra-dir", str(obra)]), 0)
             self.assertTrue((relatorios / "Relatorio-Cronologico-Obra-1001-v1-rascunho-2.docx").exists())
 
+    def test_avisa_prazo_com_fonte_posterior_ou_sem_data(self):
+        import contextlib
+        import io
+        import json
+
+        with TemporaryDirectory() as temporario:
+            obra = self._obra(Path(temporario))
+            [caminho] = list(obra.rglob("analise.json"))
+            analise = json.loads(caminho.read_text(encoding="utf-8"))
+            analise["prazos_contratuais"] = [
+                {"descricao": "Instalação até 5 d.u.", "inicio": "2026-01-12", "fim": "2026-01-16", "limite_du": 5, "fonte": "orçamento", "fonte_data": "2026-02-01"},
+                {"descricao": "Medição até 6 d.u.", "inicio": "2026-01-12", "fim": "2026-01-14", "limite_du": 6, "fonte": "mensagem"},
+            ]
+            caminho.write_text(json.dumps(analise, ensure_ascii=False), encoding="utf-8")
+            saida = io.StringIO()
+            with contextlib.redirect_stdout(saida):
+                run_pipeline.executar(["--rebuild-only", "--recalcular", "--obra-dir", str(obra)])
+            texto = saida.getvalue()
+            self.assertIn("Aviso de prazo: \"Instalação até 5 d.u.\": fonte de 01/02/2026, depois do início do período (12/01/2026).", texto)
+            self.assertIn("Aviso de prazo: \"Medição até 6 d.u.\": sem fonte_data.", texto)
+
     def test_sem_mostrar_nao_abre_nada(self):
         with TemporaryDirectory() as temporario:
             obra = self._obra(Path(temporario))
