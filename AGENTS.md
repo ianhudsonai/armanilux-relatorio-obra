@@ -6,7 +6,7 @@ A pessoa cola isto:
 $skill-installer instale estas skills:
 https://github.com/ianhudsonai/armanilux-relatorio-obra/tree/main/skills/preparar-projeto-armanilux
 https://github.com/ianhudsonai/armanilux-relatorio-obra/tree/main/skills/relatorio-cronologico-obra
-Se este computador não tiver Python, não instale Python: baixe o zip do repositório com PowerShell e copie as duas pastas para a pasta de skills deste aplicativo.
+Se o $skill-installer não rodar (por exemplo, porque ainda não há Python), não instale Python: baixe o zip do repositório com PowerShell e copie as duas pastas para a pasta de skills deste aplicativo, como em https://github.com/ianhudsonai/armanilux-relatorio-obra/blob/main/AGENTS.md
 ```
 
 Versões antigas do README mandavam colar só `https://github.com/ianhudsonai/armanilux-relatorio-obra instale as skills`. Se vier assim, faça o mesmo.
@@ -55,6 +55,8 @@ Num computador novo isso é o normal: o `$skill-installer` é um script Python, 
 No Codex, no Windows:
 
 ```powershell
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$ProgressPreference = "SilentlyContinue"
 $zip = Join-Path $env:TEMP "armanilux-relatorio-obra.zip"
 $tmp = Join-Path $env:TEMP "armanilux-relatorio-obra"
 Invoke-WebRequest "https://github.com/ianhudsonai/armanilux-relatorio-obra/archive/refs/heads/main.zip" -OutFile $zip

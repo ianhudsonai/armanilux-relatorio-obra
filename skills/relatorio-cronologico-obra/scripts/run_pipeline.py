@@ -86,7 +86,8 @@ def _checar_bibliotecas() -> bool:
     if faltando:
         print("Faltam bibliotecas: " + ", ".join(faltando) + ".")
         print("Rode a skill $preparar-projeto-armanilux.")
-        print(f"Se ela já estiver instalada, o instalador é {instalador_do_preparo()}")
+        if instalador_do_preparo().is_file():
+            print(f"Se ela já estiver instalada, o instalador é {instalador_do_preparo()}")
         return False
     return True
 

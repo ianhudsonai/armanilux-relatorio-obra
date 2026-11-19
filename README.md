@@ -6,7 +6,7 @@ Quem for instalar no Codex cola isto, neste computador (não na nuvem):
 $skill-installer instale estas skills:
 https://github.com/ianhudsonai/armanilux-relatorio-obra/tree/main/skills/preparar-projeto-armanilux
 https://github.com/ianhudsonai/armanilux-relatorio-obra/tree/main/skills/relatorio-cronologico-obra
-Se este computador não tiver Python, não instale Python: baixe o zip do repositório com PowerShell e copie as duas pastas para a pasta de skills deste aplicativo.
+Se o $skill-installer não rodar (por exemplo, porque ainda não há Python), não instale Python: baixe o zip do repositório com PowerShell e copie as duas pastas para a pasta de skills deste aplicativo, como em https://github.com/ianhudsonai/armanilux-relatorio-obra/blob/main/AGENTS.md
 ```
 
 O instalador de skills do Codex instala as duas. Abra um chat novo e escreva `$preparar-projeto-armanilux`. Ele faz algumas perguntas e instala o que falta. Se pedir permissão, aprove. Se o Windows mostrar **Sim** ou **Não**, clique em **Sim**.
