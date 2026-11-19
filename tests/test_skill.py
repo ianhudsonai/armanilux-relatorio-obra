@@ -123,6 +123,15 @@ class SkillTeste(unittest.TestCase):
         self.assertNotIn("Se existir a pasta", agentes)
         self.assertIn("Missing --path", agentes)
         leia_me = (RAIZ / "README.md").read_text(encoding="utf-8")
+        # Linha de colagem que o $skill-installer entende sem ler o AGENTS.md: um endereço por skill.
+        colagem = (
+            "$skill-installer instale estas skills:\n"
+            "https://github.com/ianhudsonai/armanilux-relatorio-obra/tree/main/skills/preparar-projeto-armanilux\n"
+            "https://github.com/ianhudsonai/armanilux-relatorio-obra/tree/main/skills/relatorio-cronologico-obra\n"
+        )
+        self.assertIn(colagem, leia_me)
+        self.assertIn(colagem, agentes)
+        self.assertNotIn("armanilux-relatorio-obra instale as skills\n```", leia_me)
         self.assertNotIn("the claude command exists", leia_me.lower())
         self.assertIn("only into the app", leia_me.lower())
 
