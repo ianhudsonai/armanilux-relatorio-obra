@@ -48,7 +48,7 @@ Dentro dela:
 | `04-transcricoes` | o que foi dito nos áudios, e a análise |
 | `05-relatorios` | o Word, com versão no nome (`v1`, `v2`, …); antes da revisão, `v1-rascunho` |
 
-Abra o arquivo `Relatorio-Cronologico-Obra-...-v1.docx` no Word. O PDF só é criado se o LibreOffice estiver instalado. O arquivo para mandar no grupo é o Word.
+Abra o arquivo `Relatorio-Cronologico-Obra-...-v1.docx` no Word. No preparo você escolhe como recebe o relatório: Word, PDF ou link (a versão final vai para o seu OneDrive ou Google Drive, e você compartilha só com quem precisa). O Word sempre fica na pasta da obra, para correções.
 
 Se você pediu para entender os áudios e os vídeos, o computador baixa isso uma vez (cerca de 484 MB). Fica só neste computador. Depois disso funciona sem internet.
 
@@ -67,7 +67,7 @@ O WhatsApp do Windows **não exporta** a conversa. A exportação é no celular.
 - A skill não aparece no Codex: feche e abra o Codex. Confira se está em **Este computador**, não em Cloud.
 - O Codex pede aprovação para usar a rede ou para rodar um comando: aprove. No dia a dia não precisa de internet, salvo a primeira vez em que ele baixa o que precisa para entender os áudios.
 - Não saiu transcrição: o Word continua válido. A fala fica marcada como `dado não identificado`.
-- Não saiu PDF: normal. Use o Word.
+- Não saiu PDF: o computador não tem Microsoft Word nem LibreOffice. Rode `$preparar-projeto-armanilux` de novo e escolha PDF; ele instala o LibreOffice. Enquanto isso, use o Word.
 - O nome de um arquivo apareceu com letras trocadas (`Ã`, `├`): o script tenta corrigir. Se um anexo importante não entrou, diga o nome do arquivo na conversa do Codex.
 
 ## Privacidade
@@ -87,7 +87,7 @@ The paste names `$skill-installer` and both tree URLs, so it works even if the a
 
 `skills/relatorio-cronologico-obra/scripts/run_pipeline.py` creates `Documents\Armanilux\Relatorios-de-Obra\<obra - cliente>\{01-conversas,02-projetos-pdf,03-midias,04-transcricoes,05-relatorios}`, streams the zip (zip-slip is dropped; mojibake filenames are repaired), parses Android and iPhone WhatsApp exports, transcribes speech locally, pulls a few video frames, reads PDF/docx, and writes a versioned docx. Business days are `(start, end]` excluding weekends, Brazilian national holidays, Carnival Monday and Tuesday, SP state 9 July, and São Paulo city 25 January and Corpus Christi (`holidays` subdiv São Paulo Capital, plus Carnival added in code). Ash Wednesday stays a business day. Intervals are not summed into an "Armanilux delay".
 
-Codex is expected to review `04-transcricoes/analise.json`, look at photos/keyframes, and rerun with `--rebuild-only --recalcular`. Tests: `python -m unittest discover -s tests -v` (transcription is skipped in the sample run; CI does not install faster-whisper). Limitations: stage labels are keyword heuristics until Codex corrects them; visual descriptions stay `dado não identificado` until something that can see the image fills `observacoes_visuais`; PDF needs LibreOffice; the first Whisper `small` run downloads the model once.
+Codex is expected to review `04-transcricoes/analise.json`, look at photos/keyframes, and rerun with `--rebuild-only --recalcular`. Tests: `python -m unittest discover -s tests -v` (transcription is skipped in the sample run; CI does not install faster-whisper). Limitations: stage labels are keyword heuristics until Codex corrects them; visual descriptions stay `dado não identificado` until something that can see the image fills `observacoes_visuais`; PDF needs Microsoft Word (COM) or LibreOffice (setup installs LibreOffice with `-Pdf` when neither exists); `formato_entrega` is `word`, `pdf` or `link` (link copies the reviewed version into a OneDrive/Google Drive folder; drafts never go there); the first Whisper `small` run downloads the model once.
 
 O programa acha as conversas sozinho, mostra as que ainda não têm relatório e pergunta por qual começar. Pode escolher várias ou todas. Se o mesmo arquivo foi baixado duas vezes, ele ignora a cópia. Se chegar uma conversa nova de uma obra que já tem relatório, ele oferece a próxima versão (v2). O número da obra e o cliente saem do nome do arquivo. Quando você disser que o relatório está bom, o zip vai para a pasta `01-conversas` da obra.
 
