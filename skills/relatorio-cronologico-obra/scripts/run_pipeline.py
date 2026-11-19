@@ -185,8 +185,21 @@ def _gravar(pasta_obra: Path, analise: dict, gerar_pdf: bool = False, mostrar: b
         marcos = intervalos_marcos_de(analise.get("eventos") or [])[0]
     barras = grafico_barras(marcos, figuras / "dias-uteis.png")
     gantt = grafico_gantt(analise.get("eventos") or [], figuras / "gantt.png")
-    destino = proxima_versao(pasta_obra / "05-relatorios", analise["obra"].get("numero") or "sem-numero")
-    montar_docx(analise, destino, barras, gantt)
+    pasta = pasta_obra / "05-relatorios"
+    numero = analise["obra"].get("numero") or "sem-numero"
+    rascunho = not analise.get("revisado")
+    copia = 1
+    while True:
+        destino = proxima_versao(pasta, numero, rascunho=rascunho, copia=copia)
+        try:
+            montar_docx(analise, destino, barras, gantt)
+            break
+        except PermissionError:
+            # Rascunho aberto no Word: o Windows não deixa regravar. Grava uma cópia ao lado.
+            if not rascunho or copia >= 20:
+                raise
+            print(f"O arquivo {destino.name} está aberto (provavelmente no Word). Gravei outra cópia.")
+            copia += 1
     pdf = tentar_pdf(destino) if gerar_pdf else None
     print(f"Relatório gravado em:\n{destino}")
     if pdf:
@@ -575,7 +588,7 @@ def _anotar_relatorio(origem: Path, sha: str | None, destino: Path, pasta_obra: 
     import registro
 
     sha = sha or registro.sha256_arquivo(origem)
-    achado = re.search(r"-v(\d+)\.docx$", destino.name, re.IGNORECASE)
+    achado = re.search(r"-v(\d+)(?:-rascunho(?:-\d+)?)?\.docx$", destino.name, re.IGNORECASE)
     registro.registrar_relatorio(sha, str(destino), int(achado.group(1)) if achado else 1, str(pasta_obra))
 
 

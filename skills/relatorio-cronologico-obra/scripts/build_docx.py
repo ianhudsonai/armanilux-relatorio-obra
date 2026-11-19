@@ -401,9 +401,10 @@ def _confronto_contrato(documento: Document, confronto: list[dict]) -> None:
     _cabecalho_tabela(tabela, ["Prazo contratual de referência", "Contrato", "Realizado"])
     for indice, item in enumerate(confronto, start=1):
         linha = tabela.rows[indice]
-        realizado = f"{item['realizado']} d.u." if item["realizado"] is not None else DADO
+        sigla = "dias corridos" if item.get("unidade") == "dias_corridos" else "d.u."
+        realizado = f"{item['realizado']} {sigla}" if item["realizado"] is not None else DADO
         _texto_celula(linha.cells[0], item["descricao"], tamanho=9)
-        _texto_celula(linha.cells[1], f"{item['limite_du']} d.u." if item["limite_du"] else DADO, tamanho=9)
+        _texto_celula(linha.cells[1], f"{item['limite_du']} {sigla}" if item["limite_du"] else DADO, tamanho=9)
         _texto_celula(linha.cells[2], realizado, tamanho=9, negrito=True, cor=VERMELHO if item["excedeu"] else None)
         if item["excedeu"]:
             for celula in linha.cells:
@@ -542,16 +543,20 @@ def _inserir_figura(documento: Document, caminho: Path | None, legenda: str) -> 
     _paragrafo(documento, legenda, tamanho=9, italico=True)
 
 
-def proxima_versao(pasta: Path, numero: str) -> Path:
+def proxima_versao(pasta: Path, numero: str, rascunho: bool = False, copia: int = 1) -> Path:
+    """Próximo vN revisado. O rascunho leva o número da versão que ele vai virar
+    (`-vN-rascunho.docx`) e é regravado a cada remontagem, sem gastar versão.
+    `copia` > 1 é para quando o rascunho está aberto no Word e não dá para regravar."""
     import re
 
     slug = re.sub(r"[^0-9A-Za-z.-]+", "", numero) or "sem-numero"
     versao = 1
-    while True:
-        candidato = pasta / f"Relatorio-Cronologico-Obra-{slug}-v{versao}.docx"
-        if not candidato.exists():
-            return candidato
+    while (pasta / f"Relatorio-Cronologico-Obra-{slug}-v{versao}.docx").exists():
         versao += 1
+    if not rascunho:
+        return pasta / f"Relatorio-Cronologico-Obra-{slug}-v{versao}.docx"
+    sufixo = "" if copia == 1 else f"-{copia}"
+    return pasta / f"Relatorio-Cronologico-Obra-{slug}-v{versao}-rascunho{sufixo}.docx"
 
 
 def montar_docx(analise: dict, destino: Path, grafico_barras: Path | None, grafico_gantt: Path | None) -> Path:

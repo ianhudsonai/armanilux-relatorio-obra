@@ -63,7 +63,7 @@ class PipelineTeste(unittest.TestCase):
             self.assertTrue((obra / "02-projetos-pdf" / "Projeto-preliminar-cozinha.pdf").exists())
             self.assertTrue((obra / "03-midias" / "chapa-lote-3.jpg").exists())
             self.assertTrue((obra / "03-midias" / "audio-medicao.opus").exists())
-            relatorios = list((obra / "05-relatorios").glob("Relatorio-Cronologico-Obra-1001-v1.docx"))
+            relatorios = list((obra / "05-relatorios").glob("Relatorio-Cronologico-Obra-1001-v1-rascunho.docx"))
             self.assertEqual(len(relatorios), 1)
             from common import ler_json
 
@@ -130,7 +130,8 @@ class PipelineTeste(unittest.TestCase):
                 ["--workspace", str(workspace), "--rebuild-only", "--obra-dir", str(obra)]
             )
             self.assertEqual(codigo_v2, 0)
-            self.assertTrue((obra / "05-relatorios" / "Relatorio-Cronologico-Obra-1001-v2.docx").exists())
+            self.assertTrue((obra / "05-relatorios" / "Relatorio-Cronologico-Obra-1001-v1-rascunho.docx").exists())
+            self.assertFalse((obra / "05-relatorios" / "Relatorio-Cronologico-Obra-1001-v2-rascunho.docx").exists())
             conferencia = (obra / "04-transcricoes" / "verificacao.md").read_text(encoding="utf-8")
             self.assertIn("fatos conferidos", conferencia)
 

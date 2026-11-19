@@ -4,7 +4,7 @@ description: Gera o Relatório Cronológico de Obra da Armanilux (etapas A a L, 
 license: MIT
 metadata:
   author: Armanilux
-  version: "1.5"
+  version: "1.6"
   idioma: pt-BR
 ---
 
@@ -67,7 +67,7 @@ PYTHON SKILL/scripts/run_pipeline.py --indice 1,3
 PYTHON SKILL/scripts/run_pipeline.py --todas
 ```
 
-Conversa nova de uma obra que já tem relatório aparece na lista como "próxima versão". Se a pessoa escolher, o relatório sai como v2 na mesma pasta. Nunca gere sozinho.
+Conversa nova de uma obra que já tem relatório aparece na lista como "próxima versão". Se a pessoa escolher, o relatório sai como v2 (primeiro como rascunho) na mesma pasta. Nunca gere sozinho.
 
 O zip fica onde está até a pessoa dizer que o relatório está bom. Só então:
 
@@ -91,7 +91,7 @@ Saídas:
 
 - `04-transcricoes/analise.json` — fatos, dias úteis e textos
 - `05-relatorios/figuras/dias-uteis.png` e `gantt.png`
-- `05-relatorios/Relatorio-Cronologico-Obra-<numero>-vN.docx`
+- `05-relatorios/Relatorio-Cronologico-Obra-<numero>-vN-rascunho.docx` enquanto `revisado` não for `true`: cada remontagem regrava o mesmo rascunho. Com `"revisado": true` sai `...-vN.docx`, a versão que vale.
 
 O PDF só aparece se o LibreOffice estiver instalado. O arquivo que vale é o Word.
 
@@ -133,7 +133,7 @@ O relatório é curto, no formato do relatório aprovado (8665.1 V3): uma tabela
 {"descricao": "Projeto executivo até 6 d.u. da medição", "de": "C", "para": "D", "limite_du": 6, "fonte": "Orçamento 1001.2, impresso em 17/06/2026"}
 ```
 
-`de` e `para` são as etapas cujo primeiro registro marca o início e o fim do prazo. Quando a obra tem várias frentes e você mediu um ciclo específico (por exemplo, a aprovação e a entrega da piscina), use `"inicio"` e `"fim"` (AAAA-MM-DD) no lugar de `de` e `para`, e diga a frente na descrição. Prazo em faixa ("20 a 25 d.u.") usa o limite maior. O script calcula o realizado e pinta de vermelho o que passou do prazo. Sem prazo declarado, deixe a lista vazia e escreva em `lacunas_adicionais` "Prazo contratual não declarado no grupo nem nos documentos.". Em obra com várias frentes, prefira `inicio` e `fim` por frente: o primeiro registro de uma etapa pode ser de outra frente e dar um número enganoso.
+`de` e `para` são as etapas cujo primeiro registro marca o início e o fim do prazo. Quando a obra tem várias frentes e você mediu um ciclo específico (por exemplo, a aprovação e a entrega da piscina), use `"inicio"` e `"fim"` (AAAA-MM-DD) no lugar de `de` e `para`, e diga a frente na descrição. Prazo em faixa ("20 a 25 d.u.") usa o limite maior. Prazo escrito só em "dias", sem "úteis", conta dias corridos: acrescente `"unidade": "dias_corridos"` (o número continua em `limite_du`). Sem `unidade`, vale dias úteis. O script calcula o realizado e pinta de vermelho o que passou do prazo. Sem prazo declarado, deixe a lista vazia e escreva em `lacunas_adicionais` "Prazo contratual não declarado no grupo nem nos documentos.". Em obra com várias frentes, prefira `inicio` e `fim` por frente: o primeiro registro de uma etapa pode ser de outra frente e dar um número enganoso.
 6. **Pendências e obra.** Confira `pendencias` e os campos de `obra`. `pendencias_revisadas` traz só as pendências reais (`{"item": "...", "status": "Pendente"}`); `obra_ajustes` traz `construtora`, `engenheiro`, `arquitetura`, `responsavel_armanilux` e `endereco` quando o grupo não traz em formato fixo.
 7. **Lacunas.** `lacunas_automaticas` já traz o que o computador sabe que não leu. Acrescente em `lacunas_adicionais` o que você percebeu (etapa sem registro, documento citado e nunca enviado, decisão tomada fora do grupo), uma frase curta por lacuna. Elas entram na Nota Metodológica. Não deduza o conteúdo de arquivo que não veio na exportação (`arquivos_fora_da_exportacao`).
 8. **Textos do relatório.** Escreva, com fatos do grupo e datas, e curto:
