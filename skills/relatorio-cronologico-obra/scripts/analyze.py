@@ -73,6 +73,29 @@ _INTERFERENCIA = (
 )
 
 
+# Cor de fundo da linha, como no relatório aprovado: salmão = reprocesso, amarelo = ocioso.
+_REPROCESSO = (
+    "revis", "refaz", "refeit", "refacao", "retrabalho", "quebr", "trinc", "danific",
+    "retirad", "substitui", "corrig", "mudanca apos", "alteracao apos",
+)
+_OCIOSO = (
+    "nao realizad", "nao foi realizad", "aguardand", "pendente", "sem frente", "nao liber",
+    "parad", "adiad", "remarc", "sem retorno", "cancelad",
+)
+# Intervalo entre marcos acima disto sai em vermelho na Análise de Prazos.
+LIMITE_INTERVALO_LONGO = 20
+
+
+def destaque_automatico(etapa: str, texto: str) -> str:
+    """Primeira leitura da cor da linha. A revisão pode trocar com "destaque" no evento."""
+    base = normalizar(texto)
+    if etapa == "E" or any(chave in base for chave in _REPROCESSO):
+        return "reprocesso"
+    if any(chave in base for chave in _OCIOSO):
+        return "ocioso"
+    return ""
+
+
 def classificar_etapas(texto: str) -> list[str]:
     base = normalizar(texto)
     etapas: list[str] = []
@@ -341,6 +364,7 @@ def intervalos_marcos_de(eventos: list[dict]) -> tuple[list[dict], dict]:
                 "dias_uteis": dias_uteis_entre(date.fromisoformat(inicio), date.fromisoformat(fim)),
             }
         )
+        saida[-1]["longo"] = saida[-1]["dias_uteis"] > LIMITE_INTERVALO_LONGO
     datas = sorted(evento["data"] for evento in eventos)
     duracao = {}
     if datas:
@@ -888,48 +912,40 @@ def _plural(quantidade: int, singular: str, plural: str) -> str:
     return singular if quantidade == 1 else plural
 
 
-def _nomes(nomes: list[str], limite: int = 10) -> str:
-    texto = ", ".join(nomes[:limite])
-    return texto + (f" e mais {len(nomes) - limite}" if len(nomes) > limite else "")
-
-
 def juntar_lacunas(base: dict) -> list[str]:
     """Lacunas automáticas mais as que a revisão escreveu, sem repetir."""
     automaticas = list(base.get("lacunas_automaticas") or [])
     return automaticas + [item for item in (base.get("lacunas_adicionais") or []) if item and item not in automaticas]
 
 
+def arquivos_fora_da_exportacao(mensagens: list[Mensagem]) -> list[str]:
+    """Nomes dos arquivos enviados no grupo que o WhatsApp não pôs no zip (para o agente, não para o Word)."""
+    return [mensagem.anexos[0] for mensagem in mensagens if _so_o_nome(mensagem)]
+
+
 def lacunas_automaticas(mensagens: list[Mensagem], documentos: list[dict], transcricoes: list[dict]) -> list[str]:
-    """O que o computador sabe que não conseguiu ler. Vai para a seção Lacunas de contexto."""
+    """O que o computador sabe que não conseguiu ler, em frases curtas para a Nota Metodológica."""
     lacunas = []
-    fora = [mensagem.anexos[0] for mensagem in mensagens if _so_o_nome(mensagem)]
+    fora = len(arquivos_fora_da_exportacao(mensagens))
     if fora:
-        n = len(fora)
         lacunas.append(
-            f"{n} {_plural(n, 'arquivo enviado', 'arquivos enviados')} no grupo "
-            f"{_plural(n, 'não veio', 'não vieram')} na exportação do WhatsApp ({_nomes(fora)}); "
-            f"o conteúdo {_plural(n, 'dele', 'deles')} é dado não identificado."
+            f"{fora} {_plural(fora, 'arquivo enviado', 'arquivos enviados')} no grupo "
+            f"{_plural(fora, 'não veio', 'não vieram')} na exportação do WhatsApp."
         )
     sem_nome = sum(1 for mensagem in mensagens if mensagem.midia_omitida and not mensagem.anexos)
     if sem_nome:
         lacunas.append(
-            f"{sem_nome} {_plural(sem_nome, 'mídia sem nome', 'mídias sem nome')} (foto, áudio ou vídeo) "
-            f"{_plural(sem_nome, 'não veio', 'não vieram')} na exportação; o conteúdo é dado não identificado."
+            f"{sem_nome} {_plural(sem_nome, 'foto, áudio ou vídeo', 'fotos, áudios ou vídeos')} "
+            f"{_plural(sem_nome, 'não veio', 'não vieram')} na exportação."
         )
-    ilegiveis = [item["arquivo"] for item in documentos if not (item.get("texto") or "").strip()]
+    ilegiveis = sum(1 for item in documentos if not (item.get("texto") or "").strip())
     if ilegiveis:
-        n = len(ilegiveis)
-        lacunas.append(
-            f"{n} {_plural(n, 'documento', 'documentos')} sem texto legível pelo computador ({_nomes(ilegiveis)}); "
-            "conferir o arquivo original."
-        )
-    sem_fala = [item["arquivo"] for item in transcricoes if item.get("status") != "ok"]
+        lacunas.append(f"{ilegiveis} {_plural(ilegiveis, 'documento', 'documentos')} sem texto legível pelo computador.")
+    sem_fala = sum(1 for item in transcricoes if item.get("status") != "ok")
     if sem_fala:
-        n = len(sem_fala)
-        lacunas.append(
-            f"{n} {_plural(n, 'áudio ou vídeo', 'áudios ou vídeos')} sem transcrição ({_nomes(sem_fala)}); "
-            "o que foi falado é dado não identificado."
-        )
+        lacunas.append(f"{sem_fala} {_plural(sem_fala, 'áudio ou vídeo', 'áudios ou vídeos')} sem transcrição.")
+    if lacunas:
+        lacunas[-1] = lacunas[-1][:-1] + "; o conteúdo desses itens é dado não identificado."
     return lacunas
 
 
@@ -972,6 +988,8 @@ def _juntar_adicionais(base: dict) -> list[dict]:
             "midias": list(extra.get("midias") or []),
             "documentos": list(extra.get("documentos") or []),
         }
+        if extra.get("destaque"):
+            item["destaque"] = extra["destaque"]
         chave = (item["data"], item["hora"], item["etapa"], item["ocorrencia"])
         if chave not in vistos:
             vistos.add(chave)
@@ -983,6 +1001,8 @@ def completar_relato(base: dict) -> dict:
     """Recalcula intervalos, textos e indicadores a partir dos eventos já classificados."""
     eventos = _juntar_adicionais(base)
     eventos.sort(key=lambda item: (item["data"], item["hora"], _posicao(item["etapa"])))
+    for evento in eventos:
+        evento["destaque_auto"] = destaque_automatico(evento["etapa"], evento.get("ocorrencia") or "")
     obra = dict(base["obra"])
     obra.update({k: v for k, v in (base.get("obra_ajustes") or {}).items() if v})
     pendencias = list(base.get("pendencias_revisadas") or base.get("pendencias") or [])
@@ -1064,6 +1084,7 @@ def montar_analise(
         "eventos_adicionais": [],
         "rastreabilidade": _nota_rastreabilidade(mensagens, eventos, anexo, documentos, transcricoes),
         "lacunas_automaticas": lacunas_automaticas(mensagens, documentos, transcricoes),
+        "arquivos_fora_da_exportacao": arquivos_fora_da_exportacao(mensagens),
         "lacunas_adicionais": [],
     }
     return completar_relato(base)
@@ -1111,4 +1132,6 @@ def aplicar_ajustes(eventos: list[dict], ajustes: list[dict]) -> list[dict]:
                 evento["ocorrencia"] = ajuste["ocorrencia"]
             if ajuste.get("impacto"):
                 evento["impacto"] = ajuste["impacto"]
+            if ajuste.get("destaque"):
+                evento["destaque"] = ajuste["destaque"]
     return eventos

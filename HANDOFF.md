@@ -56,3 +56,8 @@ O push e o PR foram barrados pelo guarda de permissão (publicar exige o Ian). O
 - `mattpocock-skills:tdd` — cada pendência com teste antes.
 - `mattpocock-skills:code-review` — antes de abrir cada PR.
 - `relatorio-cronologico-obra` — para testar de ponta a ponta na obra real.
+
+### Em andamento (branch `relatorio-compacto`, commit WIP, testes antigos ainda falhando)
+Pedido do Ian: relatório compacto como o PDF 8665.1 V3 (Nota Metodológica → Quadro-Resumo → etapas A–L com tabela Data | Evento curta, linha salmão = reprocesso / amarela = ocioso, "Leitura da Etapa X" → Análise de Prazos com d.u. em vermelho acima de 20 → Diagnóstico em 5 blocos de marcadores → Conclusão Estratégica). Sem registro fotográfico e sem descrição de imagens: imagem serve só de contexto para o agente.
+Feito: `tests/test_formato_compacto.py` (6 testes, passando), `destaque_automatico`, `LIMITE_INTERVALO_LONGO`, novo `build_docx` (seções compactas), lacunas curtas na Nota Metodológica.
+Falta: (1) atualizar testes antigos (`test_anexo` RegistroFotograficoTeste → apagar; `test_lacunas` Word → olhar "Limites do material"; `test_marcos` linha total agora "DURAÇÃO TOTAL REGISTRADA"; `test_pipeline` lista de trechos); (2) SKILL.md: ocorrência = 1 frase ≤ 25 palavras, campo `destaque`, `comentarios.X.introducao/leitura`, `diagnostico_prompt` em listas + `interferencias`, `pontos_criticos`, `impactos_prazo`, imagens só como contexto (tirar observacoes_visuais do fluxo); (3) formato-relatorio.md e analise-json.md; (4) remover import `WD_CELL_VERTICAL_ALIGNMENT` se sobrar; (5) gerar v8 e comparar com o PDF; (6) code review.

@@ -8,7 +8,8 @@ import subprocess
 from datetime import date
 from pathlib import Path
 
-from analyze import ORDEM, TITULOS, intervalos_marcos_de
+from analyze import LIMITE_INTERVALO_LONGO, ORDEM, TITULOS, intervalos_marcos_de
+from business_days import dias_uteis_entre
 from common import DADO, EXT_IMAGEM, EXT_VIDEO, LARGURA_FIGURA_CM, formatar_data
 from docx import Document
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
@@ -78,6 +79,8 @@ def _texto_celula(celula, texto: str, *, negrito: bool = False, tamanho: int = 1
     celula.text = ""
     celula.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
     paragrafo = celula.paragraphs[0]
+    for vazio in list(paragrafo.runs):  # celula.text = "" deixa um trecho vazio antes do texto
+        vazio._element.getparent().remove(vazio._element)
     paragrafo.alignment = WD_ALIGN_PARAGRAPH.CENTER if centro else WD_ALIGN_PARAGRAPH.LEFT
     paragrafo.paragraph_format.space_after = Pt(0)
     paragrafo.paragraph_format.space_before = Pt(0)
@@ -158,16 +161,6 @@ def _paragrafo(documento: Document, texto: str, *, tamanho: int = 11, depois: in
     return paragrafo
 
 
-def _rotulo(documento: Document, rotulo: str, texto: str) -> None:
-    paragrafo = documento.add_paragraph()
-    paragrafo.paragraph_format.space_after = Pt(4)
-    paragrafo.paragraph_format.space_before = Pt(2)
-    chamada = paragrafo.add_run(f"{rotulo}: ")
-    _fonte(chamada, 11, negrito=True, cor=NAVY)
-    corpo = paragrafo.add_run(texto)
-    _fonte(corpo, 11)
-
-
 def _valor(obra: dict, chave: str) -> str:
     valor = (obra.get(chave) or "").strip()
     return valor if valor else DADO
@@ -200,6 +193,9 @@ def _capa(documento: Document, analise: dict) -> None:
         "Base documental: histórico do grupo de WhatsApp da obra, documentos anexos e transcrições locais",
         f"Emitido em: {date.today().strftime('%d/%m/%Y')}",
     ]
+    if (obra.get("elaborado_por") or "").strip():
+        funcao = f" — {obra['funcao']}" if (obra.get("funcao") or "").strip() else ""
+        linhas.append(f"Elaborado por: {obra['elaborado_por']}{funcao}")
     for indice, texto in enumerate(linhas):
         paragrafo = documento.add_paragraph()
         paragrafo.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -226,7 +222,7 @@ def _primeira(analise: dict, etapa: str) -> str:
 
 def _quadro_resumo(documento: Document, analise: dict) -> None:
     obra = analise["obra"]
-    documento.add_heading("Quadro-resumo da obra", level=2)
+    documento.add_heading("Quadro-Resumo da Obra", level=1)
     inicio, fim = obra.get("periodo_inicio"), obra.get("periodo_fim")
     corridos = DADO
     if inicio and fim:
@@ -248,12 +244,6 @@ def _quadro_resumo(documento: Document, analise: dict) -> None:
     _tabela_simples(documento, ["Indicador", "Valor"], linhas, [10.4, 7.0])
 
 
-def _campo_etapa(analise: dict, codigo: str, chave: str, padrao: str) -> str:
-    bloco = (analise.get("comentarios") or {}).get(codigo) or {}
-    texto = (bloco.get(chave) or "").strip()
-    return texto or padrao
-
-
 def _titulo_marco(codigo: str) -> str:
     return TITULOS.get(codigo, codigo).replace("“", "").replace("”", "")
 
@@ -271,93 +261,232 @@ def _tabela_simples(documento: Document, cabecalhos: list[str], linhas: list[lis
     documento.add_paragraph()
 
 
-def _kpis(documento: Document, analise: dict) -> None:
-    kpis = analise["kpis"]
-    cartoes = [
-        (str(kpis["dias_uteis_periodo"]), "Dias úteis no período"),
-        (str(kpis["revisoes"]), "Revisões de projeto"),
-        (str(kpis["interferencias"]), "Interferências registradas"),
-        (str(kpis["maior_intervalo"]), "Maior intervalo sem registro (dias úteis)"),
-    ]
-    tabela = documento.add_table(rows=1, cols=4)
-    tabela.style = "Table Grid"
-    _larguras(tabela, [LARGURA / 4] * 4)
-    for indice, (numero, legenda) in enumerate(cartoes):
-        celula = tabela.rows[0].cells[indice]
-        celula.text = ""
-        _sombrear(celula, "F7F5F2")
-        celula.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
-        primeiro = celula.paragraphs[0]
-        primeiro.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        primeiro.paragraph_format.space_after = Pt(0)
-        trecho = primeiro.add_run(numero)
-        _fonte(trecho, 26, negrito=True, cor=NAVY)
-        segundo = celula.add_paragraph()
-        segundo.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        chamada = segundo.add_run(legenda)
-        _fonte(chamada, 9, cor=CINZA)
-    documento.add_paragraph()
-
-
 def _eventos_da_etapa(analise: dict, codigo: str) -> list[dict]:
     return [item for item in analise["eventos"] if item["etapa"] == codigo]
 
 
+SALMAO = "FCE4D6"  # reprocesso ou retrabalho
+AMARELO = "FFF2CC"  # tempo ocioso, espera ou pendência
+VERMELHO = RGBColor(0xC0, 0x00, 0x00)
+_COR_DESTAQUE = {"reprocesso": SALMAO, "ocioso": AMARELO}
+_CAUDA_EVENTO = re.compile(r"\s+(?:Mídia:|Documento:|Transcrição:|\(encaminhada no grupo por)")
+_FONTE = re.compile(r"\s*\[fonte:[^\]]*\]", re.IGNORECASE)
+LIMITE_EVENTO = 260
+
+
+def _texto_evento(evento: dict) -> str:
+    """Uma frase objetiva por linha: sem nome de arquivo, trecho de transcrição nem marca de fonte."""
+    texto = _FONTE.sub("", evento.get("ocorrencia") or "")
+    corte = _CAUDA_EVENTO.search(texto)
+    if corte:
+        texto = texto[: corte.start()]
+    texto = " ".join(texto.split()).rstrip(" :")
+    if len(texto) > LIMITE_EVENTO:
+        texto = texto[:LIMITE_EVENTO].rsplit(" ", 1)[0].rstrip(",;:") + "…"
+    return texto or DADO
+
+
+def _cor_do_evento(evento: dict) -> str | None:
+    destaque = evento.get("destaque") or evento.get("destaque_auto") or ""
+    return _COR_DESTAQUE.get(destaque)
+
+
+def _tabela_linhas(documento: Document, cabecalhos: list[str], linhas: list[list[str]], larguras: list[float], cores: list[str | None]) -> None:
+    """Tabela com a linha inteira sombreada quando há destaque, como no relatório aprovado."""
+    tabela = documento.add_table(rows=1 + len(linhas), cols=len(cabecalhos))
+    tabela.style = "Table Grid"
+    _larguras(tabela, larguras)
+    _cabecalho_tabela(tabela, cabecalhos)
+    for indice, linha in enumerate(linhas):
+        for coluna, texto in enumerate(linha):
+            celula = tabela.rows[indice + 1].cells[coluna]
+            _texto_celula(celula, texto, tamanho=9, negrito=coluna == 0)
+            if cores[indice]:
+                _sombrear(celula, cores[indice])
+    documento.add_paragraph()
+
+
+def _leitura(documento: Document, rotulo: str, texto: str) -> None:
+    paragrafo = documento.add_paragraph()
+    paragrafo.paragraph_format.space_after = Pt(8)
+    _fonte(paragrafo.add_run(f"{rotulo}: "), 10, negrito=True)
+    _fonte(paragrafo.add_run(texto), 10)
+
+
+def _comentario(analise: dict, codigo: str, chave: str) -> str:
+    return ((analise.get("comentarios") or {}).get(codigo) or {}).get(chave, "").strip()
+
+
+def _leitura_padrao(eventos: list[dict]) -> str:
+    if not eventos:
+        return "dado não identificado."
+    datas = sorted(item["data"] for item in eventos)
+    if datas[0] == datas[-1]:
+        return f"registro único em {formatar_data(datas[0])}."
+    dias = dias_uteis_entre(date.fromisoformat(datas[0]), date.fromisoformat(datas[-1]))
+    return f"registros de {formatar_data(datas[0])} a {formatar_data(datas[-1])} ({dias} d.u.)."
+
+
 def _escrever_etapa(documento: Document, analise: dict, codigo: str) -> None:
-    etapa = analise["etapas"][codigo]
-    documento.add_heading(etapa["titulo"], level=2)
-    eventos = _eventos_da_etapa(analise, codigo)
+    documento.add_heading(TITULOS[codigo], level=1)
+    introducao = _comentario(analise, codigo, "introducao")
+    if introducao:
+        _paragrafo(documento, introducao, tamanho=10)
+    eventos = sorted(_eventos_da_etapa(analise, codigo), key=lambda e: (e["data"], e.get("hora") or ""))
+    cores = [_cor_do_evento(item) for item in eventos] or [None]
     if codigo == "J":
-        if eventos:
-            linhas = [
-                [f"{formatar_data(item['data'])} {item['hora']}", item["ocorrencia"], item.get("impacto") or DADO]
-                for item in eventos
-            ]
-        else:
-            linhas = [["—", DADO, DADO]]
-        _tabela_simples(
-            documento,
-            ["Data", "Interferência", "Impacto"],
-            linhas,
-            [3.2, 7.1, 7.1],
-        )
-        documento.add_heading("J.1 Pendências por item", level=3)
-        pendencias = analise.get("pendencias") or []
-        if pendencias:
-            _tabela_simples(
-                documento,
-                ["Item", "Status"],
-                [[item["item"], item.get("status") or "Pendente"] for item in pendencias],
-                [13.4, 4.0],
-            )
-        else:
-            _paragrafo(documento, "Pendência residual: dado não identificado.")
-        documento.add_heading("J.2 Impacto na produtividade", level=3)
-        _paragrafo(documento, analise.get("produtividade") or DADO)
+        linhas = [[formatar_data(item["data"]), _texto_evento(item), item.get("impacto") or DADO] for item in eventos]
+        _tabela_linhas(documento, ["Data", "Interferência", "Impacto"], linhas or [["—", DADO, DADO]], [2.6, 8.0, 6.8], cores)
     else:
-        if eventos:
-            linhas = [[f"{formatar_data(item['data'])} {item['hora']}", item["ocorrencia"]] for item in eventos]
-        else:
-            linhas = [["—", DADO]]
-        _tabela_simples(documento, ["Data", "Ocorrência"], linhas, [3.6, 13.8])
+        linhas = [[formatar_data(item["data"]), _texto_evento(item)] for item in eventos]
+        _tabela_linhas(documento, ["Data", "Evento / Ocorrência"], linhas or [["—", DADO]], [2.6, 14.8], cores)
     if codigo == "L":
         marcos = analise.get("marcos") or []
         if marcos:
-            _tabela_simples(
-                documento,
-                ["Marco", "Situação"],
-                [[item["marco"], item["situacao"]] for item in marcos],
-                [12.2, 5.2],
-            )
-        else:
-            _paragrafo(documento, "Marco: dado não identificado.")
+            _tabela_simples(documento, ["Marco", "Situação"], [[item["marco"], item["situacao"]] for item in marcos], [12.2, 5.2])
+        pendencias = [item for item in analise.get("pendencias") or [] if (item.get("status") or "Pendente") == "Pendente"]
+        if pendencias:
+            _tabela_simples(documento, ["Pendência em aberto", "Status"], [[item["item"], "Pendente"] for item in pendencias], [13.4, 4.0])
+    _leitura(documento, f"Leitura da Etapa {codigo}", _comentario(analise, codigo, "leitura") or _leitura_padrao(eventos))
 
-    _rotulo(documento, "Intervalos relevantes", _campo_etapa(analise, codigo, "intervalos_relevantes", etapa["intervalos_relevantes"]))
-    _rotulo(documento, "Situação", _campo_etapa(analise, codigo, "situacao", etapa["situacao"]))
-    _rotulo(documento, "Ponto crítico", _campo_etapa(analise, codigo, "ponto_critico", etapa["ponto_critico"]))
-    _rotulo(documento, "Gargalo", _campo_etapa(analise, codigo, "gargalo", etapa["gargalo"]))
-    _rotulo(documento, "Avaliação", _campo_etapa(analise, codigo, "avaliacao", etapa["avaliacao"]))
-    _rotulo(documento, "Conclusão da etapa", _campo_etapa(analise, codigo, "conclusao", etapa["conclusao"]))
+
+def _nota_metodologica(documento: Document, analise: dict) -> None:
+    documento.add_heading("Nota Metodológica", level=1)
+    _paragrafo(
+        documento,
+        "Este relatório foi elaborado a partir do histórico do grupo de WhatsApp da obra, dos documentos anexados "
+        "e das transcrições de áudio e vídeo feitas neste computador, sem envio a serviço em nuvem. As datas e "
+        "descrições refletem o que foi registrado no grupo; o que não consta é sinalizado como “dado não identificado”.",
+        tamanho=10,
+    )
+    if "lacunas" not in analise:
+        limites = "dado não identificado (análise anterior a esta versão)."
+    else:
+        limites = " ".join(analise["lacunas"]) or "nenhuma limitação registrada."
+    _leitura(documento, "Limites do material", limites)
+    _leitura(documento, "Dias úteis", analise.get("convencao_dias_uteis") or DADO)
+    _leitura(
+        documento,
+        "Convenção de cores nas tabelas",
+        f"salmão = reprocesso ou retrabalho • amarelo = tempo ocioso, espera ou pendência • "
+        f"na Análise de Prazos, em vermelho os intervalos entre marcos acima de {LIMITE_INTERVALO_LONGO} dias úteis.",
+    )
+
+
+def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path | None, grafico_gantt: Path | None) -> None:
+    documento.add_heading("Análise de Prazos — Intervalos em Dias Úteis", level=1)
+    _paragrafo(
+        documento,
+        "Intervalos entre marcos (primeiro registro de cada etapa), em dias úteis. Intervalo de calendário não é "
+        "atraso atribuído a ninguém.",
+        tamanho=10,
+    )
+    if "intervalos_marcos" in analise:
+        marcos, duracao = analise["intervalos_marcos"], analise.get("duracao_marcos") or {}
+    else:  # analise.json antigo, remontado sem --recalcular
+        marcos, duracao = intervalos_marcos_de(analise.get("eventos") or [])
+    if not marcos:
+        _paragrafo(documento, "Intervalo entre marcos: dado não identificado.")
+    else:
+        linhas = [
+            (
+                f"{_titulo_marco(item['de'])} ({formatar_data(item['inicio'])}) → "
+                f"{_titulo_marco(item['para'])} ({formatar_data(item['fim'])})",
+                f"{item['dias_uteis']} d.u.",
+                item["dias_uteis"] > LIMITE_INTERVALO_LONGO,
+            )
+            for item in marcos
+        ]
+        if duracao:
+            linhas.append(
+                (
+                    f"DURAÇÃO TOTAL REGISTRADA ({formatar_data(duracao['inicio'])} → {formatar_data(duracao['fim'])})",
+                    f"{duracao['dias_uteis']} d.u.",
+                    False,
+                )
+            )
+        tabela = documento.add_table(rows=1 + len(linhas), cols=2)
+        tabela.style = "Table Grid"
+        _larguras(tabela, [14.2, 3.2])
+        _cabecalho_tabela(tabela, ["Intervalo entre marcos", "Dias úteis"])
+        for indice, (rotulo, dias, longo) in enumerate(linhas, start=1):
+            linha = tabela.rows[indice]
+            _texto_celula(linha.cells[0], rotulo, tamanho=9)
+            _texto_celula(linha.cells[1], dias, tamanho=9, negrito=True, cor=VERMELHO if longo else None)
+            total = duracao and indice == len(linhas)
+            if longo or total:
+                for celula in linha.cells:
+                    _sombrear(celula, AMARELO)
+        documento.add_paragraph()
+    _inserir_figura(documento, grafico_barras, "Figura 1. Dias úteis entre marcos.")
+    _inserir_figura(documento, grafico_gantt, "Figura 2. Linha do tempo das etapas, do primeiro ao último registro.")
+
+
+def _itens(valor) -> list[str]:
+    """Texto da revisão vira lista: aceita lista, ou texto com uma linha por item."""
+    if isinstance(valor, list):
+        return [str(item).strip() for item in valor if str(item).strip()]
+    linhas = [linha.strip().lstrip("-•").strip() for linha in str(valor or "").splitlines()]
+    return [linha for linha in linhas if linha]
+
+
+def _marcadores(documento: Document, itens: list[str]) -> None:
+    for item in itens or [f"{DADO} (preencher na revisão)."]:
+        _paragrafo(documento, f"• {item}", tamanho=10, depois=3)
+
+
+def _diagnostico(documento: Document, analise: dict) -> None:
+    documento.add_heading("Análise Técnica — Diagnóstico", level=1)
+    diagnostico = analise.get("diagnostico_prompt") or {}
+    blocos = (
+        ("1. Reprocessos identificados", diagnostico.get("reprocessos")),
+        ("2. Tempos ociosos (intervalos sem avanço)", diagnostico.get("tempos_ociosos")),
+        ("3. Atrasos operacionais internos", diagnostico.get("atrasos_internos")),
+        ("4. Dependências externas", diagnostico.get("dependencias_externas")),
+        (
+            "5. Interferências de obra (Etapa J): impacto no cronograma e na produtividade",
+            diagnostico.get("interferencias") or analise.get("produtividade_personalizada"),
+        ),
+    )
+    for titulo, valor in blocos:
+        documento.add_heading(titulo, level=2)
+        _marcadores(documento, _itens(valor))
+
+
+def _numerados(documento: Document, itens: list[str]) -> None:
+    if not itens:
+        _paragrafo(documento, f"{DADO} (preencher na revisão).", tamanho=10)
+    for indice, item in enumerate(itens, start=1):
+        _paragrafo(documento, f"{indice}. {item}", tamanho=10, depois=3)
+
+
+def _impacto_padrao(analise: dict) -> str:
+    duracao = analise.get("duracao_marcos") or {}
+    if not duracao:
+        return DADO + "."
+    corridos = (date.fromisoformat(duracao["fim"]) - date.fromisoformat(duracao["inicio"])).days
+    return (
+        f"Do primeiro ao último registro classificado: {duracao['dias_uteis']} dias úteis ({corridos} dias corridos). "
+        "Prazo contratual não declarado no grupo: dado não identificado."
+    )
+
+
+def _conclusao_estrategica(documento: Document, analise: dict) -> None:
+    documento.add_heading("Conclusão Estratégica", level=1)
+    documento.add_heading("Diagnóstico da eficiência do fluxo operacional", level=2)
+    _paragrafo(documento, (analise.get("conclusao_personalizada") or "").strip() or f"{DADO} (preencher na revisão).", tamanho=10)
+    documento.add_heading("Principais pontos críticos de atraso", level=2)
+    pontos = _itens(analise.get("pontos_criticos")) or [
+        f"{item['titulo']}: {item['texto']}" for item in analise.get("gargalos_personalizados") or []
+    ]
+    _numerados(documento, pontos)
+    documento.add_heading("Impactos no prazo final", level=2)
+    _paragrafo(documento, (analise.get("impactos_prazo") or "").strip() or _impacto_padrao(analise), tamanho=10)
+    documento.add_heading("Recomendações práticas", level=2)
+    _numerados(documento, _itens(analise.get("recomendacoes_personalizadas")))
+    fim = documento.add_paragraph()
+    fim.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _fonte(fim.add_run("— Fim do relatório —"), 10, italico=True, cor=CINZA)
 
 
 def _inserir_figura(documento: Document, caminho: Path | None, legenda: str) -> None:
@@ -367,101 +496,6 @@ def _inserir_figura(documento: Document, caminho: Path | None, legenda: str) -> 
     else:
         _paragrafo(documento, "Figura: dado não identificado.")
     _paragrafo(documento, legenda, tamanho=9, italico=True)
-
-
-LIMITE_REGISTRO = 40
-_DATA_NO_NOME = re.compile(r"(?:IMG|VID|PTT|AUD)-(\d{4})(\d{2})(\d{2})-", re.IGNORECASE)
-
-
-def _quando_e_etapa(analise: dict, nome: str) -> tuple[str, str]:
-    """Data e etapa do fato que cita a imagem; sem fato, a data do nome do WhatsApp."""
-    for evento in sorted(analise.get("eventos") or [], key=lambda e: (e["data"], e.get("hora") or "")):
-        if nome in (evento.get("midias") or []):
-            return evento["data"], evento.get("etapa") or ""
-    achado = _DATA_NO_NOME.search(nome)
-    return (f"{achado.group(1)}-{achado.group(2)}-{achado.group(3)}" if achado else ""), ""
-
-
-def _imagem_de(nome: str, midias: Path) -> Path | None:
-    sufixo = Path(nome).suffix.lower()
-    if sufixo in EXT_IMAGEM and (midias / nome).is_file():
-        return midias / nome
-    if sufixo in EXT_VIDEO:
-        pasta_quadros = midias / "quadros" / Path(nome).stem
-        return next((q for q in (pasta_quadros / "quadro-02.jpg", pasta_quadros / "quadro-01.jpg") if q.is_file()), None)
-    return None
-
-
-def _imagens_descritas(analise: dict, pasta_obra: Path | None) -> list[dict]:
-    """Só as imagens que a revisão descreveu em observacoes_visuais, em ordem de data."""
-    if pasta_obra is None:
-        return []
-    itens = []
-    vistos: set[str] = set()
-    for item in analise.get("observacoes_visuais") or []:
-        nome = Path(item.get("arquivo") or "").name
-        observacao = (item.get("observacao") or "").strip()
-        if not nome or not observacao or nome in vistos:
-            continue
-        caminho = _imagem_de(nome, pasta_obra / "03-midias")
-        if caminho is None:
-            continue
-        vistos.add(nome)
-        data, etapa = _quando_e_etapa(analise, nome)
-        itens.append({"arquivo": nome, "caminho": caminho, "data": data, "etapa": etapa, "observacao": observacao})
-    itens.sort(key=lambda item: item["data"] or "9999")
-    return itens
-
-
-def _inserir_imagem(documento: Document, caminho: Path) -> bool:
-    try:
-        documento.add_picture(str(caminho), width=Cm(12.5))
-    except Exception:
-        # Quadros tirados pelo FFmpeg às vezes não têm o cabeçalho que o Word reconhece.
-        # Regrava a imagem com o Pillow, só na memória.
-        try:
-            import io
-
-            from PIL import Image
-
-            fluxo = io.BytesIO()
-            Image.open(caminho).convert("RGB").save(fluxo, format="JPEG", quality=85)
-            fluxo.seek(0)
-            documento.add_picture(fluxo, width=Cm(12.5))
-        except Exception:
-            return False
-    documento.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    return True
-
-
-def _registro_fotografico(documento: Document, analise: dict, pasta_obra: Path | None = None) -> None:
-    inseridas = 0
-    descritas = _imagens_descritas(analise, pasta_obra)
-    for item in descritas[:LIMITE_REGISTRO]:
-        if not _inserir_imagem(documento, item["caminho"]):
-            continue
-        partes = [formatar_data(item["data"]) if item["data"] else DADO]
-        if item["etapa"]:
-            partes.append(f"Etapa {item['etapa']}")
-        origem = item["arquivo"]
-        if Path(origem).suffix.lower() in EXT_VIDEO:
-            origem = f"quadro do vídeo {origem}"
-        legenda = " · ".join(partes) + f" — {item['observacao']} ({origem})"
-        _paragrafo(documento, legenda, tamanho=9, italico=True)
-        inseridas += 1
-    if len(descritas) > LIMITE_REGISTRO:
-        _paragrafo(
-            documento,
-            f"Outras {len(descritas) - LIMITE_REGISTRO} imagens descritas na revisão ficaram fora para o arquivo "
-            "não pesar; estão na pasta 03-midias da obra.",
-            tamanho=9,
-            italico=True,
-        )
-    if inseridas == 0:
-        _paragrafo(
-            documento,
-            "Nenhuma imagem descrita na revisão. As fotos e os vídeos do grupo continuam na pasta 03-midias da obra.",
-        )
 
 
 def proxima_versao(pasta: Path, numero: str) -> Path:
@@ -496,164 +530,13 @@ def montar_docx(analise: dict, destino: Path, grafico_barras: Path | None, grafi
         _fonte(trecho, 11, negrito=True, cor=RGBColor(0xC6, 0x28, 0x28))
     _capa(documento, analise)
 
-    identificacao = [
-        ["Obra", _valor(obra, "numero")],
-        ["Cliente", _valor(obra, "cliente")],
-        ["Construtora", _valor(obra, "construtora")],
-        ["Engenheiro", _valor(obra, "engenheiro")],
-        ["Arquitetura", _valor(obra, "arquitetura")],
-        ["Responsável Armanilux", _valor(obra, "responsavel_armanilux")],
-        *(
-            [["Elaborado por", obra["elaborado_por"]]]
-            if (obra.get("elaborado_por") or "").strip()
-            else []
-        ),
-        *(
-            [["Função", obra["funcao"]]]
-            if (obra.get("funcao") or "").strip()
-            else []
-        ),
-        ["Endereço", _valor(obra, "endereco")],
-        ["Período", f"{formatar_data(obra.get('periodo_inicio'))} a {formatar_data(obra.get('periodo_fim'))}"],
-        ["Fonte", _valor(obra, "fonte")],
-        ["Prazo contratual", _valor(obra, "prazo_contratual")],
-    ]
-    _tabela_simples(documento, ["Campo", "Informação"], identificacao, [5.2, 12.2])
-
-    documento.add_heading("1. Objetivo e critérios", level=1)
-    _paragrafo(
-        documento,
-        "Este relatório organiza o histórico da obra na ordem das etapas A, B, C, D, E, F, G, H, I, J e L. "
-        "Três categorias classificam cada constatação. Atividade realizada: o histórico mostra o fato, com data. "
-        "Pendência identificada: o histórico mostra um item ainda aberto; o status usado é Pendente. "
-        "Dado não identificado: o histórico não traz a informação, e o relatório não a completa por suposição.",
-    )
-    _paragrafo(documento, analise.get("convencao_dias_uteis") or "")
-    _paragrafo(
-        documento,
-        "Leitura do intervalo: até 2 dias úteis, fluxo contínuo; de 3 a 5, atenção; 6 ou mais, intervalo longo. "
-        "A cor usada na tabela e no gráfico segue essa leitura. Intervalos não são somados para fabricar um atraso total.",
-    )
-
-    documento.add_heading("2. Resumo executivo", level=1)
-    _paragrafo(
-        documento,
-        "Os quatro indicadores abaixo saem das datas do grupo e da regra de dias úteis. "
-        "O quarto cartão é o maior intervalo sem registro, não um atraso atribuído.",
-    )
-    _kpis(documento, analise)
+    _nota_metodologica(documento, analise)
     _quadro_resumo(documento, analise)
-
-    documento.add_heading("3. Etapas do processo", level=1)
-    _paragrafo(
-        documento,
-        "Cada etapa lista somente o que o histórico sustenta. A ordem dentro da etapa é cronológica.",
-    )
     for codigo in ORDEM:
         _escrever_etapa(documento, analise, codigo)
-
-    documento.add_heading("4. Dias úteis entre marcos", level=1)
-    _paragrafo(
-        documento,
-        "Marco é o primeiro registro de cada etapa no grupo. Os intervalos abaixo vão de um marco ao seguinte, "
-        "em dias úteis (excluídos sábados, domingos e feriados de São Paulo). "
-        "Intervalo de calendário não é atraso atribuído a ninguém.",
-    )
-    if "intervalos_marcos" in analise:
-        marcos, duracao = analise["intervalos_marcos"], analise.get("duracao_marcos") or {}
-    else:  # analise.json antigo, remontado sem --recalcular
-        marcos, duracao = intervalos_marcos_de(analise.get("eventos") or [])
-    if marcos:
-        linhas = [
-            [
-                f"{_titulo_marco(item['de'])} ({formatar_data(item['inicio'])}) → "
-                f"{_titulo_marco(item['para'])} ({formatar_data(item['fim'])})",
-                f"{item['dias_uteis']} d.u.",
-            ]
-            for item in marcos
-        ]
-        cores: list[str | None] = [None] * len(linhas)
-        if duracao:
-            linhas.append(
-                [
-                    f"Duração total registrada ({formatar_data(duracao['inicio'])} → {formatar_data(duracao['fim'])})",
-                    f"{duracao['dias_uteis']} d.u.",
-                ]
-            )
-            cores.append("F3EBDD")
-        _tabela_simples(documento, ["Intervalo entre marcos", "Dias úteis"], linhas, [13.6, 2.6], cores)
-    else:
-        _paragrafo(documento, "Intervalo entre marcos: dado não identificado.")
-    _inserir_figura(
-        documento,
-        grafico_barras,
-        "Figura 1. Dias úteis entre marcos. Intervalo de calendário, não veredito de culpa.",
-    )
-    _inserir_figura(
-        documento,
-        grafico_gantt,
-        "Figura 2. Linha do tempo das etapas, do primeiro ao último registro de cada uma.",
-    )
-
-    documento.add_heading("5. Diagnóstico", level=1)
-    diagnostico = analise.get("diagnostico_prompt") or {}
-    for chave, rotulo in (
-        ("reprocessos", "Reprocessos"),
-        ("tempos_ociosos", "Tempos ociosos"),
-        ("atrasos_internos", "Atrasos operacionais internos"),
-        ("dependencias_externas", "Dependências externas"),
-    ):
-        if diagnostico:
-            _rotulo(documento, rotulo, (diagnostico.get(chave) or "").strip() or DADO + ".")
-    gargalos = analise.get("gargalos") or []
-    if not gargalos:
-        _paragrafo(documento, "Gargalo: dado não identificado.")
-    for item in gargalos:
-        _paragrafo(documento, f"{item['numero']}. {item['titulo']}. {item['texto']}")
-    _paragrafo(documento, "Leitura de responsabilidades. A coluna Natureza nomeia o tipo de fato; o diagnóstico fica no que o grupo registrou.")
-    responsabilidades = analise.get("responsabilidades") or []
-    _tabela_simples(
-        documento,
-        ["Natureza", "Diagnóstico"],
-        [[item["natureza"], item["diagnostico"]] for item in responsabilidades] or [[DADO, DADO]],
-        [5.2, 12.2],
-    )
-
-    documento.add_heading("6. Recomendações", level=1)
-    recomendacoes = analise.get("recomendacoes_personalizadas") or analise.get("recomendacoes") or []
-    if not recomendacoes:
-        _paragrafo(documento, "dado não identificado.")
-    for indice, texto in enumerate(recomendacoes, start=1):
-        _paragrafo(documento, f"{indice}. {texto}")
-
-    documento.add_heading("7. Conclusão", level=1)
-    conclusao = (analise.get("conclusao_personalizada") or "").strip() or analise.get("conclusao") or DADO
-    _paragrafo(documento, conclusao)
-
-    documento.add_heading("Registro fotográfico", level=1)
-    _paragrafo(
-        documento,
-        "Fotos e quadros de vídeo do grupo que esclarecem a obra, em ordem de data, com o que cada um mostra. "
-        "O que foi falado nos áudios e vídeos aparece nos fatos de cada etapa.",
-    )
-    _registro_fotografico(documento, analise, destino.parent.parent)
-
-    documento.add_heading("Lacunas de contexto", level=1)
-    _paragrafo(
-        documento,
-        "O que não pôde ser lido ou confirmado no material do grupo. Nada aqui foi suposto: "
-        "o que falta fica registrado como falta.",
-    )
-    if "lacunas" not in analise:
-        # Análise antiga, remontada sem a conversa: ninguém conferiu, então não afirmar que não há lacuna.
-        lacunas = ["Lacunas: dado não identificado (análise anterior a esta versão, sem a conversa para conferir)."]
-    else:
-        lacunas = analise["lacunas"] or ["Nenhuma lacuna registrada."]
-    for lacuna in lacunas:
-        _paragrafo(documento, f"• {lacuna}")
-
-    documento.add_heading("Nota de rastreabilidade", level=1)
-    _paragrafo(documento, analise.get("rastreabilidade") or DADO)
+    _analise_de_prazos(documento, analise, grafico_barras, grafico_gantt)
+    _diagnostico(documento, analise)
+    _conclusao_estrategica(documento, analise)
 
     documento.save(destino)
     return destino
