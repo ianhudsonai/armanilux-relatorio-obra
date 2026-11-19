@@ -19,6 +19,8 @@ SUBPASTAS = (
     "05-relatorios",
 )
 
+# Largura das figuras no Word; os gráficos são desenhados nela para a letra não encolher.
+LARGURA_FIGURA_CM = 16.2
 EXT_DOCUMENTO = {".pdf", ".docx", ".doc", ".odt", ".xlsx", ".xls"}
 EXT_AUDIO = {".opus", ".ogg", ".mp3", ".m4a", ".wav", ".aac"}
 EXT_VIDEO = {".mp4", ".mov", ".3gp", ".avi", ".mkv"}

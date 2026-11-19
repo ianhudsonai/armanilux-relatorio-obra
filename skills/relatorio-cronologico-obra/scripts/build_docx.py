@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from datetime import date
 from pathlib import Path
 
-from analyze import ORDEM, TITULOS, _intervalos_marcos
-from common import DADO, EXT_IMAGEM, EXT_VIDEO, formatar_data, tipo_midia
+from analyze import ORDEM, TITULOS, intervalos_marcos_de
+from common import DADO, EXT_IMAGEM, EXT_VIDEO, LARGURA_FIGURA_CM, formatar_data
 from docx import Document
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
@@ -172,34 +173,6 @@ def _valor(obra: dict, chave: str) -> str:
     return valor if valor else DADO
 
 
-def _transcricao(analise: dict, arquivo: str, limite: int = 240) -> str:
-    for item in analise.get("transcricoes") or []:
-        if (item.get("arquivo") or "").lower() == arquivo.lower() and item.get("status") == "ok" and item.get("texto"):
-            texto = " ".join(item["texto"].split())
-            return texto if len(texto) <= limite else texto[:limite].rstrip() + "…"
-    return ""
-
-
-def _tem_observacao(analise: dict, arquivo: str) -> bool:
-    return any(
-        (item.get("observacao") or "").strip() and Path(item.get("arquivo") or "").name == Path(arquivo).name
-        for item in analise.get("observacoes_visuais") or []
-    )
-
-
-def _midias_citadas(analise: dict) -> list[dict]:
-    """Só os arquivos citados em algum fato do relatório, na ordem do tempo."""
-    vistos: set[str] = set()
-    linhas: list[dict] = []
-    for evento in sorted(analise.get("eventos") or [], key=lambda e: (e["data"], e.get("hora") or "")):
-        for nome in list(evento.get("midias") or []) + list(evento.get("documentos") or []):
-            if nome in vistos:
-                continue
-            vistos.add(nome)
-            linhas.append({"arquivo": nome, "tipo": tipo_midia(nome), "data": evento["data"], "etapa": evento["etapa"]})
-    return linhas
-
-
 def _capa(documento: Document, analise: dict) -> None:
     obra = analise["obra"]
     for _ in range(5):
@@ -273,20 +246,6 @@ def _quadro_resumo(documento: Document, analise: dict) -> None:
         ["Prazo contratual", _valor(obra, "prazo_contratual")],
     ]
     _tabela_simples(documento, ["Indicador", "Valor"], linhas, [10.4, 7.0])
-
-
-def _observacao(analise: dict, arquivo: str) -> str:
-    for item in analise.get("observacoes_visuais") or []:
-        nome = item.get("arquivo") or ""
-        if nome == arquivo or Path(nome).name == Path(arquivo).name:
-            texto = (item.get("observacao") or "").strip()
-            if texto:
-                return texto
-    transcrito = _transcricao(analise, arquivo)
-    if transcrito:
-        return f"Transcrição automática, conferir: “{transcrito}”"
-    pasta ="02-projetos-pdf" if Path(arquivo).suffix.lower() in {".pdf", ".docx", ".doc", ".odt"} else "03-midias"
-    return f"dado não identificado (conferir o arquivo na pasta {pasta})."
 
 
 def _campo_etapa(analise: dict, codigo: str, chave: str, padrao: str) -> str:
@@ -403,60 +362,106 @@ def _escrever_etapa(documento: Document, analise: dict, codigo: str) -> None:
 
 def _inserir_figura(documento: Document, caminho: Path | None, legenda: str) -> None:
     if caminho and Path(caminho).exists():
-        documento.add_picture(str(caminho), width=Cm(16.2))
+        documento.add_picture(str(caminho), width=Cm(LARGURA_FIGURA_CM))
         documento.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
     else:
         _paragrafo(documento, "Figura: dado não identificado.")
     _paragrafo(documento, legenda, tamanho=9, italico=True)
 
 
-def _imagens_citadas(analise: dict, pasta_obra: Path | None) -> list[tuple[str, Path]]:
-    """Fotos citadas nos fatos, e um quadro de cada vídeo citado. As que têm observação vêm primeiro."""
+LIMITE_REGISTRO = 40
+_DATA_NO_NOME = re.compile(r"(?:IMG|VID|PTT|AUD)-(\d{4})(\d{2})(\d{2})-", re.IGNORECASE)
+
+
+def _quando_e_etapa(analise: dict, nome: str) -> tuple[str, str]:
+    """Data e etapa do fato que cita a imagem; sem fato, a data do nome do WhatsApp."""
+    for evento in sorted(analise.get("eventos") or [], key=lambda e: (e["data"], e.get("hora") or "")):
+        if nome in (evento.get("midias") or []):
+            return evento["data"], evento.get("etapa") or ""
+    achado = _DATA_NO_NOME.search(nome)
+    return (f"{achado.group(1)}-{achado.group(2)}-{achado.group(3)}" if achado else ""), ""
+
+
+def _imagem_de(nome: str, midias: Path) -> Path | None:
+    sufixo = Path(nome).suffix.lower()
+    if sufixo in EXT_IMAGEM and (midias / nome).is_file():
+        return midias / nome
+    if sufixo in EXT_VIDEO:
+        pasta_quadros = midias / "quadros" / Path(nome).stem
+        return next((q for q in (pasta_quadros / "quadro-02.jpg", pasta_quadros / "quadro-01.jpg") if q.is_file()), None)
+    return None
+
+
+def _imagens_descritas(analise: dict, pasta_obra: Path | None) -> list[dict]:
+    """Só as imagens que a revisão descreveu em observacoes_visuais, em ordem de data."""
     if pasta_obra is None:
         return []
-    midias = pasta_obra / "03-midias"
-    candidatos: list[tuple[str, Path]] = []
-    for item in _midias_citadas(analise):
-        nome = item["arquivo"]
-        sufixo = Path(nome).suffix.lower()
-        if sufixo in EXT_IMAGEM and (midias / nome).is_file():
-            candidatos.append((nome, midias / nome))
-        elif sufixo in EXT_VIDEO:
-            pasta_quadros = midias / "quadros" / Path(nome).stem
-            quadro = next((q for q in (pasta_quadros / "quadro-02.jpg", pasta_quadros / "quadro-01.jpg") if q.is_file()), None)
-            if quadro:
-                candidatos.append((nome, quadro))
-    primeiro = [c for c in candidatos if _tem_observacao(analise, c[0])]
-    return (primeiro + [c for c in candidatos if c not in primeiro])[:12]
+    itens = []
+    vistos: set[str] = set()
+    for item in analise.get("observacoes_visuais") or []:
+        nome = Path(item.get("arquivo") or "").name
+        observacao = (item.get("observacao") or "").strip()
+        if not nome or not observacao or nome in vistos:
+            continue
+        caminho = _imagem_de(nome, pasta_obra / "03-midias")
+        if caminho is None:
+            continue
+        vistos.add(nome)
+        data, etapa = _quando_e_etapa(analise, nome)
+        itens.append({"arquivo": nome, "caminho": caminho, "data": data, "etapa": etapa, "observacao": observacao})
+    itens.sort(key=lambda item: item["data"] or "9999")
+    return itens
 
 
-def _anexar_imagens(documento: Document, analise: dict, pasta_obra: Path | None = None) -> None:
-    inseridas = 0
-    for nome, caminho in _imagens_citadas(analise, pasta_obra):
+def _inserir_imagem(documento: Document, caminho: Path) -> bool:
+    try:
+        documento.add_picture(str(caminho), width=Cm(12.5))
+    except Exception:
+        # Quadros tirados pelo FFmpeg às vezes não têm o cabeçalho que o Word reconhece.
+        # Regrava a imagem com o Pillow, só na memória.
         try:
-            documento.add_picture(str(caminho), width=Cm(12.5))
+            import io
+
+            from PIL import Image
+
+            fluxo = io.BytesIO()
+            Image.open(caminho).convert("RGB").save(fluxo, format="JPEG", quality=85)
+            fluxo.seek(0)
+            documento.add_picture(fluxo, width=Cm(12.5))
         except Exception:
-            # Quadros tirados pelo FFmpeg às vezes não têm o cabeçalho que o Word reconhece.
-            # Regrava a imagem com o Pillow, só na memória.
-            try:
-                import io
+            return False
+    documento.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    return True
 
-                from PIL import Image
 
-                fluxo = io.BytesIO()
-                Image.open(caminho).convert("RGB").save(fluxo, format="JPEG", quality=85)
-                fluxo.seek(0)
-                documento.add_picture(fluxo, width=Cm(12.5))
-            except Exception:
-                continue
-        documento.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
-        legenda = f"Mídia: {nome}" + (" (quadro do vídeo)" if Path(nome).suffix.lower() in EXT_VIDEO else "")
-        if _tem_observacao(analise, nome):
-            legenda += f" — {_observacao(analise, nome)}"
+def _registro_fotografico(documento: Document, analise: dict, pasta_obra: Path | None = None) -> None:
+    inseridas = 0
+    descritas = _imagens_descritas(analise, pasta_obra)
+    for item in descritas[:LIMITE_REGISTRO]:
+        if not _inserir_imagem(documento, item["caminho"]):
+            continue
+        partes = [formatar_data(item["data"]) if item["data"] else DADO]
+        if item["etapa"]:
+            partes.append(f"Etapa {item['etapa']}")
+        origem = item["arquivo"]
+        if Path(origem).suffix.lower() in EXT_VIDEO:
+            origem = f"quadro do vídeo {origem}"
+        legenda = " · ".join(partes) + f" — {item['observacao']} ({origem})"
         _paragrafo(documento, legenda, tamanho=9, italico=True)
         inseridas += 1
+    if len(descritas) > LIMITE_REGISTRO:
+        _paragrafo(
+            documento,
+            f"Outras {len(descritas) - LIMITE_REGISTRO} imagens descritas na revisão ficaram fora para o arquivo "
+            "não pesar; estão na pasta 03-midias da obra.",
+            tamanho=9,
+            italico=True,
+        )
     if inseridas == 0:
-        _paragrafo(documento, "Imagem incorporada: dado não identificado. Os nomes seguem na tabela do anexo.")
+        _paragrafo(
+            documento,
+            "Nenhuma imagem descrita na revisão. As fotos e os vídeos do grupo continuam na pasta 03-midias da obra.",
+        )
 
 
 def proxima_versao(pasta: Path, numero: str) -> Path:
@@ -557,7 +562,7 @@ def montar_docx(analise: dict, destino: Path, grafico_barras: Path | None, grafi
     if "intervalos_marcos" in analise:
         marcos, duracao = analise["intervalos_marcos"], analise.get("duracao_marcos") or {}
     else:  # analise.json antigo, remontado sem --recalcular
-        marcos, duracao = _intervalos_marcos(analise.get("eventos") or [])
+        marcos, duracao = intervalos_marcos_de(analise.get("eventos") or [])
     if marcos:
         linhas = [
             [
@@ -625,33 +630,27 @@ def montar_docx(analise: dict, destino: Path, grafico_barras: Path | None, grafi
     conclusao = (analise.get("conclusao_personalizada") or "").strip() or analise.get("conclusao") or DADO
     _paragrafo(documento, conclusao)
 
-    documento.add_heading("Anexo de mídias", level=1)
+    documento.add_heading("Registro fotográfico", level=1)
     _paragrafo(
         documento,
-        "Aparecem aqui só os arquivos citados nos fatos do relatório, na ordem do tempo. "
-        "Para áudio e vídeo, a observação traz um trecho da transcrição feita neste computador; confira no arquivo original. "
-        "Os demais arquivos do grupo continuam na pasta da obra.",
+        "Fotos e quadros de vídeo do grupo que esclarecem a obra, em ordem de data, com o que cada um mostra. "
+        "O que foi falado nos áudios e vídeos aparece nos fatos de cada etapa.",
     )
-    anexo = _midias_citadas(analise)
-    if anexo:
-        _tabela_simples(
-            documento,
-            ["Arquivo", "Tipo", "Data", "Etapa", "Observação"],
-            [
-                [
-                    item["arquivo"],
-                    item["tipo"],
-                    formatar_data(item["data"]) if item.get("data") else DADO,
-                    item.get("etapa") or DADO,
-                    _observacao(analise, item["arquivo"]),
-                ]
-                for item in anexo
-            ],
-            [4.6, 2.4, 2.6, 1.6, 6.2],
-        )
+    _registro_fotografico(documento, analise, destino.parent.parent)
+
+    documento.add_heading("Lacunas de contexto", level=1)
+    _paragrafo(
+        documento,
+        "O que não pôde ser lido ou confirmado no material do grupo. Nada aqui foi suposto: "
+        "o que falta fica registrado como falta.",
+    )
+    if "lacunas" not in analise:
+        # Análise antiga, remontada sem a conversa: ninguém conferiu, então não afirmar que não há lacuna.
+        lacunas = ["Lacunas: dado não identificado (análise anterior a esta versão, sem a conversa para conferir)."]
     else:
-        _paragrafo(documento, "Anexo: dado não identificado.")
-    _anexar_imagens(documento, analise, destino.parent.parent)
+        lacunas = analise["lacunas"] or ["Nenhuma lacuna registrada."]
+    for lacuna in lacunas:
+        _paragrafo(documento, f"• {lacuna}")
 
     documento.add_heading("Nota de rastreabilidade", level=1)
     _paragrafo(documento, analise.get("rastreabilidade") or DADO)

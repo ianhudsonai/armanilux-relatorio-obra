@@ -76,7 +76,7 @@ class GraficosTeste(unittest.TestCase):
         relato = completar_relato({"obra": {}, "eventos": EVENTOS})
         with TemporaryDirectory() as pasta:
             barras = grafico_barras(relato["intervalos_marcos"], Path(pasta) / "b.png")
-            gantt = grafico_gantt(relato["eventos"], relato["intervalos"], Path(pasta) / "g.png")
+            gantt = grafico_gantt(relato["eventos"], Path(pasta) / "g.png")
             self.assertAlmostEqual(self._largura_cm(barras), 16.2, delta=0.3)
             self.assertAlmostEqual(self._largura_cm(gantt), 16.2, delta=0.3)
 

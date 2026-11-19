@@ -1,9 +1,17 @@
 # HANDOFF — armanilux-relatorio-obra (2026-11-19)
 
 ## Estado atual
-Duas skills na `main` (PRs #5 a #8 mergeados): `preparar-projeto-armanilux` (perguntas + instalação) e `relatorio-cronologico-obra` (zip do WhatsApp → Word). 46 testes passando, CI verde no Windows e no Ubuntu.
-Já funciona: busca automática do zip (nome com acento e parênteses), registro por SHA-256 (pendente → em andamento → relatório gerado → concluído), PDFs em ~25 s, transcrição local de áudio e vídeo, não duplica arquivos ao reprocessar, candidatos por etapa, folhas de contato (12 miniaturas por folha), capa, quadro-resumo, cores da marca, anexo só com mídia citada, faixa "RASCUNHO NÃO REVISADO" até a revisão gravar `"revisado": true`.
-Teste real feito com uma obra de ~595 MB (pasta em `Documents\Armanilux\Relatorios-de-Obra\`, FORA do repo). Último Word: v6, revisado à mão nesta sessão. Ninguém viu o Word renderizado ainda (este PC não tem Word nem LibreOffice).
+Duas skills na `main` (PRs #5 a #8 mergeados): `preparar-projeto-armanilux` (perguntas + instalação) e `relatorio-cronologico-obra` (zip do WhatsApp → Word).
+Já funciona: busca automática do zip (nome com acento e parênteses), registro por SHA-256 (pendente → em andamento → relatório gerado → concluído), PDFs em ~25 s, transcrição local de áudio e vídeo, não duplica arquivos ao reprocessar, candidatos por etapa, folhas de contato (12 miniaturas por folha), capa, quadro-resumo, cores da marca, faixa "RASCUNHO NÃO REVISADO" até a revisão gravar `"revisado": true`.
+Teste real feito com uma obra de ~595 MB (pasta em `Documents\Armanilux\Relatorios-de-Obra\`, FORA do repo).
+
+### Sessão 2026-11-19 (tarde) — 3 branches empilhadas, NÃO enviadas ao GitHub
+O push e o PR foram barrados pelo guarda de permissão (publicar exige o Ian). Ordem: `midia-oculta-e-reencaminhadas` → `graficos-legiveis` → `contexto-completo` (cada uma parte da anterior; `contexto-completo` tem tudo). 65 testes passando.
+- Pendências 2 e 3 feitas: nome do arquivo em "<Mídia oculta>" (64 na obra de teste) com "(arquivo não incluído na exportação)"; mensagem colada `[dd/mm, hh:mm] Nome:` vai para a data e o autor originais (25 mensagens, 5 blocos), sem esticar o período.
+- Pendência 4 feita: marco = primeiro registro de cada etapa; tabela e Figura 1 com um intervalo por marco + duração total, sem semáforo (52 barras → 9). Gráficos desenhados a 16,2 cm (letra não encolhe), Gantt sem borda vermelha.
+- Pedido do Ian (contexto): SKILL.md 1.3 manda ler a conversa inteira, todas as transcrições, documentos e imagens; seção "Lacunas de contexto" no Word; `verificacao.py` confere cada fato contra a conversa (grava `04-transcricoes/verificacao.md`); conferência independente de conteúdo por subagente antes de `revisado`. "Anexo de mídias" (tabela de nomes) virou "Registro fotográfico" (só imagens descritas). Planilha `.xlsx` passa a ser lida.
+- No v6: só 2 de 169 fotos/vídeos tinham descrição e os documentos não eram lidos pelo agente — por isso a mudança acima. As 70 datas/autores do v6 batem com o grupo.
+- Word v7 da obra de teste gerado com o código da `contexto-completo` (backup em `04-transcricoes/analise.antes-v7.json`). Skill instalada em `.claude\skills` já é a 1.3.
 
 ## Decisões desta sessão
 - Seguir o `prompt.md` do Rogério; só melhorias pequenas, sem decidir nada por ele — pedido do Ian.
@@ -22,14 +30,13 @@ Teste real feito com uma obra de ~595 MB (pasta em `Documents\Armanilux\Relatori
 - Repo é PÚBLICO: nunca commitar nome de cliente, zip, conversa ou relatório real (`tests/test_skill.py` barra alguns nomes).
 
 ## Pendências (em ordem)
-1. Ian abrir o v6 no Word e dar retorno sobre a aparência; ajustar o que ele pedir.
-2. Ler o nome do arquivo em "<Mídia oculta> arquivo.pdf" (45 casos na obra de teste) — `parse_whatsapp.py`.
-3. Mensagem reencaminhada ("[dd/mm, hh:mm] Nome: …") usar a data e o autor originais (12 casos) — `parse_whatsapp.py`.
-4. Tabela/gráfico de dias úteis menos vermelha: marcos nomeados em vez de toda data consecutiva — `analyze._intervalos`, `build_charts.py`.
-5. Linhas das etapas coloridas como no PDF (salmão = reprocesso, amarelo = ocioso) e uma frase objetiva por evento.
-6. Instalação: linha de colagem citando `$skill-installer` e as URLs `/tree/main/skills/<nome>` (README, AGENTS.md).
-7. Transcrição com cache por arquivo (não refazer tudo), e rodar em segundo plano.
-8. Textos automáticos genéricos em `analyze.py` (`_impacto`, `_produtividade`, `_comentarios_etapa`) ainda afirmam coisas; trocar por "dado não identificado" quando não houver revisão.
+1. Ian liberar o push das 3 branches e abrir os PRs (ou mandar abrir); merge na ordem acima.
+2. Ian abrir o v7 e dar retorno sobre gráficos, Lacunas e Registro fotográfico.
+3. Rodar a revisão completa da SKILL 1.3 na obra de teste (ler tudo, descrever imagens, conferência independente) e gerar v8 — o v7 ainda usa a revisão antiga (2 imagens descritas). Reprocessar do zip para os eventos usarem as datas originais das mensagens coladas.
+4. Linhas das etapas coloridas como no PDF (salmão = reprocesso, amarelo = ocioso) e uma frase objetiva por evento.
+5. Instalação: linha de colagem citando `$skill-installer` e as URLs `/tree/main/skills/<nome>` (README, AGENTS.md).
+6. Transcrição com cache por arquivo (não refazer tudo), e rodar em segundo plano.
+7. Textos automáticos genéricos em `analyze.py` (`_impacto`, `_produtividade`, `_comentarios_etapa`) ainda afirmam coisas; trocar por "dado não identificado" quando não houver revisão.
 
 ## Como rodar
 - Python: `C:\Users\EuSou\.armanilux-relatorio\venv\Scripts\python.exe` (config em `%USERPROFILE%\.armanilux-relatorio\config.json`).

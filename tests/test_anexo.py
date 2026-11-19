@@ -22,44 +22,63 @@ def _foto(caminho: Path, cor=(90, 90, 90)) -> None:
     Image.new("RGB", (64, 48), cor).save(caminho, format="JPEG")
 
 
-class AnexoTeste(unittest.TestCase):
+class RegistroFotograficoTeste(unittest.TestCase):
+    """Anexo legível: só imagens que a revisão descreveu, com data, etapa e o que mostram."""
+
     def _analise(self):
         return {
             "eventos": [
-                {"data": "2026-01-10", "hora": "10:00", "etapa": "C", "midias": ["VID-20260110-WA0001.mp4"], "documentos": []},
-                {"data": "2026-01-05", "hora": "09:00", "etapa": "A", "midias": ["IMG-20260105-WA0001.jpg"], "documentos": ["projeto.pdf"]},
+                {"data": "2026-01-05", "hora": "09:00", "etapa": "A", "autor": "Ana", "ocorrencia": "x", "midias": ["IMG-20260105-WA0001.jpg"], "documentos": ["projeto.pdf"]},
+                {"data": "2026-01-06", "hora": "09:00", "etapa": "B", "autor": "Ana", "ocorrencia": "x", "midias": ["IMG-20260106-WA0002.jpg"], "documentos": []},
             ],
-            "transcricoes": [{"arquivo": "VID-20260110-WA0001.mp4", "status": "ok", "texto": "Estou medindo o banho master agora."}],
-            "observacoes_visuais": [{"arquivo": "IMG-20260105-WA0001.jpg", "observacao": "Chapa de pedra clara no depósito."}],
-            "anexo": [{"arquivo": f"IMG-{i}.jpg"} for i in range(300)],
+            "transcricoes": [],
+            "observacoes_visuais": [
+                {"arquivo": "VID-20260110-WA0001.mp4", "observacao": "Medição do banho master."},
+                {"arquivo": "IMG-20260105-WA0001.jpg", "observacao": "Chapa de pedra clara no depósito."},
+            ],
         }
 
-    def test_so_midia_citada_em_ordem_e_com_transcricao(self):
-        analise = self._analise()
-        linhas = build_docx._midias_citadas(analise)
-        self.assertEqual([l["arquivo"] for l in linhas], ["IMG-20260105-WA0001.jpg", "projeto.pdf", "VID-20260110-WA0001.mp4"])
-        self.assertIn("Estou medindo o banho master", build_docx._observacao(analise, "VID-20260110-WA0001.mp4"))
-        self.assertIn("conferir", build_docx._observacao(analise, "VID-20260110-WA0001.mp4"))
-        self.assertEqual(build_docx._observacao(analise, "IMG-20260105-WA0001.jpg"), "Chapa de pedra clara no depósito.")
+    def _obra(self, temporario: str) -> Path:
+        from PIL import Image
 
-    def test_quadro_de_video_do_ffmpeg_entra_no_word(self):
+        obra = Path(temporario)
+        _foto(obra / "03-midias" / "IMG-20260105-WA0001.jpg")
+        _foto(obra / "03-midias" / "IMG-20260106-WA0002.jpg")
+        # JPEG sem cabeçalho JFIF, como o FFmpeg grava: o Word comum recusa, a skill regrava.
+        quadro = obra / "03-midias" / "quadros" / "VID-20260110-WA0001" / "quadro-02.jpg"
+        quadro.parent.mkdir(parents=True)
+        Image.new("RGB", (64, 48), (10, 120, 10)).save(quadro, format="JPEG", jfif=False)
+        return obra
+
+    def test_so_imagem_descrita_em_ordem_de_data(self):
         from docx import Document
 
         with TemporaryDirectory() as temporario:
-            obra = Path(temporario)
-            _foto(obra / "03-midias" / "IMG-20260105-WA0001.jpg")
-            # JPEG sem cabeçalho JFIF, como o FFmpeg grava: o Word comum recusa, a skill regrava.
-            from PIL import Image
-
-            quadro = obra / "03-midias" / "quadros" / "VID-20260110-WA0001" / "quadro-02.jpg"
-            quadro.parent.mkdir(parents=True)
-            Image.new("RGB", (64, 48), (10, 120, 10)).save(quadro, format="JPEG", jfif=False)
             documento = Document()
-            build_docx._anexar_imagens(documento, self._analise(), obra)
-            self.assertGreaterEqual(len(documento.inline_shapes), 2)
-            legendas = [p.text for p in documento.paragraphs if p.text.startswith("Mídia:")]
-            self.assertTrue(legendas[0].startswith("Mídia: IMG-20260105-WA0001.jpg — Chapa"))
-            self.assertTrue(any("quadro do vídeo" in l for l in legendas))
+            build_docx._registro_fotografico(documento, self._analise(), self._obra(temporario))
+        self.assertEqual(len(documento.inline_shapes), 2)
+        legendas = [p.text for p in documento.paragraphs if p.text[:2].isdigit()]
+        self.assertEqual(
+            legendas,
+            [
+                "05/01/2026 · Etapa A — Chapa de pedra clara no depósito. (IMG-20260105-WA0001.jpg)",
+                "10/01/2026 — Medição do banho master. (quadro do vídeo VID-20260110-WA0001.mp4)",
+            ],
+        )
+
+    def test_word_sem_tabela_de_nomes_de_arquivo(self):
+        from docx import Document
+
+        analise = self._analise()
+        analise["obra"] = {"numero": "1001", "cliente": "Cliente Teste"}
+        from analyze import completar_relato
+
+        with TemporaryDirectory() as temporario:
+            obra = self._obra(temporario)
+            destino = build_docx.montar_docx(completar_relato(analise), obra / "05-relatorios" / "r.docx", None, None)
+            lido = Document(str(destino))
+        self.assertFalse([t for t in lido.tables if t.rows[0].cells[0].text == "Arquivo"])
+        self.assertIn("Registro fotográfico", [p.text for p in lido.paragraphs])
 
 
 class FolhasTeste(unittest.TestCase):

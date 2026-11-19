@@ -2,11 +2,14 @@
 
 O arquivo fica em `04-transcricoes/analise.json`. O Word é montado a partir dele.
 
-Campos que o script recalcula com `--recalcular`: `intervalos`, `kpis`, `etapas`, `gargalos`, `responsabilidades`, `recomendacoes`, `conclusao`, `produtividade`.
+Campos que o script recalcula com `--recalcular`: `intervalos`, `intervalos_marcos`, `duracao_marcos`, `lacunas`, `kpis`, `etapas`, `gargalos`, `responsabilidades`, `recomendacoes`, `conclusao`, `produtividade`.
+
+`lacunas_automaticas` vem da leitura do zip (arquivos fora da exportação, documentos sem texto, áudios sem transcrição). Não edite.
 
 Campos que a revisão humana preenche e o script preserva:
 
-- `observacoes_visuais`: lista de `{ "arquivo", "observacao" }`
+- `observacoes_visuais`: lista de `{ "arquivo", "observacao" }`. Só imagem com observação entra no Registro fotográfico do Word
+- `lacunas_adicionais`: lista de frases com o que faltou de contexto e não está em `lacunas_automaticas`
 - `comentarios`: por letra de etapa, textos que substituem Intervalos relevantes, Situação, Ponto crítico, Gargalo, Avaliação e Conclusão da etapa
 - `recomendacoes_personalizadas`: lista de frases
 - `conclusao_personalizada`: texto único
