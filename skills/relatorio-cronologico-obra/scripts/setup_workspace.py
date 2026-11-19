@@ -20,7 +20,8 @@ Dentro dela:
 05-relatorios     o relatório em Word (e o PDF, se o computador conseguir gerar)
 
 O zip original do WhatsApp não é apagado.
-Nada desta pasta é enviado para um serviço de transcrição na internet.
+Os áudios e os vídeos viram texto neste computador. Para escrever o relatório,
+o ChatGPT (Codex) lê a conversa, as transcrições, os documentos e as fotos desta pasta.
 Não coloque estas pastas dentro do repositório público da skill.
 """
 

@@ -62,3 +62,5 @@ Isso grava `config.json`, cria a pasta escolhida, `Relatorios-de-Obra\_modelo` c
 ## 4. Encerrar
 
 Diga onde ficou a pasta, o nome que vai no relatório e como o relatório vai ser entregue (Word, PDF ou link, com a pasta da nuvem). Diga que, para cada obra, o próximo chat usa `$relatorio-cronologico-obra`.
+
+Diga também, curto e sem esconder: os áudios e os vídeos viram texto neste computador, mas para escrever o relatório o ChatGPT lê a conversa da obra, o texto dos áudios, os documentos e as fotos. Peça para, no ChatGPT, abrir Configurações, Controles de dados, e desligar "Melhorar o modelo para todos", para as conversas das obras não serem usadas no treino do modelo.

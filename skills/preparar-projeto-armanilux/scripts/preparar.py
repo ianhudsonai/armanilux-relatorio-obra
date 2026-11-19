@@ -74,7 +74,9 @@ def texto_leia_me(config: dict) -> str:
             "",
             "Coloque o arquivo do WhatsApp em Downloads ou na pasta da obra.",
             "O arquivo do Word fica em 05-relatorios.",
-            "Os áudios e os vídeos são lidos só neste computador. Nada é enviado para a internet.",
+            "Os áudios e os vídeos viram texto só neste computador.",
+            "Para escrever o relatório, o ChatGPT (Codex) lê a conversa, o texto dos áudios, os documentos e as fotos da obra.",
+            "No ChatGPT, em Configurações > Controles de dados, deixe desligado \"Melhorar o modelo para todos\".",
             "Para mudar nome, pasta ou entrega (Word, PDF ou link), peça de novo a preparação no Codex.",
             "",
         ]
