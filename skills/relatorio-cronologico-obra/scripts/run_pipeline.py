@@ -18,6 +18,7 @@ from pathlib import Path
 from analyze import (
     aplicar_ajustes,
     completar_relato,
+    avisos_de_frente,
     intervalos_marcos_de,
     juntar_lacunas,
     lacunas_automaticas,
@@ -233,6 +234,8 @@ def _avisar_prazos(analise: dict) -> None:
             )
         elif item.get("sem_data_da_fonte"):
             print(f"Aviso de prazo: \"{item['descricao']}\": sem fonte_data.")
+    for aviso in avisos_de_frente(analise.get("eventos") or [], analise.get("prazos_contratuais") or []):
+        print(aviso)
 
 
 def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_pdf: bool = False, mostrar: bool = False) -> Path:

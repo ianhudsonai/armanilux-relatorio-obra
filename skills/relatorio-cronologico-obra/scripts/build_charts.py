@@ -90,7 +90,8 @@ def grafico_barras(intervalos_marcos: list[dict], destino: Path) -> Path:
         _vazio(eixo)
     else:
         rotulos = [
-            f"{item['de']} {_nome_curto(item['de'])} → {item['para']} {_nome_curto(item['para'])}\n"
+            (f"{item['frente']}: " if item.get("frente") else "")
+            + f"{item['de']} {_nome_curto(item['de'])} → {item['para']} {_nome_curto(item['para'])}\n"
             f"{_dia_mes_ano(item['inicio'])} a {_dia_mes_ano(item['fim'])}"
             for item in intervalos_marcos
         ]
