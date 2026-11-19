@@ -387,15 +387,22 @@ def primeira_programacao(eventos: list[dict], etapa: str) -> str:
     return datas[0] if datas else ""
 
 
-GERAL = "Geral"  # fatos sem frente numa obra multifrente
+GERAL = "Obra em geral"  # fatos sem frente numa obra multifrente
+# Etapas que são de uma frente: numa obra multifrente, fato destas etapas sem frente vira aviso.
+_ETAPAS_DA_FRENTE = {"G", "H", "I", "L"}
+
+
+def frente_de(evento: dict) -> str:
+    return (evento.get("frente") or "").strip()
 
 
 def frentes_da_obra(eventos: list[dict]) -> list[str]:
-    """Frentes marcadas pela revisão ("frente" no evento), na ordem do primeiro fato de cada uma."""
+    """Frentes marcadas pela revisão ("frente" no evento) que têm fato realizado, na ordem do
+    primeiro fato de cada uma."""
     ordem: dict[str, str] = {}
     for evento in eventos:
-        frente = (evento.get("frente") or "").strip()
-        if frente and data_do_fato(evento) < ordem.get(frente, "9999"):
+        frente = frente_de(evento)
+        if frente and conta_como_marco(evento) and data_do_fato(evento) < ordem.get(frente, "9999"):
             ordem[frente] = data_do_fato(evento)
     return sorted(ordem, key=lambda nome: (ordem[nome], nome))
 
@@ -403,7 +410,31 @@ def frentes_da_obra(eventos: list[dict]) -> list[str]:
 def _da_frente(evento: dict, frente: str | None) -> bool:
     if frente is None:
         return True
-    return ((evento.get("frente") or "").strip() or GERAL) == frente
+    return (frente_de(evento) or GERAL) == frente
+
+
+def avisos_de_frente(eventos: list[dict], prazos: list[dict]) -> list[str]:
+    """Numa obra multifrente, fato de aprovação, entrega, instalação ou conclusão sem frente volta a
+    misturar frentes no intervalo "Obra em geral"; prazo com frente que não existe fica sem realizado."""
+    frentes = frentes_da_obra(eventos)
+    avisos = []
+    if frentes:
+        soltos = [e for e in eventos if e["etapa"] in _ETAPAS_DA_FRENTE and conta_como_marco(e) and not frente_de(e)]
+        if soltos:
+            datas = ", ".join(formatar_data(data_do_fato(e)) for e in soltos[:5]) + ("…" if len(soltos) > 5 else "")
+            fato = "fato" if len(soltos) == 1 else "fatos"
+            avisos.append(
+                f"Aviso de frente: {len(soltos)} {fato} de aprovação, entrega, instalação ou conclusão sem frente "
+                f"numa obra multifrente ({datas}). Acrescente \"frente\" ou confirme que é da obra toda."
+            )
+    for prazo in prazos or []:
+        frente = (prazo.get("frente") or "").strip()
+        if frente and frente not in frentes:
+            avisos.append(
+                f"Aviso de frente: \"{prazo.get('descricao', '')}\": a frente \"{frente}\" não aparece nos fatos "
+                f"(frentes: {', '.join(frentes) or 'nenhuma'})."
+            )
+    return avisos
 
 
 def primeiros_marcos(eventos: list[dict], frente: str | None = None) -> dict[str, str]:
@@ -437,8 +468,11 @@ def intervalos_marcos_de(eventos: list[dict]) -> tuple[list[dict], dict]:
     if not frentes:
         saida = _cadeia(primeiros_marcos(eventos), "")
     else:
-        cadeias = [_cadeia(primeiros_marcos(eventos, nome), nome) for nome in frentes + [GERAL]]
-        saida = [item for cadeia in sorted((c for c in cadeias if c), key=lambda c: c[0]["inicio"]) for item in cadeia]
+        nomes = frentes if GERAL in frentes else frentes + [GERAL]
+        cadeias = [_cadeia(primeiros_marcos(eventos, nome), nome) for nome in nomes]
+        saida = []
+        for cadeia in sorted((c for c in cadeias if c), key=lambda c: c[0]["inicio"]):
+            saida.extend(cadeia)
     datas = sorted(evento["data"] for evento in eventos)
     duracao = {}
     if datas:

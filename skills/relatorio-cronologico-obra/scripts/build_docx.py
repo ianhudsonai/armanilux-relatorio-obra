@@ -396,6 +396,15 @@ def _nota_metodologica(documento: Document, analise: dict) -> None:
     else:
         limites = " ".join(analise["lacunas"]) or "nenhuma limitação registrada."
     _leitura(documento, "Limites do material", limites)
+    frentes = frentes_da_obra(analise.get("eventos") or [])
+    if len(frentes) > 1:
+        _leitura(
+            documento,
+            "Obra multifrente",
+            f"{', '.join(frentes[:-1])} e {frentes[-1]}. Cada frente percorreu o seu próprio ciclo de medição, projeto, "
+            "aprovação, entrega e instalação, em paralelo e dependente da liberação pela obra. Os intervalos da Análise "
+            "de Prazos são medidos dentro de cada frente.",
+        )
     _leitura(documento, "Dias úteis", analise.get("convencao_dias_uteis") or DADO)
     prazos = analise.get("prazos_contratuais") or []
     if prazos:
@@ -456,14 +465,8 @@ def _confronto_contrato(documento: Document, confronto: list[dict]) -> None:
 
 def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path | None, grafico_gantt: Path | None) -> None:
     documento.add_heading("Análise de Prazos — Intervalos em Dias Úteis", level=1)
-    frentes = frentes_da_obra(analise.get("eventos") or [])
-    if frentes:
-        nomes = ", ".join(frentes[:-1]) + f" e {frentes[-1]}" if len(frentes) > 1 else frentes[0]
-        abertura = (
-            f"Obra multifrente ({nomes}): cada frente percorre o seu próprio ciclo de medição, projeto, aprovação, "
-            "entrega e instalação. Os intervalos abaixo são medidos dentro de cada frente, entre o primeiro fato "
-            "realizado de cada etapa, em dias úteis."
-        )
+    if frentes_da_obra(analise.get("eventos") or []):
+        abertura = "Intervalos entre marcos medidos dentro de cada frente (primeiro fato realizado de cada etapa), em dias úteis."
     else:
         abertura = "Intervalos entre marcos (primeiro fato realizado de cada etapa), em dias úteis."
     _paragrafo(documento, abertura + " Intervalo de calendário não é atraso atribuído a ninguém.", tamanho=10)
