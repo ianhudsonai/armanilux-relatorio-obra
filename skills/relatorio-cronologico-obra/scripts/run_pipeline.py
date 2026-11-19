@@ -298,7 +298,8 @@ def executar(argv: list[str] | None = None) -> int:
     if tipo == "zip":
         resumo = extrair_zip(origem, pasta_obra)
         relogio.marca("arquivos extraídos")
-        print(f"Arquivos organizados: {len(resumo['arquivos'])}.")
+        novos = len(resumo["arquivos"]) - resumo.get("ja_existiam", 0)
+        print(f"Arquivos organizados: {len(resumo['arquivos'])} ({novos} novos, {resumo.get('ja_existiam', 0)} já estavam na obra).")
         if resumo["grande"]:
             print(
                 "Aviso: o zip passa de 500 MB. A leitura é local e em partes. "

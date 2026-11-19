@@ -80,6 +80,7 @@ def extrair_zip(caminho_zip: Path, pasta_obra: Path) -> dict:
     tamanho = caminho_zip.stat().st_size
     copiados: list[dict] = []
     ignorados: list[str] = []
+    ja_existiam = 0
     with zipfile.ZipFile(caminho_zip) as arquivo:
         for info in arquivo.infolist():
             if info.is_dir():
@@ -91,9 +92,16 @@ def extrair_zip(caminho_zip: Path, pasta_obra: Path) -> dict:
             nome = nome_seguro(original)
             destino_dir = pasta_obra / _subpasta_de(nome)
             destino_dir.mkdir(parents=True, exist_ok=True)
-            destino = _destino_unico(destino_dir, nome)
-            with arquivo.open(info, "r") as origem, destino.open("wb") as saida:
-                shutil.copyfileobj(origem, saida, length=BLOCO)
+            existente = destino_dir / nome
+            if existente.is_file() and existente.stat().st_size == info.file_size:
+                # Mesmo arquivo de uma rodada anterior (ex.: conversa nova da mesma obra).
+                # Não duplica; só conta.
+                destino = existente
+                ja_existiam += 1
+            else:
+                destino = _destino_unico(destino_dir, nome)
+                with arquivo.open(info, "r") as origem, destino.open("wb") as saida:
+                    shutil.copyfileobj(origem, saida, length=BLOCO)
             copiados.append(
                 {
                     "origem": original,
@@ -102,23 +110,25 @@ def extrair_zip(caminho_zip: Path, pasta_obra: Path) -> dict:
                 }
             )
     origem_txt = pasta_obra / "01-conversas" / "origem.txt"
-    origem_txt.write_text(
-        "\n".join(
-            [
-                f"Zip de origem: {caminho_zip}",
-                f"Tamanho em bytes: {tamanho}",
-                f"Extraído em: {datetime.now().strftime('%d/%m/%Y %H:%M')}",
-                "O zip original não foi apagado e não foi copiado de novo para esta pasta.",
-                "",
-            ]
-        ),
-        encoding="utf-8",
-    )
+    with origem_txt.open("a", encoding="utf-8") as registro:
+        registro.write(
+            "\n".join(
+                [
+                    f"Zip de origem: {caminho_zip}",
+                    f"Tamanho em bytes: {tamanho}",
+                    f"Extraído em: {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+                    f"Arquivos novos: {len(copiados) - ja_existiam}. Já existiam: {ja_existiam}.",
+                    "",
+                    "",
+                ]
+            )
+        )
     return {
         "zip": str(caminho_zip),
         "bytes": tamanho,
         "grande": tamanho > AVISO_TAMANHO,
         "arquivos": copiados,
+        "ja_existiam": ja_existiam,
         "ignorados": ignorados,
     }
 
