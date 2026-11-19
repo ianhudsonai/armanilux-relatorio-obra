@@ -68,7 +68,7 @@ def _do_nome(nome_arquivo: str) -> tuple[str, str]:
     numero = ""
     achado = _NUMERO_DA_OBRA.search(sem_parenteses) or _NUMERO.search(sem_parenteses)
     if achado:
-        numero = chave_obra(achado.group(achado.lastindex or 0))
+        numero = chave_obra(achado.group(1))
         resto = sem_parenteses.replace(achado.group(0), " ", 1)
     else:
         resto = sem_parenteses

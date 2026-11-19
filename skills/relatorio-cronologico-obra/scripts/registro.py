@@ -132,9 +132,14 @@ def sincronizar(achados: list[dict], salvar_agora: bool = True) -> dict:
     return dados
 
 
-def marcar_andamento(sha: str) -> dict:
+def marcar_andamento(sha: str, numero: str | None = None, cliente: str | None = None) -> dict:
+    """`numero` e `cliente`: os que valeram nesta rodada (a pessoa pode ter corrigido o adivinhado)."""
     dados = carregar()
     item = dados["exportacoes"][sha]
+    if numero:
+        item["numero"] = numero
+    if cliente:
+        item["cliente"] = cliente
     item["status"] = ANDAMENTO
     item["atualizado_em"] = _agora()
     salvar(dados)
@@ -146,13 +151,17 @@ def registrar_relatorio(sha: str, caminho_relatorio: str, versao: int, pasta_obr
     item = dados["exportacoes"][sha]
     item["status"] = GERADO
     item["pasta_obra"] = pasta_obra
+    _anotar_word(dados, item, caminho_relatorio, versao)
+    return item
+
+
+def _anotar_word(dados: dict, item: dict, caminho_relatorio: str, versao: int) -> None:
     item["atualizado_em"] = _agora()
     item.setdefault("relatorios", []).append(
         {"caminho": caminho_relatorio, "versao": versao, "em": item["atualizado_em"]}
     )
     dados["fila"] = [i["sha256"] for i in _fila(dados)]
     salvar(dados)
-    return item
 
 
 def anotar_remontagem(pasta_obra: str, caminho_relatorio: str, versao: int) -> bool:
@@ -170,12 +179,7 @@ def anotar_remontagem(pasta_obra: str, caminho_relatorio: str, versao: int) -> b
     item = max(da_obra, key=lambda i: i.get("atualizado_em", ""))
     if item.get("status") != CONCLUIDO:
         item["status"] = GERADO
-    item["atualizado_em"] = _agora()
-    item.setdefault("relatorios", []).append(
-        {"caminho": caminho_relatorio, "versao": versao, "em": item["atualizado_em"]}
-    )
-    dados["fila"] = [i["sha256"] for i in _fila(dados)]
-    salvar(dados)
+    _anotar_word(dados, item, caminho_relatorio, versao)
     return True
 
 

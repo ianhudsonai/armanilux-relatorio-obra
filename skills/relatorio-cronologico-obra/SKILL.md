@@ -61,7 +61,7 @@ O script procura em Downloads, Área de Trabalho (inclusive a do OneDrive) e na 
 Número da obra e cliente são adivinhados pelo nome do arquivo e pelo grupo, e podem vir errados (o número do apartamento no lugar do da obra, uma frase no lugar do cliente). Eles vão para o nome da pasta e para a capa do relatório. Antes de gerar, para cada conversa escolhida, faça uma pergunta de sim ou não com o que a lista mostrou, por exemplo: "Obra 8977, cliente Família Souza, certo?". A linha `arquivo:` da lista ajuda a pessoa a conferir.
 
 - Sim: rode com `--indice`.
-- Não: pergunte o número da obra e o nome do cliente certos e rode uma conversa de cada vez, com os dois: `--indice 1 --obra "8977" --cliente "Família Souza"`.
+- Não: pergunte o número da obra e o nome do cliente certos e rode essa conversa sozinha, com os dois: `--indice 1 --obra "8977" --cliente "Família Souza"`. Com várias escolhidas, rode juntas só as confirmadas (`--indice 2,3`) e cada corrigida à parte; não use `--todas` quando alguma foi corrigida.
 - O script disse que não conseguiu descobrir: pergunte só isso e rode do mesmo jeito.
 
 Gerar o relatório (uma conversa de cada vez, em lote):

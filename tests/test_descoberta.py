@@ -251,6 +251,9 @@ class FluxoTeste(Ambiente):
         self.assertEqual(executar(["--indice", "1", "--obra", "8977", "--cliente", "Família Souza", *base]), 0)
         pasta = self.base / "Armanilux" / "Relatorios-de-Obra"
         self.assertEqual([p.name for p in pasta.iterdir() if p.is_dir() and p.name != "_modelo"], ["8977 - Família Souza"])
+        # O registro guarda o que a pessoa disse: a próxima conversa da obra 8977 vira v2 dela.
+        [item] = registro.carregar()["exportacoes"].values()
+        self.assertEqual((item["numero"], item["cliente"]), ("8977", "Família Souza"))
 
     def test_remontagem_atualiza_o_registro_com_o_word_novo(self):
         self._preparar()

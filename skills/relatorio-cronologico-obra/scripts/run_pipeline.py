@@ -712,7 +712,7 @@ def _marcar_andamento(origem: Path, sha: str | None, identidade: dict) -> None:
         achado["numero"] = identidade["numero"]
         achado["cliente"] = identidade["cliente"]
         registro.sincronizar([achado])
-    registro.marcar_andamento(sha)
+    registro.marcar_andamento(sha, identidade["numero"], identidade["cliente"])
 
 
 def _anotar_relatorio(origem: Path, sha: str | None, destino: Path, pasta_obra: Path) -> None:
