@@ -15,7 +15,7 @@ from common import formatar_data
 
 _CORES_ETAPA = {
     "A": "#5C6B73",
-    "B": "#1F3A5F",
+    "B": "#442819",
     "C": "#3D6B8C",
     "D": "#8C734B",
     "E": "#A15C38",
@@ -24,7 +24,7 @@ _CORES_ETAPA = {
     "H": "#3E7C6F",
     "I": "#2F5D50",
     "J": "#8E2F2F",
-    "L": "#1F3A5F",
+    "L": "#442819",
 }
 
 
@@ -44,7 +44,7 @@ def grafico_barras(intervalos: list[dict], destino: Path) -> Path:
     fig, eixo = plt.subplots(figsize=(11, 5.8))
     if not intervalos:
         eixo.axis("off")
-        eixo.text(0.5, 0.5, "dado não identificado", ha="center", va="center", fontsize=14, color="#1F3A5F")
+        eixo.text(0.5, 0.5, "dado não identificado", ha="center", va="center", fontsize=14, color="#442819")
     else:
         rotulos = [
             f"{item['rotulo']}\n{formatar_data(item['inicio'])[0:5]}–{formatar_data(item['fim'])[0:5]}"
@@ -66,7 +66,7 @@ def grafico_barras(intervalos: list[dict], destino: Path) -> Path:
                 ha="center",
                 va="bottom",
                 fontsize=8,
-                color="#1F3A5F",
+                color="#442819",
             )
         eixo.spines["top"].set_visible(False)
         eixo.spines["right"].set_visible(False)
@@ -75,7 +75,7 @@ def grafico_barras(intervalos: list[dict], destino: Path) -> Path:
         "Verde: até 2 (fluxo contínuo). Amarelo: 3 a 5 (atenção). Vermelho: 6 ou mais (intervalo longo).\n"
         "O número não é soma de atraso.",
         fontsize=11,
-        color="#1F3A5F",
+        color="#442819",
         pad=12,
     )
     fig.tight_layout()
@@ -104,20 +104,20 @@ def grafico_gantt(eventos: list[dict], intervalos: list[dict], destino: Path) ->
     fig, eixo = plt.subplots(figsize=(11, 6.2))
     if not linhas:
         eixo.axis("off")
-        eixo.text(0.5, 0.5, "dado não identificado", ha="center", va="center", fontsize=14, color="#1F3A5F")
+        eixo.text(0.5, 0.5, "dado não identificado", ha="center", va="center", fontsize=14, color="#442819")
     else:
         for indice, linha in enumerate(linhas):
             inicio = datetime.fromisoformat(linha["inicio"])
             fim = datetime.fromisoformat(linha["fim"]) + timedelta(days=1)
             if fim <= inicio:
                 fim = inicio + timedelta(days=1)
-            borda = "#C62828" if linha["codigo"] in longos else "#1F3A5F"
+            borda = "#C62828" if linha["codigo"] in longos else "#442819"
             eixo.barh(
                 indice,
                 fim - inicio,
                 left=inicio,
                 height=0.55,
-                color=_CORES_ETAPA.get(linha["codigo"], "#1F3A5F"),
+                color=_CORES_ETAPA.get(linha["codigo"], "#442819"),
                 edgecolor=borda,
                 linewidth=2 if linha["codigo"] in longos else 0.6,
             )
@@ -134,7 +134,7 @@ def grafico_gantt(eventos: list[dict], intervalos: list[dict], destino: Path) ->
     eixo.set_title(
         "Linha do tempo das etapas\nBorda vermelha: etapa precedida por intervalo longo (6 dias úteis ou mais).",
         fontsize=11,
-        color="#1F3A5F",
+        color="#442819",
         pad=12,
     )
     fig.tight_layout()

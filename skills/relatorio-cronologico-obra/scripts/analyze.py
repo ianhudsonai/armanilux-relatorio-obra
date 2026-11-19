@@ -602,10 +602,10 @@ def _gargalos(eventos: list[dict], intervalos: list[dict], pendencias: list[dict
         maior = max(longos, key=lambda item: item["dias_uteis"])
         itens.append(
             {
-                "titulo": "Intervalo longo sem registro entre marcos",
+                "titulo": "Intervalo longo entre marcos",
                 "texto": (
                     f"Entre {formatar_data(maior['inicio'])} e {formatar_data(maior['fim'])} "
-                    f"transcorreram {_rotulo_dias(maior['dias_uteis'])} sem novo registro no grupo "
+                    f"transcorreram {_rotulo_dias(maior['dias_uteis'])} sem novo marco classificado nas etapas "
                     f"({maior['rotulo']}). O número já exclui fins de semana, feriados e o Carnaval, "
                     "quando caíram no meio. O histórico não explica cada um desses dias; "
                     "a causa não escrita é dado não identificado. O intervalo não é lançado "
@@ -665,9 +665,9 @@ def _responsabilidades(obra: dict, eventos: list[dict], intervalos: list[dict]) 
     if any(item["dias_uteis"] >= 6 for item in intervalos):
         linhas.append(
             {
-                "natureza": "Entrega de material e tempo sem registro",
+                "natureza": "Intervalo longo entre marcos",
                 "diagnostico": (
-                    "O maior intervalo entre registros está destacado na seção 4. "
+                    "O maior intervalo entre marcos está destacado na seção 4. "
                     "Ele mede dias úteis de calendário. Causa não escrita no grupo é "
                     "dado não identificado, e o valor não é apresentado como atraso da Armanilux."
                 ),
@@ -885,17 +885,23 @@ def completar_relato(base: dict) -> dict:
     """Recalcula intervalos, textos e indicadores a partir dos eventos já classificados."""
     eventos = _juntar_adicionais(base)
     eventos.sort(key=lambda item: (item["data"], item["hora"], _posicao(item["etapa"])))
-    obra = base["obra"]
-    pendencias = list(base.get("pendencias") or [])
+    obra = dict(base["obra"])
+    obra.update({k: v for k, v in (base.get("obra_ajustes") or {}).items() if v})
+    pendencias = list(base.get("pendencias_revisadas") or base.get("pendencias") or [])
     intervalos = _intervalos(eventos)
     desde = _desde_etapa_anterior(eventos)
     datas = sorted({item["data"] for item in eventos})
-    if len(datas) >= 2:
+    if obra.get("periodo_inicio") and obra.get("periodo_fim"):
+        # O período do relatório é o do grupo, o mesmo que aparece no cabeçalho.
+        dias_periodo = dias_uteis_entre(date.fromisoformat(obra["periodo_inicio"]), date.fromisoformat(obra["periodo_fim"]))
+    elif len(datas) >= 2:
         dias_periodo = dias_uteis_entre(date.fromisoformat(datas[0]), date.fromisoformat(datas[-1]))
     else:
         dias_periodo = 0
     maior = max((item["dias_uteis"] for item in intervalos), default=0)
     relato = dict(base)
+    relato["obra"] = obra
+    relato["pendencias"] = pendencias
     relato["eventos"] = eventos
     relato["convencao_dias_uteis"] = CONVENCAO_DIAS_UTEIS
     relato["intervalos"] = intervalos
@@ -912,6 +918,16 @@ def completar_relato(base: dict) -> dict:
     relato["recomendacoes"] = _recomendacoes(eventos, intervalos, pendencias)
     relato["conclusao"] = _conclusao(obra, eventos, intervalos, pendencias, dias_periodo)
     relato["marcos"] = _marcos(eventos, pendencias)
+    # Textos escritos por quem revisou o grupo substituem os textos automáticos.
+    if base.get("produtividade_personalizada"):
+        relato["produtividade"] = base["produtividade_personalizada"]
+    if base.get("gargalos_personalizados"):
+        relato["gargalos"] = [
+            {"numero": indice, "titulo": item["titulo"], "texto": item["texto"]}
+            for indice, item in enumerate(base["gargalos_personalizados"], start=1)
+        ]
+    if base.get("responsabilidades_personalizadas"):
+        relato["responsabilidades"] = list(base["responsabilidades_personalizadas"])
     return relato
 
 

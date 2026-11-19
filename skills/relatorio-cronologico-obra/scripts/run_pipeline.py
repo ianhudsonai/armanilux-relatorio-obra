@@ -32,6 +32,13 @@ CHAVES_PRESERVAR = (
     "conclusao_personalizada",
     "ajustes_eventos",
     "eventos_adicionais",
+    "revisado",
+    "obra_ajustes",
+    "pendencias_revisadas",
+    "diagnostico_prompt",
+    "gargalos_personalizados",
+    "responsabilidades_personalizadas",
+    "produtividade_personalizada",
 )
 
 
@@ -154,6 +161,9 @@ def _reconstruir(args, raiz: Path, config: dict | None) -> int:
         print("Não encontrei a análise desta obra. Rode primeiro com o zip do WhatsApp.")
         return 2
     analise = ler_json(caminho)
+    if analise.get("ajustes_eventos"):
+        # Correções feitas pela revisão (trocar etapa, remover) valem também na remontagem.
+        analise["eventos"] = aplicar_ajustes(list(analise.get("eventos") or []), analise["ajustes_eventos"])
     if args.recalcular:
         analise = completar_relato(analise)
         escrever_json(caminho, analise)
@@ -328,6 +338,14 @@ def executar(argv: list[str] | None = None) -> int:
         elif resultado_quadros.get("videos"):
             print(f"Quadros de vídeo: {len(quadros)}.")
 
+    try:
+        from folhas_de_contato import gerar as gerar_folhas
+
+        folhas = gerar_folhas(pasta_obra)
+        if folhas:
+            print(f"Folhas de contato para revisar as imagens: {len(folhas)} (em 04-transcricoes/folhas-de-contato).")
+    except Exception as erro:
+        print(f"Aviso: não consegui montar as folhas de contato: {erro}")
     relogio.marca("vídeos vistos")
     transcricoes = transcrever_pasta(
         pasta_obra / "03-midias",

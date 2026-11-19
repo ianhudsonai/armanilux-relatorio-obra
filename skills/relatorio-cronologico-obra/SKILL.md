@@ -110,8 +110,22 @@ A leitura automática é só um rascunho: num grupo grande ela deixa etapas vazi
 3. Para tirar um fato que a leitura automática classificou errado, use `ajustes_eventos` com `{"data": "2026-01-13", "hora": "10:30", "etapa_original": "J", "remover": true}`. Para só trocar a etapa, use `"etapa": "C"` no lugar de `remover`.
 4. Confira também a lista de pendências (`pendencias`) e o endereço e demais campos de `obra`. Apague o que não for pendência de verdade.
 5. Não invente data nem fato. O que o grupo não diz fica `dado não identificado`. Não crie etapa K.
+6. O diagnóstico automático é genérico e não pode ficar como está num relatório revisado. Escreva, com fatos do grupo e datas, em `analise.json`:
+   - `diagnostico_prompt`: `{"reprocessos": "...", "tempos_ociosos": "...", "atrasos_internos": "...", "dependencias_externas": "..."}`, os quatro blocos que o prompt padrão exige. O que o grupo não sustenta fica `dado não identificado`.
+   - `gargalos_personalizados`: lista de `{"titulo": "...", "texto": "..."}`.
+   - `responsabilidades_personalizadas`: lista de `{"natureza": "...", "diagnostico": "..."}`.
+   - `produtividade_personalizada`: um texto sobre o impacto da etapa J na produtividade.
+   - `obra_ajustes`: campos de `obra` que o grupo não traz em formato fixo (`construtora`, `engenheiro`, `arquitetura`, `responsavel_armanilux`, `endereco`, `prazo_contratual`).
+   - `pendencias_revisadas`: lista `{"item": "...", "status": "Pendente"}` com só as pendências reais.
+7. Só depois de revisar tudo isso, grave `"revisado": true` no `analise.json`. Sem isso o Word sai com a faixa vermelha "RASCUNHO NÃO REVISADO" no topo, de propósito, para ninguém enviar um relatório sem conferência.
 
-Abra as fotos e os quadros em `03-midias` (até três quadros por vídeo, não um filme inteiro). Para cada imagem que esclareça a obra, acrescente em `observacoes_visuais`:
+Não deixe imagem de lado. O pipeline monta `04-transcricoes/folhas-de-contato/folha-NN.jpg`: cada folha tem 12 miniaturas numeradas (fotos e um quadro de cada vídeo), com o nome do arquivo e a data. O `indice.json` da mesma pasta liga cada número ao arquivo.
+
+Olhe todas as folhas. Se o seu aplicativo permitir subagentes, distribua as folhas entre eles em paralelo, mesmo usando um modelo mais simples: cada um devolve, por número, uma frase objetiva do que a imagem mostra e se ela é relevante para a obra (trinca, base sem acabamento, frente sem liberação, peça instalada, desenho técnico). Sem subagentes, olhe as folhas você mesmo. Se uma miniatura parecer importante e pequena demais, abra o arquivo original em `03-midias`.
+
+Áudios e vídeos já vêm transcritos em `analise.json` (`transcricoes`). Leia as transcrições: muitas vezes o vídeo é o registro de uma visita ou de uma medição e traz a data e o fato que faltam no texto. Use o que for relevante em `eventos_adicionais`, com `midias` apontando para o arquivo e a marca "[fonte: vídeo transcrito, conferir]".
+
+Para cada imagem que esclareça a obra, acrescente em `observacoes_visuais`:
 
 ```json
 {"arquivo": "nome-do-arquivo.jpg", "observacao": "uma frase objetiva do que a imagem mostra"}
