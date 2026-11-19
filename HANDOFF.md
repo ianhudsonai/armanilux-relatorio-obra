@@ -15,7 +15,7 @@ Obra de teste (pasta em `Documents\Armanilux\Relatorios-de-Obra\`, FORA do repo)
 - Seguir o `prompt.md` do Rogério; só melhorias pequenas. Não apagar dados sensíveis do relatório. Relatório curto: o contexto inteiro é para o agente, não para o Word. Imagem é só contexto, sem descrição no relatório.
 - Cores: marrom `#442819` e dourado `#C3A56D`. `8977.1.v10`: `.vNN` é versão, a obra é `8977.1`.
 - Instalar skills só no app em uso (Codex → `.codex\skills`; Claude Code → `.claude\skills`).
-- Datas de mensagens coladas: conferido no v12 (25 coladas). Nenhum fato usa a data da colagem no lugar da original; não precisou reprocessar. Dois pontos para o Ian decidir: a autorização do Arqto. Sérgio para medir com a banheira só apoiada foi em 03/11 19:04 (colada), o fato está em 04/11 11:11 (aviso no grupo); o pedido do Sérgio em 21/08 para desocupar cozinha e copa dos materiais da Armani (colado em 28/09) não virou fato.
+- Datas de mensagens coladas: conferido no v12 (25 coladas). Nenhum fato usa a data da colagem no lugar da original; não precisou reprocessar. Dois pontos para o Ian decidir: a autorização do arquiteto para medir com a banheira só apoiada foi em 03/11 19:04 (colada), o fato está em 04/11 11:11 (aviso no grupo); o pedido do arquiteto em 21/08 para desocupar cozinha e copa dos materiais da Armani (colado em 28/09) não virou fato.
 - Transcrição com cache: `04-transcricoes/transcricoes-cache.json` guarda SHA-256, modelo e texto de cada áudio/vídeo. Arquivo igual não volta ao Whisper; execução interrompida continua; `--skip-transcribe` mantém o que já existe. `.txt` de antes do cache só vale na primeira execução (sem cache). Na obra de teste, as 61 transcrições entraram no cache sem refazer.
 
 ## Não mexer
