@@ -84,8 +84,16 @@ _OCIOSO = (
     "parad", "adiad", "remarc", "sem retorno", "cancelad",
 )
 # Mensagem que só programa o fato ("programado para amanhã"): não é data realizada.
-_PROGRAMADO = ("programad", "programando", "agendad", "agendando", "previst", "previsao", "para amanha", "para a proxima")
-_ETAPAS_COM_PROGRAMACAO = {"C", "H", "I", "L"}
+_PROGRAMADO = (
+    "programad", "programando", "agendad", "agendando", "agendament", "agendar",
+    "previst", "previsao", "para amanha", "para a proxima",
+)
+_ETAPAS_COM_PROGRAMACAO = {"A", "C", "H", "I", "L"}
+
+
+def diz_programado(texto: str) -> bool:
+    """O texto fala em programação ("programado para amanhã", "agendamento da visita")."""
+    return bool(_COMECA_PALAVRA(_PROGRAMADO).search(normalizar(texto or "")))
 # Intervalo entre marcos acima disto sai em vermelho na Análise de Prazos.
 LIMITE_INTERVALO_LONGO = 20
 
@@ -324,7 +332,7 @@ def extrair_eventos(
                     "documentos": [nome for nome in nomes if Path(nome).suffix.lower() in EXT_DOCUMENTO],
                 }
             )
-            if etapa in _ETAPAS_COM_PROGRAMACAO and _COMECA_PALAVRA(_PROGRAMADO).search(normalizar(mensagem.texto)):
+            if etapa in _ETAPAS_COM_PROGRAMACAO and diz_programado(mensagem.texto):
                 eventos[-1]["programado"] = True
     eventos.sort(key=lambda item: (item["data"], item["hora"], _posicao(item["etapa"])))
     return eventos
@@ -371,6 +379,12 @@ def conta_como_marco(evento: dict) -> bool:
     if evento["etapa"] == "L":
         return fecha_a_obra(evento)
     return True
+
+
+def primeira_programacao(eventos: list[dict], etapa: str) -> str:
+    """Data da primeira mensagem que só programou a etapa, ou ""."""
+    datas = sorted(e["data"] for e in eventos if e["etapa"] == etapa and e.get("programado"))
+    return datas[0] if datas else ""
 
 
 def primeiros_marcos(eventos: list[dict]) -> dict[str, str]:

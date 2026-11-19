@@ -6,7 +6,18 @@ import re
 from datetime import date
 from pathlib import Path
 
-from analyze import LIMITE_INTERVALO_LONGO, ORDEM, TITULOS, data_da_conclusao, intervalos_marcos_de, marcos_de, primeiros_marcos
+from analyze import (
+    LIMITE_INTERVALO_LONGO,
+    ORDEM,
+    TITULOS,
+    confronto_contrato,
+    data_da_conclusao,
+    diz_programado,
+    intervalos_marcos_de,
+    marcos_de,
+    primeira_programacao,
+    primeiros_marcos,
+)
 from business_days import dias_uteis_entre
 from common import DADO, LARGURA_FIGURA_CM, formatar_data
 from docx import Document
@@ -210,8 +221,12 @@ def _linha_dourada(documento: Document) -> None:
 
 def _primeira(analise: dict, etapa: str) -> str:
     """Primeira data realizada da etapa: programação não conta; vale a data do fato."""
-    data = primeiros_marcos(analise.get("eventos") or []).get(etapa)
-    return formatar_data(data) if data else DADO
+    eventos = analise.get("eventos") or []
+    data = primeiros_marcos(eventos).get(etapa)
+    if data:
+        return formatar_data(data)
+    programada = primeira_programacao(eventos, etapa)
+    return f"não confirmada (programada em {formatar_data(programada)})" if programada else DADO
 
 
 def _quadro_resumo(documento: Document, analise: dict) -> None:
@@ -283,13 +298,10 @@ def _texto_evento(evento: dict) -> str:
     return texto or DADO
 
 
-_JA_DIZ_PROGRAMADO = re.compile(r"program|agend|previs", re.IGNORECASE)
-
-
 def _data_da_linha(evento: dict) -> str:
     """Data da mensagem; programação ganha a marca, se o texto ainda não diz."""
     data = formatar_data(evento["data"])
-    if evento.get("programado") and not _JA_DIZ_PROGRAMADO.search(evento.get("ocorrencia") or ""):
+    if evento.get("programado") and not diz_programado(evento.get("ocorrencia") or ""):
         return f"{data} (programado)"
     return data
 
@@ -402,6 +414,11 @@ def _nota_metodologica(documento: Document, analise: dict) -> None:
     )
 
 
+def _confronto(analise: dict) -> list[dict]:
+    """Confronto refeito dos eventos e dos prazos, como os marcos."""
+    return confronto_contrato(analise.get("eventos") or [], analise.get("prazos_contratuais") or [])
+
+
 def _confronto_contrato(documento: Document, confronto: list[dict]) -> None:
     """Só aparece quando o grupo informou prazo contratual. Vermelho = passou do prazo."""
     if not confronto:
@@ -444,10 +461,8 @@ def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path 
         "atraso atribuído a ninguém.",
         tamanho=10,
     )
-    if "intervalos_marcos" in analise:
-        marcos, duracao = analise["intervalos_marcos"], analise.get("duracao_marcos") or {}
-    else:  # analise.json antigo, remontado sem --recalcular
-        marcos, duracao = intervalos_marcos_de(analise.get("eventos") or [])
+    # Sempre dos eventos: remontar sem --recalcular não deixa número antigo ao lado do Quadro-Resumo.
+    marcos, duracao = intervalos_marcos_de(analise.get("eventos") or [])
     if not marcos:
         _paragrafo(documento, "Intervalo entre marcos: dado não identificado.")
     else:
@@ -481,7 +496,7 @@ def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path 
                 for celula in linha.cells:
                     _sombrear(celula, AMARELO)
         documento.add_paragraph()
-    _confronto_contrato(documento, analise.get("confronto_contrato") or [])
+    _confronto_contrato(documento, _confronto(analise))
     _inserir_figura(documento, grafico_barras, "Figura 1. Dias úteis entre marcos.")
     _inserir_figura(documento, grafico_gantt, "Figura 2. Linha do tempo das etapas, do primeiro ao último registro.")
 
@@ -525,12 +540,12 @@ def _numerados(documento: Document, itens: list[str]) -> None:
 
 
 def _impacto_padrao(analise: dict) -> str:
-    duracao = analise.get("duracao_marcos") or {}
+    duracao = intervalos_marcos_de(analise.get("eventos") or [])[1]
     if not duracao:
         return DADO + "."
     corridos = (date.fromisoformat(duracao["fim"]) - date.fromisoformat(duracao["inicio"])).days
     texto = f"Do primeiro ao último registro classificado: {duracao['dias_uteis']} dias úteis ({corridos} dias corridos). "
-    medidos = [item for item in analise.get("confronto_contrato") or [] if item["realizado"] is not None and item["limite_du"]]
+    medidos = [item for item in _confronto(analise) if item["realizado"] is not None and item["limite_du"]]
     if not analise.get("prazos_contratuais"):
         return texto + "Prazo contratual não declarado no grupo: dado não identificado."
     excedidos = sum(1 for item in medidos if item["excedeu"])

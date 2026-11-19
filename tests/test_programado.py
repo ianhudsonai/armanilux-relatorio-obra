@@ -60,7 +60,7 @@ class ProgramadoTeste(unittest.TestCase):
         self.assertEqual(marcos["Entrega do material na obra"], "Programado, sem confirmação")
         self.assertEqual(relato["intervalos_marcos"], [])
         documento = _word(relato)
-        self.assertEqual(dict(_tabela(documento, "Indicador"))["Primeira entrega na obra"], "dado não identificado")
+        self.assertEqual(dict(_tabela(documento, "Indicador"))["Primeira entrega na obra"], "não confirmada (programada em 09/03/2026)")
         # Na tabela da etapa a linha continua, com a marca de programado na data.
         linhas_h = [
             [celula.text for celula in linha.cells]
@@ -104,6 +104,29 @@ class ProgramadoTeste(unittest.TestCase):
         )
         eventos = extrair_eventos([mensagem], [], [])
         self.assertEqual([(e["etapa"], e.get("programado")) for e in eventos], [("H", True)])
+
+    def test_pedido_de_aprovacao_de_chapas_e_programacao(self):
+        mensagem = Mensagem(
+            quando=datetime(2025, 9, 18, 12, 20), autor="Bruna",
+            texto="Segue foto das chapas do lote 2. Podemos fazer o agendamento da visita para aprovação?",
+        )
+        eventos = extrair_eventos([mensagem], [], [])
+        self.assertEqual([(e["etapa"], e.get("programado")) for e in eventos], [("A", True)])
+
+    def test_word_sem_recalcular_refaz_marcos_e_contrato_dos_eventos(self):
+        """Remontar sem --recalcular: o analise.json guarda números antigos; o Word refaz dos eventos."""
+        eventos = [
+            _evento("2026-03-02", "G"),
+            _evento("2026-03-09", "H", "Entrega programada.", programado=True),
+            _evento("2026-03-16", "H", "Peças entregues."),
+        ]
+        prazo = {"descricao": "Entrega", "de": "G", "para": "H", "limite_du": 25, "fonte": "abertura", "fonte_data": "2026-01-05"}
+        relato = completar_relato({"obra": OBRA, "eventos": eventos, "prazos_contratuais": [prazo]})
+        relato["intervalos_marcos"] = [{"de": "G", "para": "H", "inicio": "2026-03-02", "fim": "2026-03-09", "dias_uteis": 5}]
+        relato["confronto_contrato"][0]["realizado"] = 5
+        documento = _word(relato)
+        self.assertEqual(_tabela(documento, "Intervalo entre marcos")[0][1], "10 d.u.")
+        self.assertEqual(_tabela(documento, "Prazo contratual de referência")[0][2], "10 d.u.")
 
     def test_ajuste_desmarca_programado_e_corrige_a_data(self):
         lido = _evento("2026-03-09", "H", "Entrega programada.", programado=True)
