@@ -4,7 +4,7 @@ description: Gera o Relatório Cronológico de Obra da Armanilux (etapas A a L, 
 license: MIT
 metadata:
   author: Armanilux
-  version: "1.0"
+  version: "1.1"
   idioma: pt-BR
 ---
 
@@ -21,15 +21,34 @@ Leia, antes de redigir ou corrigir o texto:
 
 O script já aplica esse formato. Não improvise outro sumário, não some intervalos como "atraso da Armanilux" e não invente data, nome ou prazo. O que não estiver no histórico fica escrito `dado não identificado`.
 
-## Onde está o Python
+## Conferir o ambiente antes de cada relatório
 
-Prefira o interpretador criado pelo `instalar.bat`:
+A pasta desta skill é a pasta deste arquivo. O instalador é `scripts/instalar.ps1`, ao lado de `run_pipeline.py`. Use esse caminho absoluto. O skill-installer só copia esta pasta para `%USERPROFILE%\.codex\skills\relatorio-cronologico-obra\`. Não existe `instalar.bat` na raiz do computador da pessoa.
 
-`%USERPROFILE%\.armanilux-relatorio\venv\Scripts\python.exe`
+Em toda execução, antes de abrir o zip, confira o ambiente. No PowerShell, releia o PATH do registro e teste o Python do ambiente e o FFmpeg:
 
-No Linux ou no teste, use `python3`. Os comandos abaixo usam `PYTHON` para esse executável e `SKILL` para a pasta desta skill (a pasta que contém este arquivo).
+```powershell
+$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User') + ';' + "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+$py = "$env:USERPROFILE\.armanilux-relatorio\venv\Scripts\python.exe"
+& $py -c "import docx, faster_whisper, matplotlib, holidays, PIL, numpy, importlib.util as u; assert u.find_spec('pdfplumber') or u.find_spec('pypdf')"
+Get-Command ffmpeg
+```
 
-Se faltar biblioteca, peça para a pessoa dar dois cliques em `instalar.bat` na pasta do repositório. Não rode `pip install` solto sem avisar. Se o Windows abrir a janela de permissão (UAC), quem clica em Sim é a pessoa; o Codex não consegue.
+O ambiente está pronto só se o arquivo `python.exe` existe, o comando de importação termina sem erro e o `Get-Command ffmpeg` acha o programa.
+
+Se faltar o Python, alguma dessas bibliotecas ou o FFmpeg, não peça para a pessoa procurar, baixar ou dar dois cliques em arquivo nenhum. Diga apenas, em português: vai instalar o que falta neste computador; quando o aplicativo pedir permissão, aprove; se o Windows abrir uma janela Sim ou Não, clique em Sim. Aí execute você mesmo, com o caminho absoluto da pasta que contém este arquivo:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "<pasta-desta-skill>\scripts\instalar.ps1"
+```
+
+O instalador usa `winget install Python.Python.3.12 --scope user` quando o Python não existe, e o mesmo escopo de usuário para o FFmpeg. O pip fica no ambiente `%USERPROFILE%\.armanilux-relatorio\venv`. Isso evita a janela de administrador sempre que o Windows permite. Se mesmo assim o UAC aparecer, quem clica em Sim é a pessoa. Você não consegue clicar nessa janela.
+
+Pode rodar o instalador de novo. Se já estiver tudo certo, ele só confere. Quando terminar com código 0, releia o PATH do registro na mesma sessão, com a primeira linha do bloco acima, e siga o relatório sem pedir para reiniciar o Codex nem o computador. Use o Python impresso em `PYTHON=` e, se precisar, o FFmpeg impresso em `FFMPEG=`.
+
+No Linux ou no teste, use `python3` se o ambiente do Windows não existir. Nos comandos abaixo, `PYTHON` é o `python.exe` desse ambiente e `SKILL` é a pasta desta skill.
+
+Se o instalador falhar, explique o erro em português e pare. Não mande a pessoa atrás de um arquivo.
 
 ## 1. Preparar a pasta
 

@@ -56,7 +56,7 @@ def _checar_bibliotecas() -> bool:
         faltando.append("pdfplumber ou pypdf")
     if faltando:
         print("Faltam bibliotecas: " + ", ".join(faltando) + ".")
-        print("Dê dois cliques em instalar.bat e espere a janela dizer que terminou.")
+        print("Rode scripts/instalar.ps1 desta skill e continue o relatório. Não peça para a pessoa procurar um arquivo.")
         return False
     return True
 

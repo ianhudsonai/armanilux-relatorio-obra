@@ -6,19 +6,19 @@ estiver instalado, o relatório segue e o fato fica registrado.
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 from pathlib import Path
 
-from common import EXT_VIDEO
+from common import EXT_VIDEO, localizar_ferramenta
 
 
 def ffmpeg_disponivel() -> bool:
-    return shutil.which("ffmpeg") is not None
+    return localizar_ferramenta("ffmpeg") is not None
 
 
 def _duracao_segundos(video: Path) -> float | None:
-    ffprobe = shutil.which("ffprobe")
+    localizar_ferramenta("ffmpeg")
+    ffprobe = localizar_ferramenta("ffprobe")
     if not ffprobe:
         return None
     try:
@@ -44,7 +44,7 @@ def _duracao_segundos(video: Path) -> float | None:
 
 
 def extrair_quadros(video: Path, pasta_quadros: Path, quantidade: int = 3) -> list[Path]:
-    ffmpeg = shutil.which("ffmpeg")
+    ffmpeg = localizar_ferramenta("ffmpeg")
     if not ffmpeg:
         return []
     destino_dir = pasta_quadros / video.stem

@@ -60,9 +60,54 @@ class SkillTeste(unittest.TestCase):
         curta = re.search(r'short_description:\s*"(.*)"', yaml).group(1)
         self.assertGreaterEqual(len(curta), 25)
         self.assertLessEqual(len(curta), 64)
+        self.assertTrue((SKILL / "scripts" / "instalar.ps1").is_file())
+        self.assertTrue((SKILL / "scripts" / "instalar.bat").is_file())
         self.assertTrue((RAIZ / "instalar.bat").is_file())
-        self.assertTrue((RAIZ / "instalar.ps1").is_file())
         self.assertTrue((RAIZ / "LICENSE").is_file())
+
+    def test_skill_aponta_o_instalador_que_o_codex_executa(self):
+        texto = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("scripts/instalar.ps1", texto)
+        self.assertIn("powershell -ExecutionPolicy Bypass -File", texto)
+        self.assertIn("--scope user", texto)
+        self.assertIn("Python.Python.3.12", texto)
+        self.assertNotIn("dois cliques em instalar.bat", texto.lower())
+        self.assertIn("não peça", texto.lower())
+        bat = (RAIZ / "instalar.bat").read_text(encoding="utf-8")
+        self.assertIn(r"skills\relatorio-cronologico-obra\scripts\instalar.ps1", bat)
+        instalador = (SKILL / "scripts" / "instalar.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn("--scope user", instalador)
+        self.assertIn("Python.Python.3.12", instalador)
+        self.assertIn('Join-Path $PSScriptRoot "requirements.txt"', instalador)
+        self.assertIn("GetEnvironmentVariable", instalador)
+        pipeline = (SKILL / "scripts" / "run_pipeline.py").read_text(encoding="utf-8")
+        self.assertNotIn("dois cliques", pipeline.lower())
+
+    def test_acha_programa_instalado_pelo_winget_fora_do_path(self):
+        import os
+        import sys
+        from tempfile import TemporaryDirectory
+
+        sys.path.insert(0, str(SKILL / "scripts"))
+        from common import localizar_ferramenta
+
+        with TemporaryDirectory() as temporario:
+            links = Path(temporario) / "Microsoft" / "WinGet" / "Links"
+            links.mkdir(parents=True)
+            executavel = links / "ffmpeg-teste-armanilux.exe"
+            executavel.write_bytes(b"")
+            caminho_antigo = os.environ.get("PATH", "")
+            local_antigo = os.environ.get("LOCALAPPDATA")
+            os.environ["LOCALAPPDATA"] = temporario
+            try:
+                achado = localizar_ferramenta("ffmpeg-teste-armanilux")
+                self.assertEqual(Path(achado).resolve(), executavel.resolve())
+            finally:
+                os.environ["PATH"] = caminho_antigo
+                if local_antigo is None:
+                    os.environ.pop("LOCALAPPDATA", None)
+                else:
+                    os.environ["LOCALAPPDATA"] = local_antigo
 
     def test_repositorio_nao_traz_nome_de_obra_real(self):
         extensoes = {".md", ".py", ".txt", ".yml", ".yaml", ".ps1", ".bat", ".json"}

@@ -38,6 +38,33 @@ CONVENCAO_DIAS_UTEIS = (
 )
 
 
+def localizar_ferramenta(nome: str) -> str | None:
+    """Acha um programa no PATH ou na pasta do winget do usuário.
+
+    O winget grava o FFmpeg num diretório que só entra no PATH depois de reler
+    o registro. Se o arquivo existir, a pasta dele passa a valer neste processo.
+    """
+    import os
+    import shutil
+
+    achado = shutil.which(nome)
+    if achado:
+        return achado
+    local = os.environ.get("LOCALAPPDATA", "")
+    if not local:
+        return None
+    base = Path(local) / "Microsoft" / "WinGet"
+    candidatos = [base / "Links" / f"{nome}.exe"]
+    pacotes = base / "Packages"
+    if pacotes.is_dir():
+        candidatos.extend(pacotes.glob(f"**/bin/{nome}.exe"))
+    for candidato in candidatos:
+        if candidato.is_file():
+            os.environ["PATH"] = str(candidato.parent) + os.pathsep + os.environ.get("PATH", "")
+            return str(candidato)
+    return None
+
+
 def configurar_saida() -> None:
     for fluxo in (sys.stdout, sys.stderr):
         try:
