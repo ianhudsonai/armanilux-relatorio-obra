@@ -8,8 +8,8 @@ import subprocess
 from datetime import date
 from pathlib import Path
 
-from analyze import ORDEM, TITULOS, _intervalos_marcos
-from common import DADO, EXT_IMAGEM, EXT_VIDEO, formatar_data
+from analyze import ORDEM, TITULOS, intervalos_marcos_de
+from common import DADO, EXT_IMAGEM, EXT_VIDEO, LARGURA_FIGURA_CM, formatar_data
 from docx import Document
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
@@ -171,14 +171,6 @@ def _rotulo(documento: Document, rotulo: str, texto: str) -> None:
 def _valor(obra: dict, chave: str) -> str:
     valor = (obra.get(chave) or "").strip()
     return valor if valor else DADO
-
-
-def _transcricao(analise: dict, arquivo: str, limite: int = 240) -> str:
-    for item in analise.get("transcricoes") or []:
-        if (item.get("arquivo") or "").lower() == arquivo.lower() and item.get("status") == "ok" and item.get("texto"):
-            texto = " ".join(item["texto"].split())
-            return texto if len(texto) <= limite else texto[:limite].rstrip() + "…"
-    return ""
 
 
 def _capa(documento: Document, analise: dict) -> None:
@@ -370,14 +362,14 @@ def _escrever_etapa(documento: Document, analise: dict, codigo: str) -> None:
 
 def _inserir_figura(documento: Document, caminho: Path | None, legenda: str) -> None:
     if caminho and Path(caminho).exists():
-        documento.add_picture(str(caminho), width=Cm(16.2))
+        documento.add_picture(str(caminho), width=Cm(LARGURA_FIGURA_CM))
         documento.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
     else:
         _paragrafo(documento, "Figura: dado não identificado.")
     _paragrafo(documento, legenda, tamanho=9, italico=True)
 
 
-LIMITE_REGISTRO = 24
+LIMITE_REGISTRO = 40
 _DATA_NO_NOME = re.compile(r"(?:IMG|VID|PTT|AUD)-(\d{4})(\d{2})(\d{2})-", re.IGNORECASE)
 
 
@@ -418,7 +410,7 @@ def _imagens_descritas(analise: dict, pasta_obra: Path | None) -> list[dict]:
         data, etapa = _quando_e_etapa(analise, nome)
         itens.append({"arquivo": nome, "caminho": caminho, "data": data, "etapa": etapa, "observacao": observacao})
     itens.sort(key=lambda item: item["data"] or "9999")
-    return itens[:LIMITE_REGISTRO]
+    return itens
 
 
 def _inserir_imagem(documento: Document, caminho: Path) -> bool:
@@ -444,7 +436,8 @@ def _inserir_imagem(documento: Document, caminho: Path) -> bool:
 
 def _registro_fotografico(documento: Document, analise: dict, pasta_obra: Path | None = None) -> None:
     inseridas = 0
-    for item in _imagens_descritas(analise, pasta_obra):
+    descritas = _imagens_descritas(analise, pasta_obra)
+    for item in descritas[:LIMITE_REGISTRO]:
         if not _inserir_imagem(documento, item["caminho"]):
             continue
         partes = [formatar_data(item["data"]) if item["data"] else DADO]
@@ -456,6 +449,14 @@ def _registro_fotografico(documento: Document, analise: dict, pasta_obra: Path |
         legenda = " · ".join(partes) + f" — {item['observacao']} ({origem})"
         _paragrafo(documento, legenda, tamanho=9, italico=True)
         inseridas += 1
+    if len(descritas) > LIMITE_REGISTRO:
+        _paragrafo(
+            documento,
+            f"Outras {len(descritas) - LIMITE_REGISTRO} imagens descritas na revisão ficaram fora para o arquivo "
+            "não pesar; estão na pasta 03-midias da obra.",
+            tamanho=9,
+            italico=True,
+        )
     if inseridas == 0:
         _paragrafo(
             documento,
@@ -561,7 +562,7 @@ def montar_docx(analise: dict, destino: Path, grafico_barras: Path | None, grafi
     if "intervalos_marcos" in analise:
         marcos, duracao = analise["intervalos_marcos"], analise.get("duracao_marcos") or {}
     else:  # analise.json antigo, remontado sem --recalcular
-        marcos, duracao = _intervalos_marcos(analise.get("eventos") or [])
+        marcos, duracao = intervalos_marcos_de(analise.get("eventos") or [])
     if marcos:
         linhas = [
             [
@@ -643,7 +644,12 @@ def montar_docx(analise: dict, destino: Path, grafico_barras: Path | None, grafi
         "O que não pôde ser lido ou confirmado no material do grupo. Nada aqui foi suposto: "
         "o que falta fica registrado como falta.",
     )
-    for lacuna in analise.get("lacunas") or ["Nenhuma lacuna registrada."]:
+    if "lacunas" not in analise:
+        # Análise antiga, remontada sem a conversa: ninguém conferiu, então não afirmar que não há lacuna.
+        lacunas = ["Lacunas: dado não identificado (análise anterior a esta versão, sem a conversa para conferir)."]
+    else:
+        lacunas = analise["lacunas"] or ["Nenhuma lacuna registrada."]
+    for lacuna in lacunas:
         _paragrafo(documento, f"• {lacuna}")
 
     documento.add_heading("Nota de rastreabilidade", level=1)

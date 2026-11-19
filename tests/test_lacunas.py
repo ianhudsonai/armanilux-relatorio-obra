@@ -71,6 +71,40 @@ class LacunasTeste(unittest.TestCase):
         indice = textos.index("Lacunas de contexto")
         self.assertTrue(textos[indice + 2].startswith("• 2 arquivos enviados no grupo"))
 
+    def test_analise_antiga_sem_lacunas_nao_afirma_que_nao_ha_lacuna(self):
+        from docx import Document
+
+        import build_docx
+
+        analise = _analise()
+        del analise["lacunas"]
+        with TemporaryDirectory() as pasta:
+            destino = build_docx.montar_docx(analise, Path(pasta) / "r.docx", None, None)
+            textos = [p.text for p in Document(str(destino)).paragraphs]
+        indice = textos.index("Lacunas de contexto")
+        self.assertIn("dado não identificado", textos[indice + 2])
+
+
+class PlanilhaTeste(unittest.TestCase):
+    def test_planilha_e_lida_e_formato_desconhecido_vira_lacuna(self):
+        import zipfile
+
+        from extract_documents import extrair_pasta
+
+        with TemporaryDirectory() as pasta:
+            raiz = Path(pasta)
+            with zipfile.ZipFile(raiz / "Cronograma.xlsx", "w") as planilha:
+                planilha.writestr(
+                    "xl/sharedStrings.xml",
+                    '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+                    "<si><t>Entrega bancada</t></si><si><t>Medição cozinha</t></si></sst>",
+                )
+            (raiz / "Antigo.xls").write_bytes(b"\xd0\xcf\x11\xe0 binario")
+            lidos = {item["arquivo"]: item for item in extrair_pasta(raiz)}
+        self.assertIn("Entrega bancada", lidos["Cronograma.xlsx"]["texto"])
+        self.assertIn("Medição cozinha", lidos["Cronograma.xlsx"]["texto"])
+        self.assertEqual(lidos["Antigo.xls"]["texto"], "")
+
 
 if __name__ == "__main__":
     unittest.main()

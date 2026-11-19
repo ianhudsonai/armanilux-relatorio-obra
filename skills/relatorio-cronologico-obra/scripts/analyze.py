@@ -322,7 +322,7 @@ def _intervalos(eventos: list[dict]) -> list[dict]:
     return saida
 
 
-def _intervalos_marcos(eventos: list[dict]) -> tuple[list[dict], dict]:
+def intervalos_marcos_de(eventos: list[dict]) -> tuple[list[dict], dict]:
     """Marco = primeiro registro de cada etapa. Intervalos entre marcos em ordem de data,
     como na tabela do relatório aprovado, e a duração do primeiro ao último registro."""
     primeiros: dict[str, str] = {}
@@ -893,7 +893,13 @@ def _nomes(nomes: list[str], limite: int = 10) -> str:
     return texto + (f" e mais {len(nomes) - limite}" if len(nomes) > limite else "")
 
 
-def _lacunas_automaticas(mensagens: list[Mensagem], documentos: list[dict], transcricoes: list[dict]) -> list[str]:
+def juntar_lacunas(base: dict) -> list[str]:
+    """Lacunas automáticas mais as que a revisão escreveu, sem repetir."""
+    automaticas = list(base.get("lacunas_automaticas") or [])
+    return automaticas + [item for item in (base.get("lacunas_adicionais") or []) if item and item not in automaticas]
+
+
+def lacunas_automaticas(mensagens: list[Mensagem], documentos: list[dict], transcricoes: list[dict]) -> list[str]:
     """O que o computador sabe que não conseguiu ler. Vai para a seção Lacunas de contexto."""
     lacunas = []
     fora = [mensagem.anexos[0] for mensagem in mensagens if _so_o_nome(mensagem)]
@@ -997,11 +1003,9 @@ def completar_relato(base: dict) -> dict:
     relato["eventos"] = eventos
     relato["convencao_dias_uteis"] = CONVENCAO_DIAS_UTEIS
     relato["intervalos"] = intervalos
-    relato["intervalos_marcos"], relato["duracao_marcos"] = _intervalos_marcos(eventos)
-    automaticas = list(base.get("lacunas_automaticas") or [])
-    relato["lacunas"] = automaticas + [
-        item for item in (base.get("lacunas_adicionais") or []) if item and item not in automaticas
-    ]
+    relato["intervalos_marcos"], relato["duracao_marcos"] = intervalos_marcos_de(eventos)
+    if "lacunas_automaticas" in base:
+        relato["lacunas"] = juntar_lacunas(base)
     relato["kpis"] = {
         "dias_uteis_periodo": dias_periodo,
         "revisoes": sum(1 for item in eventos if item["etapa"] == "E"),
@@ -1059,7 +1063,7 @@ def montar_analise(
         "ajustes_eventos": [],
         "eventos_adicionais": [],
         "rastreabilidade": _nota_rastreabilidade(mensagens, eventos, anexo, documentos, transcricoes),
-        "lacunas_automaticas": _lacunas_automaticas(mensagens, documentos, transcricoes),
+        "lacunas_automaticas": lacunas_automaticas(mensagens, documentos, transcricoes),
         "lacunas_adicionais": [],
     }
     return completar_relato(base)

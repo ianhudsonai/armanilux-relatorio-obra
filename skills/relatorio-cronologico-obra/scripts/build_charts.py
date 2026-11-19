@@ -10,8 +10,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from analyze import ORDEM, TITULOS
+from common import LARGURA_FIGURA_CM
 
-LARGURA_POL = 16.2 / 2.54  # mesma largura de _inserir_figura no build_docx
+LARGURA_POL = LARGURA_FIGURA_CM / 2.54  # mesma largura com que o Word insere a figura
 DPI = 200
 MARROM = "#442819"
 DOURADO = "#C3A56D"
@@ -30,8 +31,6 @@ _CORES_ETAPA = {
     "J": "#8E2F2F",
     "L": "#442819",
 }
-
-
 
 
 def _preparar():
@@ -132,7 +131,7 @@ def _formatar_mes(valor, _posicao=None) -> str:
     return f"{_MESES[dia.month - 1]}/{dia.strftime('%y')}"
 
 
-def grafico_gantt(eventos: list[dict], intervalos: list[dict] | None, destino: Path) -> Path:
+def grafico_gantt(eventos: list[dict], destino: Path) -> Path:
     """Uma barra por etapa, do primeiro ao último registro. Sem borda vermelha: quase toda
     etapa de obra longa vem depois de algum intervalo longo, e a cor deixava de dizer algo."""
     plt = _preparar()

@@ -28,34 +28,52 @@ def _mesmo_autor(do_evento: str, da_mensagem: str | None) -> bool:
     return bool(a) and bool(b) and a[0] == b[0]
 
 
-def _situacao(evento: dict, mensagens: list[Mensagem], transcritas: set[str]) -> tuple[str, str]:
+CONFIRMADO = "confirmado"
+CONFIRMADO_MIDIA = "confirmado pela mídia"
+
+
+def confirmado(item: dict) -> bool:
+    return item["situacao"] in (CONFIRMADO, CONFIRMADO_MIDIA)
+
+
+def _situacao(evento: dict, mensagens: list[Mensagem], conhecidas: set[str]) -> tuple[str, str]:
     if "[fonte:" in (evento.get("ocorrencia") or "") and evento.get("midias"):
-        faltando = [nome for nome in evento["midias"] if nome.lower() not in transcritas]
+        faltando = [nome for nome in evento["midias"] if nome.lower() not in conhecidas]
         if faltando:
             return "mídia não encontrada", ", ".join(faltando)
-        return "confirmado pela mídia", ", ".join(evento["midias"])
+        return CONFIRMADO_MIDIA, ", ".join(evento["midias"])
+    # Fato acrescentado na revisão sem hora fica gravado como 00:00.
+    hora = "" if (evento.get("hora") or "") in ("", "00:00") else evento["hora"]
+    autor = evento.get("autor") or ""
+    if not autor and not hora:
+        return "sem autor nem hora", "sem dado para achar a mensagem"
     do_dia = [
         mensagem
         for mensagem in mensagens
-        if mensagem.data.isoformat() == evento.get("data") and _mesmo_autor(evento.get("autor", ""), mensagem.autor)
+        if mensagem.data.isoformat() == evento.get("data") and _mesmo_autor(autor, mensagem.autor)
     ]
     if not do_dia:
         return "sem mensagem correspondente", ""
-    hora = evento.get("hora") or ""
     if not hora or any(mensagem.hora == hora for mensagem in do_dia):
-        return "confirmado", ""
+        return CONFIRMADO, ""
     return "hora diferente", "mensagens do autor nesse dia: " + ", ".join(sorted({m.hora for m in do_dia}))
 
 
-def verificar_eventos(eventos: list[dict], mensagens: list[Mensagem], transcricoes: list[dict]) -> list[dict]:
-    transcritas = {
+def verificar_eventos(
+    eventos: list[dict],
+    mensagens: list[Mensagem],
+    transcricoes: list[dict],
+    arquivos: list[str] | tuple[str, ...] = (),
+) -> list[dict]:
+    """`arquivos`: nomes das fotos e documentos da pasta da obra (fonte de fato visual)."""
+    conhecidas = {
         (item.get("arquivo") or "").lower()
         for item in transcricoes
         if item.get("status") == "ok" and item.get("texto")
-    }
+    } | {Path(nome).name.lower() for nome in arquivos}
     saida = []
     for evento in eventos:
-        situacao, detalhe = _situacao(evento, mensagens, transcritas)
+        situacao, detalhe = _situacao(evento, mensagens, conhecidas)
         saida.append(
             {
                 "data": evento.get("data", ""),
@@ -71,7 +89,7 @@ def verificar_eventos(eventos: list[dict], mensagens: list[Mensagem], transcrico
 
 
 def escrever_verificacao(itens: list[dict], destino: Path) -> Path:
-    problemas = [item for item in itens if not item["situacao"].startswith("confirmado")]
+    problemas = [item for item in itens if not confirmado(item)]
     linhas = [
         "# Conferência dos fatos do relatório",
         "",

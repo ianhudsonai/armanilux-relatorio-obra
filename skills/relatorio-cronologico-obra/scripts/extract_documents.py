@@ -52,6 +52,24 @@ def _texto_docx(caminho: Path) -> str:
     return "\n".join(partes).strip()
 
 
+def _texto_xlsx(caminho: Path) -> str:
+    """Planilha .xlsx sem biblioteca extra: o arquivo é um zip com os textos em XML."""
+    import re
+    import zipfile
+    from html import unescape
+
+    partes: list[str] = []
+    with zipfile.ZipFile(caminho) as planilha:
+        nomes = [n for n in planilha.namelist() if n == "xl/sharedStrings.xml" or n.startswith("xl/worksheets/sheet")]
+        for nome in sorted(nomes):
+            xml = planilha.read(nome).decode("utf-8", errors="ignore")
+            # Textos (<t>) e, nas folhas, valores numéricos e datas (<v>).
+            partes.extend(unescape(t) for t in re.findall(r"<t[^>]*>([^<]*)</t>", xml) if t.strip())
+            if nome != "xl/sharedStrings.xml":
+                partes.extend(re.findall(r'<c [^>]*?(?<!t="s")>(?:<f>[^<]*</f>)?<v>([^<]+)</v>', xml))
+    return "\n".join(partes).strip()
+
+
 def extrair_documento(caminho: Path) -> dict:
     caminho = Path(caminho)
     registro = {"arquivo": caminho.name, "caminho": str(caminho), "texto": "", "erro": ""}
@@ -61,9 +79,11 @@ def extrair_documento(caminho: Path) -> dict:
             registro["texto"] = _texto_pdf(caminho)
         elif extensao == ".docx":
             registro["texto"] = _texto_docx(caminho)
+        elif extensao == ".xlsx":
+            registro["texto"] = _texto_xlsx(caminho)
         else:
             registro["erro"] = "formato sem extração de texto nesta versão"
-        if extensao in {".pdf", ".docx"} and not registro["texto"]:
+        if extensao in {".pdf", ".docx", ".xlsx"} and not registro["texto"]:
             registro["erro"] = registro["erro"] or "nenhum texto identificado no arquivo"
     except Exception as erro:
         registro["erro"] = str(erro)
@@ -75,6 +95,7 @@ def extrair_pasta(pasta: Path) -> list[dict]:
         return []
     saida = []
     for caminho in sorted(pasta.iterdir()):
-        if caminho.is_file() and caminho.suffix.lower() in {".pdf", ".docx", ".doc", ".odt"}:
+        # Todo arquivo da pasta entra: o que não tem leitura vira lacuna, não some.
+        if caminho.is_file():
             saida.append(extrair_documento(caminho))
     return saida

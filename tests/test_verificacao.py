@@ -47,6 +47,18 @@ class VerificacaoTeste(unittest.TestCase):
         situacoes = [item["situacao"] for item in verificar_eventos(eventos, analisar_conversa(chat), [])]
         self.assertEqual(situacoes, ["confirmado", "sem mensagem correspondente"])
 
+    def test_fato_sem_hora_sem_autor_e_de_foto(self):
+        eventos = [
+            _evento("2026-01-10", "00:00", "Ana Souza"),  # revisão sem hora grava 00:00
+            _evento("2026-01-10", "", ""),  # sem autor nem hora: não dá para conferir
+            _evento("2026-01-11", "", "", midias=["IMG-1.jpg"], ocorrencia="Trinca na base [fonte: foto, conferir]"),
+        ]
+        itens = verificar_eventos(eventos, analisar_conversa(CHAT), [], arquivos=["IMG-1.jpg"])
+        self.assertEqual(
+            [item["situacao"] for item in itens],
+            ["confirmado", "sem autor nem hora", "confirmado pela mídia"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
