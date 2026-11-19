@@ -38,7 +38,7 @@ class FolhasTeste(unittest.TestCase):
             self.assertEqual([f.name for f in folhas], ["folha-01.jpg", "folha-02.jpg"])
             indice = json.loads((obra / "04-transcricoes" / "folhas-de-contato" / "indice.json").read_text(encoding="utf-8"))
             self.assertEqual(len(indice["folha-01.jpg"]), 12)
-            self.assertEqual(indice["folha-01.jpg"][0]["data"], "01/01/2026")
+            self.assertEqual(indice["folha-01.jpg"][0]["data"], "01/01/2026 (nome do arquivo)")  # sem mensagem: a data vem do nome, marcada
             self.assertTrue(indice["folha-02.jpg"][-1]["video"])
 
 

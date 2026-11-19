@@ -132,6 +132,14 @@ class CacheTeste(unittest.TestCase):
         resultados = transcrever_pasta(self.midias, self.saida)
         self.assertEqual([item["status"] for item in resultados], ["ok", "ok"])
 
+    def test_avisa_que_carregar_pode_levar_minutos_antes_de_carregar(self):
+        # Carregar o modelo leva minutos sem nenhuma linha nova: parece travado sem este aviso.
+        linhas: list[str] = []
+        transcrever_pasta(self.midias, self.saida, progresso=linhas.append)
+        self.assertTrue(linhas)
+        self.assertIn("pode levar alguns minutos", linhas[0])
+        self.assertIn("não travou", linhas[0])
+
 
 if __name__ == "__main__":
     unittest.main()

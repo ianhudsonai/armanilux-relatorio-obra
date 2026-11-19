@@ -196,6 +196,30 @@ def mostrar_no_explorer(arquivo: Path) -> None:
         subprocess.Popen(["xdg-open", str(arquivo.parent)])
 
 
+def _datas_dos_anexos(mensagens) -> dict[str, str]:
+    """Nome do arquivo (como ficou em 03-midias) -> data da primeira mensagem que o anexou."""
+    from common import formatar_data
+
+    datas: dict[str, str] = {}
+    for mensagem in mensagens:
+        for anexo in mensagem.anexos:
+            datas.setdefault(nome_seguro(anexo), formatar_data(mensagem.data.isoformat()))
+    return datas
+
+
+def _avisar_se_cortada(mensagens) -> None:
+    from analyze import exportacao_parece_cortada
+    from common import formatar_data
+
+    if exportacao_parece_cortada(mensagens):
+        print(
+            f"Aviso: a conversa parece cortada. Ela começa em {formatar_data(mensagens[0].data.isoformat())}, "
+            "sem o aviso de criptografia nem a criação do grupo. O WhatsApp corta conversas muito grandes "
+            "(cerca de 10 mil mensagens com mídia, 40 mil sem mídia). Se o grupo começou antes, exporte de novo "
+            "sem mídia. O relatório registra isso como lacuna."
+        )
+
+
 def _avisar_prazos(analise: dict) -> None:
     """Prazo precisa de fonte escrita antes do período que ele mede; senão não prova a regra da época."""
     from common import formatar_data
@@ -550,6 +574,7 @@ def executar(argv: list[str] | None = None) -> int:
     if conversa and conversa.is_file():
         mensagens = ler_conversa(conversa)
         print(f"Conversa usada: {conversa.name}")
+    _avisar_se_cortada(mensagens)
 
     documentos = extrair_pasta(pasta_obra / "02-projetos-pdf")
     relogio.marca(f"{len(documentos)} documentos lidos")
@@ -567,7 +592,7 @@ def executar(argv: list[str] | None = None) -> int:
     try:
         from folhas_de_contato import gerar as gerar_folhas
 
-        folhas = gerar_folhas(pasta_obra)
+        folhas = gerar_folhas(pasta_obra, _datas_dos_anexos(mensagens))
         if folhas:
             print(f"Folhas de contato para revisar as imagens: {len(folhas)} (em 04-transcricoes/folhas-de-contato).")
     except Exception as erro:
