@@ -54,7 +54,9 @@ class EntregaTeste(unittest.TestCase):
             run_pipeline.executar(["--rebuild-only", "--obra-dir", str(obra)])
             self.assertTrue((relatorios / "Relatorio-Cronologico-Obra-1001-v1.docx").exists())
             run_pipeline.executar(["--rebuild-only", "--obra-dir", str(obra)])
-            self.assertTrue((relatorios / "Relatorio-Cronologico-Obra-1001-v2.docx").exists())
+            # Remontar depois de revisado regrava o mesmo v1; v2 só com conversa nova.
+            self.assertFalse((relatorios / "Relatorio-Cronologico-Obra-1001-v2.docx").exists())
+            self.assertEqual(sorted(p.name for p in relatorios.glob("*.docx")), ["Relatorio-Cronologico-Obra-1001-v1.docx"])
 
     def test_rascunho_aberto_no_word_nao_derruba(self):
         with TemporaryDirectory() as temporario:
