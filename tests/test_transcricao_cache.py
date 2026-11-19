@@ -98,7 +98,33 @@ class CacheTeste(unittest.TestCase):
         (self.midias / "PTT-2.opus").write_bytes(b"audio novo")
         linhas: list[str] = []
         self._rodar(TranscritorFalso(), progresso=linhas.append)
-        self.assertEqual(linhas, ["Transcrevendo 2/3: PTT-2.opus"])
+        self.assertEqual(linhas, ["Transcrevendo 1/1: PTT-2.opus"])
+
+    def test_audio_e_video_com_o_mesmo_nome_guardam_cada_um_a_sua_fala(self):
+        (self.midias / "PTT-1.mp4").write_bytes(b"video com o mesmo nome")
+        primeiro = TranscritorFalso()
+        self._rodar(primeiro)
+        self.assertEqual(primeiro.chamados, ["PTT-1.mp4", "PTT-1.opus", "VID-1.mp4"])
+        textos = {item["arquivo"]: item["texto"] for item in self._rodar(TranscritorFalso())}
+        self.assertEqual(textos["PTT-1.mp4"], "fala de PTT-1.mp4")
+        self.assertEqual(textos["PTT-1.opus"], "fala de PTT-1.opus")
+
+    def test_cache_estragado_refaz_em_vez_de_confiar_no_txt(self):
+        self._rodar(TranscritorFalso())
+        (self.saida / "transcricoes-cache.json").write_text("[1, 2", encoding="utf-8")
+        segundo = TranscritorFalso()
+        self._rodar(segundo)
+        self.assertEqual(segundo.chamados, ["PTT-1.opus", "VID-1.mp4"])
+
+    def test_txt_sem_registro_depois_do_cache_existir_e_refeito(self):
+        # Ex.: o computador desligou no meio da gravação do .txt.
+        self._rodar(TranscritorFalso())
+        (self.midias / "PTT-2.opus").write_bytes(b"audio novo")
+        (self.saida / "PTT-2.txt").write_text("fala cort", encoding="utf-8")
+        segundo = TranscritorFalso()
+        resultados = self._rodar(segundo)
+        self.assertEqual(segundo.chamados, ["PTT-2.opus"])
+        self.assertEqual(resultados[1]["texto"], "fala de PTT-2.opus")
 
     def test_tudo_ja_transcrito_nao_carrega_o_whisper(self):
         self._rodar(TranscritorFalso())
