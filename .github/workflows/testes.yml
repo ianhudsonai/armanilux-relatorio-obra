@@ -27,7 +27,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Conferir que todas as bibliotecas fixas instalam neste Python
-        run: python -m pip install --dry-run --only-binary=:all: -r requirements.txt
+        run: python -m pip install --dry-run "--only-binary=:all:" -r requirements.txt
       - name: Instalar dependências de teste (as versões fixas, menos o faster-whisper)
         shell: bash
         run: |
