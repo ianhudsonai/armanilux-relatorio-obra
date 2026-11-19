@@ -1,7 +1,7 @@
 # HANDOFF — armanilux-relatorio-obra (2026-11-19)
 
 ## Estado atual
-Duas skills na `main` (PRs #5 a #15; 82 testes; skill instalada em `.claude/skills` é a 1.6): `preparar-projeto-armanilux` (perguntas + instalação) e `relatorio-cronologico-obra` (zip do WhatsApp → Word).
+Duas skills na `main` (PRs #5 a #17; 86 testes; skill instalada em `.claude/skills` é a 1.7): `preparar-projeto-armanilux` (perguntas + instalação) e `relatorio-cronologico-obra` (zip do WhatsApp → Word).
 Já funciona: busca automática do zip (nome com acento e parênteses), registro por SHA-256 (pendente → em andamento → relatório gerado → concluído), PDFs em ~25 s, transcrição local de áudio e vídeo, não duplica arquivos ao reprocessar, candidatos por etapa, folhas de contato (12 miniaturas por folha), capa, quadro-resumo, cores da marca, faixa "RASCUNHO NÃO REVISADO" até a revisão gravar `"revisado": true`.
 Teste real feito com uma obra de ~595 MB (pasta em `Documents\Armanilux\Relatorios-de-Obra\`, FORA do repo).
 
@@ -18,6 +18,8 @@ Teste real feito com uma obra de ~595 MB (pasta em `Documents\Armanilux\Relatori
 - Revisão completa da SKILL 1.4 feita na obra de teste (v11, sessão separada).
 - #14: a skill entrega o Word na conversa (`RELATORIO_WORD:` e `--mostrar`).
 - #15 (SKILL 1.6), três falhas da revisão do v11: fato acrescentado e depois editado não duplica; rascunho sai como `-vN-rascunho.docx` e é regravado a cada remontagem (vN só com `"revisado": true`); prazo escrito em "dias" usa `"unidade": "dias_corridos"`.
+- v12 da obra de teste: primeiro saiu com a instalação em dias corridos (fonte: orçamento enviado em 17/06/2026, DEPOIS da instalação de 09–15/06). Erro: a mensagem de 02/06/2026 dizia 5 dias úteis. Voltou para dias úteis (cumprido, 4 d.u.).
+- #17 (SKILL 1.7), para não repetir: `fonte_data` em cada prazo; fonte posterior ao início do período leva `*` no Word e "Aviso de prazo" na remontagem; vale a regra já escrita no início do período. No v12, 3 prazos de 6 d.u. levam `*` (só aparecem no orçamento de 17/06/2026, como regra geral).
 
 ## Decisões desta sessão
 - Seguir o `prompt.md` do Rogério; só melhorias pequenas, sem decidir nada por ele — pedido do Ian.
@@ -36,7 +38,7 @@ Teste real feito com uma obra de ~595 MB (pasta em `Documents\Armanilux\Relatori
 - Repo é PÚBLICO: nunca commitar nome de cliente, zip, conversa ou relatório real (`tests/test_skill.py` barra alguns nomes).
 
 ## Pendências (em ordem)
-1. Ian abrir o v11 e comparar com o PDF aprovado (8665.1 V3).
+1. Ian abrir o v12 e comparar com o PDF aprovado (8665.1 V3).
 2. Conferir se o v11 já usa as datas originais das mensagens coladas; se não, reprocessar a obra de teste do zip.
 3. Instalação: linha de colagem citando `$skill-installer` e as URLs `/tree/main/skills/<nome>` (README, AGENTS.md).
 4. Transcrição com cache por arquivo (não refazer tudo), e rodar em segundo plano.
