@@ -1,12 +1,11 @@
 # HANDOFF — armanilux-relatorio-obra (2026-11-19)
 
 ## Estado atual
-Duas skills na `main` (PRs #5 a #8 mergeados): `preparar-projeto-armanilux` (perguntas + instalação) e `relatorio-cronologico-obra` (zip do WhatsApp → Word).
+Duas skills na `main` (PRs #5 a #12 mergeados; 75 testes; skill instalada em `.claude/skills` é a 1.4): `preparar-projeto-armanilux` (perguntas + instalação) e `relatorio-cronologico-obra` (zip do WhatsApp → Word).
 Já funciona: busca automática do zip (nome com acento e parênteses), registro por SHA-256 (pendente → em andamento → relatório gerado → concluído), PDFs em ~25 s, transcrição local de áudio e vídeo, não duplica arquivos ao reprocessar, candidatos por etapa, folhas de contato (12 miniaturas por folha), capa, quadro-resumo, cores da marca, faixa "RASCUNHO NÃO REVISADO" até a revisão gravar `"revisado": true`.
 Teste real feito com uma obra de ~595 MB (pasta em `Documents\Armanilux\Relatorios-de-Obra\`, FORA do repo).
 
-### Sessão 2026-11-19 — 4 branches empilhadas, NÃO enviadas ao GitHub
-O push e o PR foram barrados pelo guarda de permissão (publicar exige o Ian). Ordem: `midia-oculta-e-reencaminhadas` → `graficos-legiveis` → `contexto-completo` → `relatorio-compacto` (cada uma parte da anterior; `relatorio-compacto` tem tudo). 75 testes passando. Skill instalada em `.claude/skills` é a 1.4.
+### Sessão 2026-11-19 — PRs #9 a #12, mergeados em ordem (squash) com CI verde no Ubuntu e no Windows
 - Pendências 2 e 3 feitas: nome do arquivo em "<Mídia oculta>" (64 na obra de teste) com "(arquivo não incluído na exportação)"; mensagem colada `[dd/mm, hh:mm] Nome:` vai para a data e o autor originais (25 mensagens, 5 blocos), sem esticar o período.
 - Pendência 4 feita: marco = primeiro registro de cada etapa; tabela e Figura 1 com um intervalo por marco + duração total, sem semáforo (52 barras → 9). Gráficos desenhados a 16,2 cm (letra não encolhe), Gantt sem borda vermelha.
 - Pedido do Ian (contexto): SKILL.md 1.3 manda ler a conversa inteira, todas as transcrições, documentos e imagens; seção "Lacunas de contexto" no Word; `verificacao.py` confere cada fato contra a conversa (grava `04-transcricoes/verificacao.md`); conferência independente de conteúdo por subagente antes de `revisado`. "Anexo de mídias" (tabela de nomes) virou "Registro fotográfico" (só imagens descritas). Planilha `.xlsx` passa a ser lida.
@@ -32,12 +31,11 @@ O push e o PR foram barrados pelo guarda de permissão (publicar exige o Ian). O
 - Repo é PÚBLICO: nunca commitar nome de cliente, zip, conversa ou relatório real (`tests/test_skill.py` barra alguns nomes).
 
 ## Pendências (em ordem)
-1. Ian liberar o push das 4 branches e abrir os PRs (ou mandar abrir); merge na ordem acima.
-2. Ian abrir o v10 e comparar com o PDF aprovado (8665.1 V3).
-3. Rodar a revisão completa da SKILL 1.4 na obra de teste (ler tudo, frases curtas, cores, leituras, diagnóstico em tópicos, prazos com `inicio`/`fim` por frente, conferência independente). Hoje o confronto usa o primeiro registro de cada etapa, que numa obra de várias frentes é aproximado (ex.: medição 29 d.u., entrega 126 d.u.). Reprocessar do zip para os eventos usarem as datas originais das mensagens coladas.
-4. Instalação: linha de colagem citando `$skill-installer` e as URLs `/tree/main/skills/<nome>` (README, AGENTS.md).
-5. Transcrição com cache por arquivo (não refazer tudo), e rodar em segundo plano.
-6. `analyze.py` ainda calcula textos automáticos antigos (`_impacto`, `_produtividade`, `_comentarios_etapa`, gargalos, responsabilidades) que o Word compacto não usa mais; limpar.
+1. Ian abrir o v10 e comparar com o PDF aprovado (8665.1 V3).
+2. Rodar a revisão completa da SKILL 1.4 na obra de teste (ler tudo, frases curtas, cores, leituras, diagnóstico em tópicos, prazos com `inicio`/`fim` por frente, conferência independente). Hoje o confronto usa o primeiro registro de cada etapa, que numa obra de várias frentes é aproximado (ex.: medição 29 d.u., entrega 126 d.u.). Reprocessar do zip para os eventos usarem as datas originais das mensagens coladas.
+3. Instalação: linha de colagem citando `$skill-installer` e as URLs `/tree/main/skills/<nome>` (README, AGENTS.md).
+4. Transcrição com cache por arquivo (não refazer tudo), e rodar em segundo plano.
+5. `analyze.py` ainda calcula textos automáticos antigos (`_impacto`, `_produtividade`, `_comentarios_etapa`, gargalos, responsabilidades) que o Word compacto não usa mais; limpar.
 
 ## Como rodar
 - Python: `C:\Users\EuSou\.armanilux-relatorio\venv\Scripts\python.exe` (config em `%USERPROFILE%\.armanilux-relatorio\config.json`).
