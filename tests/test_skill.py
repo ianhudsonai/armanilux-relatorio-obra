@@ -165,6 +165,26 @@ class SkillTeste(unittest.TestCase):
         self.assertNotIn("the claude command exists", leia_me.lower())
         self.assertIn("only into the app", leia_me.lower())
 
+    def test_skill_manda_confirmar_obra_e_cliente_antes_de_gerar(self):
+        texto = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        self.assertNotIn("Só pergunte se o script disser que não conseguiu", texto)
+        self.assertIn("certo?", texto)
+        self.assertIn('--indice 1 --obra "8977" --cliente', texto)
+
+    def test_comandos_longos_com_tempo_limite_longo_ou_em_segundo_plano(self):
+        preparar = RAIZ / "skills" / "preparar-projeto-armanilux"
+        for pasta in (SKILL, preparar):
+            texto = (pasta / "SKILL.md").read_text(encoding="utf-8")
+            self.assertIn("tempo limite", texto, pasta.name)
+            self.assertIn("segundo plano", texto, pasta.name)
+            self.assertIn("rode de novo", texto, pasta.name)
+
+    def test_coladas_descritas_como_aparecem_no_txt(self):
+        texto = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        coladas = next(linha for linha in texto.splitlines() if "**Mensagens coladas.**" in linha)
+        self.assertIn("[12:25, 03/07/2026] Nome:", coladas)
+        self.assertIn("analise.json", coladas)
+
     def test_acha_programa_instalado_pelo_winget_fora_do_path(self):
         import os
         import sys

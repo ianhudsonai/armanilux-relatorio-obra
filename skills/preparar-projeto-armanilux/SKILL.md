@@ -43,6 +43,8 @@ powershell -ExecutionPolicy Bypass -File "<pasta-desta-skill>\scripts\instalar.p
 
 O instalador prefere `winget install Python.Python.3.12 --scope user` e o mesmo escopo para o FFmpeg. O pip fica em `%USERPROFILE%\.armanilux-relatorio\venv`. Pode rodar de novo. Se já estiver instalado, só confere.
 
+O instalador pode levar de 10 a 40 minutos (bibliotecas e, com sim na pergunta 5, o download de cerca de 484 MB). Dê ao comando o tempo limite mais longo que o seu aplicativo permitir (60 minutos ou mais) ou rode em segundo plano e espere terminar. Se o aplicativo cortar o comando por tempo, rode de novo: o que já foi instalado fica, e ele continua.
+
 Se terminar com erro, explique em português e pare. Não mande a pessoa atrás de um arquivo.
 
 Quando terminar com código 0, releia o PATH na mesma sessão. Use o `PYTHON=` que o instalador imprimiu. Não peça para reiniciar o computador.

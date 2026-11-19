@@ -58,7 +58,11 @@ PYTHON SKILL/scripts/run_pipeline.py --listar
 
 O script procura em Downloads, Área de Trabalho (inclusive a do OneDrive) e na pasta da Armanilux, em subpastas também. Reconhece nome longo, com acento e parênteses, e confere o conteúdo: zip com conversa do WhatsApp, ou `.txt` solto. Conversa igual com outro nome (ou baixada duas vezes) é ignorada. Mostre à pessoa, como está, a lista numerada que o script imprimir, e pergunte por qual começar. Ela pode escolher uma, várias ou todas.
 
-Número da obra e cliente saem sozinhos do nome do arquivo e do grupo. Só pergunte se o script disser que não conseguiu, e então pergunte só isso e rode com `--obra` e `--cliente`.
+Número da obra e cliente são adivinhados pelo nome do arquivo e pelo grupo, e podem vir errados (o número do apartamento no lugar do da obra, uma frase no lugar do cliente). Eles vão para o nome da pasta e para a capa do relatório. Antes de gerar, para cada conversa escolhida, faça uma pergunta de sim ou não com o que a lista mostrou, por exemplo: "Obra 8977, cliente Família Souza, certo?". A linha `arquivo:` da lista ajuda a pessoa a conferir.
+
+- Sim: rode com `--indice`.
+- Não: pergunte o número da obra e o nome do cliente certos e rode uma conversa de cada vez, com os dois: `--indice 1 --obra "8977" --cliente "Família Souza"`.
+- O script disse que não conseguiu descobrir: pergunte só isso e rode do mesmo jeito.
 
 Gerar o relatório (uma conversa de cada vez, em lote):
 
@@ -87,7 +91,7 @@ PYTHON SKILL/scripts/run_pipeline.py --obra "1001" --cliente "Nome do cliente" -
 
 Os comandos do passo 2 já rodam o pipeline. Com `--zip CAMINHO` o pipeline roda direto num arquivo que a pessoa indicou. Se a pessoa pediu para entender os áudios, a primeira vez pode baixar cerca de 484 MB e ficar só neste computador. Se ela não quiser esperar, rode com `--skip-transcribe` e diga que o que foi falado ficou como dado não identificado.
 
-A transcrição demora: em obra com dezenas de áudios e vídeos passa de meia hora. Se o seu aplicativo permitir, rode o comando em segundo plano e, enquanto isso, comece a ler a conversa (passo 4). O pipeline mostra "Transcrevendo N/total: arquivo". Cada áudio ou vídeo é transcrito uma vez só: se o comando parar no meio, rode de novo e ele continua de onde parou. Com `--skip-transcribe`, o que já foi transcrito continua no relatório.
+A transcrição demora: em obra com dezenas de áudios e vídeos passa de meia hora. Antes de rodar o pipeline, dê ao comando o tempo limite mais longo que o seu aplicativo permitir (60 minutos ou mais) ou rode em segundo plano; senão o aplicativo pode cortar o comando no meio. Em segundo plano, enquanto isso, comece a ler a conversa (passo 4). O pipeline mostra "Transcrevendo N/total: arquivo". Cada áudio ou vídeo é transcrito uma vez só: se o comando parar no meio (inclusive por tempo limite), rode de novo e ele continua de onde parou. Com `--skip-transcribe`, o que já foi transcrito continua no relatório.
 
 Saídas:
 
@@ -108,7 +112,7 @@ Leia todo o material para entender a obra por completo; escreva um relatório cu
 Leia tudo antes de escrever. Não basta a lista de candidatos.
 
 - **Conversa inteira.** Leia o `.txt` de `01-conversas` do começo ao fim. Se o seu aplicativo permitir subagentes e a conversa for grande, divida por período (por exemplo, um subagente por trimestre) e peça a cada um: por data, os fatos de cada etapa com data, hora, autor e o trecho exato da mensagem; as pendências; quem é quem (empresa, função). Sem subagentes, leia você mesmo, em partes. `04-transcricoes/candidatos-por-etapa.md` serve de índice, não de limite.
-- **Mensagens coladas.** Linha com "(encaminhada no grupo por …)" é mensagem de outra conversa colada no grupo. A data do fato é a original; quem colou e quando está no fim da linha.
+- **Mensagens coladas.** No `.txt`, mensagem de outra conversa colada no grupo aparece como uma linha dentro da mensagem de quem colou, no formato `[12:25, 03/07/2026] Nome: texto` ou `[03/07, 12:25] Nome: texto`. A data, a hora e o autor do fato são os dessa linha (os originais); quem colou e quando é a mensagem em volta. No `analise.json`, o fato que veio de uma colada termina com "(encaminhada no grupo por … em …)".
 - **Áudios e vídeos.** Leia todas as transcrições em `analise.json` (`transcricoes`), não só as que parecem relevantes. Vídeo muitas vezes é o registro de uma visita ou de uma medição e traz a data e o fato que faltam no texto.
 - **Documentos.** Leia o texto de cada documento em `documentos_texto` (projetos, folhas de medição, cronogramas, memoriais). Documento sem texto (desenho técnico) aparece nas lacunas: se o seu aplicativo abre PDF, abra o arquivo em `02-projetos-pdf` e olhe; se não abre, deixe como lacuna.
 - **Imagens.** O pipeline monta `04-transcricoes/folhas-de-contato/folha-NN.jpg`: cada folha tem 12 miniaturas numeradas (fotos e um quadro de cada vídeo), com o nome do arquivo e a data. O `indice.json` da mesma pasta liga cada número ao arquivo. Olhe todas as folhas. Se o seu aplicativo permitir subagentes, distribua as folhas entre eles em paralelo, mesmo usando um modelo mais simples: cada um devolve só as imagens que mostram um fato da obra (trinca, base sem acabamento, frente sem liberação, peça instalada, desenho técnico), com o número, a data e o fato em uma frase. A descrição é para você, não para o relatório. Sem subagentes, olhe as folhas você mesmo. Se uma miniatura parecer importante e pequena demais, abra o arquivo original em `03-midias`.

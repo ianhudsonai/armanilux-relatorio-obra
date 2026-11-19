@@ -373,7 +373,13 @@ def _reconstruir(args, raiz: Path, config: dict | None) -> int:
         analise = completar_relato(analise)
         escrever_json(caminho, analise)
     _aplicar_preferencias(analise, config)
-    _gravar(pasta, analise, config, args.pdf, args.mostrar)
+    destino = _gravar(pasta, analise, config, args.pdf, args.mostrar)
+    try:
+        import registro
+
+        registro.anotar_remontagem(str(pasta), str(destino), _numero_da_versao(destino))
+    except Exception as erro:
+        print(f"Aviso: o relatório foi gravado, mas o registro local não atualizou: {erro}")
     return 0
 
 
@@ -640,6 +646,9 @@ def _processar_escolha(args, config: dict | None) -> int:
     if not shas:
         print("Nenhuma conversa escolhida.")
         return 2
+    if (args.obra or args.cliente) and len(shas) > 1:
+        print("Para corrigir o número da obra ou o cliente, escolha uma conversa de cada vez.")
+        return 2
     resultado = 0
     for posicao, sha in enumerate(shas, start=1):
         item = dados["exportacoes"][sha]
@@ -652,10 +661,13 @@ def _processar_escolha(args, config: dict | None) -> int:
         for opcao, ligada in (("--skip-transcribe", args.skip_transcribe), ("--skip-keyframes", args.skip_keyframes), ("--pdf", args.pdf), ("--mostrar", args.mostrar)):
             if ligada:
                 argv.append(opcao)
-        if item.get("numero"):
-            argv += ["--obra", item["numero"]]
-        if item.get("cliente"):
-            argv += ["--cliente", item["cliente"]]
+        # A pessoa confirmou ou corrigiu número e cliente: o que ela disse vale mais que o adivinhado.
+        numero = args.obra or item.get("numero")
+        cliente = args.cliente or item.get("cliente")
+        if numero:
+            argv += ["--obra", numero]
+        if cliente:
+            argv += ["--cliente", cliente]
         try:
             codigo = executar(argv)
         except Exception as erro:

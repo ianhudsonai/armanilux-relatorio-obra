@@ -36,6 +36,8 @@ _PREFIXO = re.compile(
 _PAREN = re.compile(r"\(([^)]*)\)")
 # 8977, 8977.1 ou 8977.1.v10. A parte ".vN" é versão do grupo, não da obra.
 _NUMERO = re.compile(r"\b(\d{3,}(?:\.\d+)*)(?:\.v\d+)?\b", re.IGNORECASE)
+# "apto 302 - Obra 8977": o número depois de "Obra" é o da obra.
+_NUMERO_DA_OBRA = re.compile(r"\bobra\s*(\d{3,}(?:\.\d+)*(?:\.v\d+)?)\b", re.IGNORECASE)
 
 
 def normalizar_nome(nome: str) -> str:
@@ -64,9 +66,9 @@ def _do_nome(nome_arquivo: str) -> tuple[str, str]:
     entre_parenteses = _PAREN.findall(base)
     sem_parenteses = _PAREN.sub(" ", base)
     numero = ""
-    achado = _NUMERO.search(sem_parenteses)
+    achado = _NUMERO_DA_OBRA.search(sem_parenteses) or _NUMERO.search(sem_parenteses)
     if achado:
-        numero = chave_obra(achado.group(0))
+        numero = chave_obra(achado.group(achado.lastindex or 0))
         resto = sem_parenteses.replace(achado.group(0), " ", 1)
     else:
         resto = sem_parenteses
