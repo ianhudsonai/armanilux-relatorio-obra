@@ -63,8 +63,8 @@ O WhatsApp do Windows **não exporta** a conversa. A exportação é no celular.
 
 ## Se algo der errado
 
-- A instalação parou com erro: leia a última frase na conversa do Codex. Sem internet, ela não termina. Peça o relatório de novo quando a rede voltar. Repetir não estraga o que já foi instalado.
-- "Não encontrei o winget": instale o "Instalador de Aplicativo" pela Microsoft Store e peça o relatório outra vez.
+- A instalação parou com erro: leia a última frase na conversa do Codex. Sem internet, ela não termina. Peça a preparação de novo quando a rede voltar. Repetir não estraga o que já foi instalado.
+- "Não encontrei o winget": instale o "Instalador de Aplicativo" pela Microsoft Store e peça a preparação outra vez.
 - A skill não aparece no Codex: feche e abra o Codex. Confira se está em **Este computador**, não em Cloud.
 - O Codex pede aprovação para usar a rede ou para rodar um comando: aprove. No dia a dia não precisa de internet, salvo a primeira vez em que ele baixa o que precisa para entender os áudios.
 - Não saiu transcrição: o Word continua válido. A fala fica marcada como `dado não identificado`.

@@ -10,7 +10,7 @@ metadata:
 
 # Relatório Cronológico de Obra
 
-Gere um Relatório Cronológico de Obra da Armanilux, em português do Brasil, formal, sem emoji. O entregável é um `.docx` na pasta `05-relatorios`. Não existe etapa K. Não envie áudio, vídeo, foto ou conversa para API de nuvem. Transcrição, feriados e o Word saem dos scripts desta pasta, neste computador.
+Gere um Relatório Cronológico de Obra da Armanilux, em português do Brasil, formal, sem emoji. O entregável é um `.docx` na pasta `05-relatorios`. Não existe etapa K. Não mande áudio, vídeo, foto ou conversa para outro serviço na internet (de transcrição, tradução ou armazenamento): transcrição, feriados e o Word saem dos scripts desta pasta, neste computador. O que você mesmo lê para revisar passa pelo aplicativo em que você roda; o preparo já avisou a pessoa.
 
 Leia, antes de redigir ou corrigir o texto:
 
