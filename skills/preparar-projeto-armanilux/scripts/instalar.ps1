@@ -49,7 +49,7 @@ function Acrescentar-CaminhoUsuario($diretorio) {
 
 function Winget-Instalar($id) {
     if (-not (Comando-Existe "winget")) {
-        Write-Host "Não encontrei o winget. Na Microsoft Store, instale o 'Instalador de Aplicativo' e peça o relatório de novo."
+        Write-Host "Não encontrei o winget. Na Microsoft Store, instale o 'Instalador de Aplicativo' e peça a preparação de novo."
         exit 1
     }
     Escrever-Aviso "Instalando $id para o seu usuário (sem administrador, quando o Windows permite)."
@@ -69,32 +69,36 @@ function Winget-Instalar($id) {
     }
 }
 
+# Devolve o primeiro Python 3.10 a 3.13 deste computador (3.12 primeiro), ou $null.
 function Achar-Python {
     Atualizar-Caminho
-    $candidatos = @(
-        (Join-Path $env:LOCALAPPDATA "Programs\Python\Python312\python.exe"),
-        (Join-Path $env:LOCALAPPDATA "Programs\Python\Python313\python.exe")
-    )
-    foreach ($candidato in $candidatos) {
-        if (Test-Path $candidato) { return $candidato }
+    $candidatos = @()
+    foreach ($pasta in "Python312", "Python313", "Python311", "Python310") {
+        $exe = Join-Path $env:LOCALAPPDATA "Programs\Python\$pasta\python.exe"
+        if (Test-Path $exe) { $candidatos += $exe }
     }
     if (Comando-Existe "py") {
-        $saida = & py -3.12 -c "import sys; print(sys.executable)" 2>$null
-        if ($LASTEXITCODE -eq 0 -and $saida) { return "$saida".Trim() }
-        $saida = & py -3 -c "import sys; print(sys.executable)" 2>$null
-        if ($LASTEXITCODE -eq 0 -and $saida) { return "$saida".Trim() }
+        foreach ($versao in "-3.12", "-3.13", "-3.11", "-3.10") {
+            $saida = & py $versao -c "import sys; print(sys.executable)" 2>$null
+            if ($LASTEXITCODE -eq 0 -and $saida) { $candidatos += "$saida".Trim() }
+        }
     }
-    if (Comando-Existe "python") {
-        return (Get-Command python).Source
+    if (Comando-Existe "python") { $candidatos += (Get-Command python).Source }
+    foreach ($candidato in $candidatos) {
+        if (Python-Serve $candidato) { return $candidato }
     }
     return $null
 }
 
+# Só 3.10 a 3.13: as versões fixas de requirements.txt foram testadas nelas.
+# Python mais novo pode ainda não ter as bibliotecas prontas, e o pip pararia no meio.
 function Python-Serve($exe) {
     if (-not $exe) { return $false }
     $nota = & $exe -c "import sys; print(sys.version_info[0] * 100 + sys.version_info[1])" 2>$null
     if ($LASTEXITCODE -ne 0) { return $false }
-    return ([int]"$nota".Trim()) -ge 310
+    $numero = 0
+    if (-not [int]::TryParse("$nota".Trim(), [ref]$numero)) { return $false }
+    return ($numero -ge 310 -and $numero -le 313)
 }
 
 function Achar-Ffmpeg {
@@ -118,7 +122,7 @@ if (-not (Python-Serve $python)) {
     $python = Achar-Python
 }
 if (-not (Python-Serve $python)) {
-    Write-Host "O Python 3.10 ou mais novo não ficou disponível depois da instalação."
+    Write-Host "O Python 3.12 não ficou disponível depois da instalação."
     exit 1
 }
 Escrever-Ok "Python: $python"
@@ -140,6 +144,17 @@ if ($ffmpeg) {
 
 $venv = Join-Path $env:USERPROFILE ".armanilux-relatorio\venv"
 $venvPython = Join-Path $venv "Scripts\python.exe"
+if ((Test-Path $venv) -and -not (Python-Serve $venvPython)) {
+    # Ambiente de um Python fora de 3.10-3.13, ou quebrado: fica guardado ao lado, nada é apagado.
+    $guardado = "venv-antigo-" + (Get-Date -Format "yyyyMMdd-HHmmss")
+    Escrever-Aviso "O ambiente Python antigo não serve mais. Guardei como $guardado e vou criar outro."
+    try {
+        Rename-Item -Path $venv -NewName $guardado -ErrorAction Stop
+    } catch {
+        Write-Host "Não consegui guardar o ambiente antigo em $venv. Feche os programas que estejam usando o Python da Armanilux e peça a preparação de novo."
+        exit 1
+    }
+}
 if (-not (Test-Path $venvPython)) {
     Escrever-Titulo "Criando o ambiente Python da Armanilux..."
     & $python -m venv $venv
@@ -164,7 +179,7 @@ Escrever-Titulo "Instalando bibliotecas neste computador..."
 & $venvPython -m pip install --upgrade pip
 & $venvPython -m pip install -r $requisitos
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "A instalação das bibliotecas falhou. Confira a internet e peça o relatório de novo."
+    Write-Host "A instalação das bibliotecas falhou. Confira a internet e peça a preparação de novo."
     exit 1
 }
 

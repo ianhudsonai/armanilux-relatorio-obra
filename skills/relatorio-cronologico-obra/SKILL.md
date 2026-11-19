@@ -10,7 +10,7 @@ metadata:
 
 # Relatório Cronológico de Obra
 
-Gere um Relatório Cronológico de Obra da Armanilux, em português do Brasil, formal, sem emoji. O entregável é um `.docx` na pasta `05-relatorios`. Não existe etapa K. Não envie áudio, vídeo, foto ou conversa para API de nuvem. Transcrição, feriados e o Word saem dos scripts desta pasta, neste computador.
+Gere um Relatório Cronológico de Obra da Armanilux, em português do Brasil, formal, sem emoji. O entregável é um `.docx` na pasta `05-relatorios`. Não existe etapa K. Não mande áudio, vídeo, foto ou conversa para outro serviço na internet (de transcrição, tradução ou armazenamento): transcrição, feriados e o Word saem dos scripts desta pasta, neste computador. O que você mesmo lê para revisar passa pelo aplicativo em que você roda; o preparo já avisou a pessoa.
 
 Leia, antes de redigir ou corrigir o texto:
 
@@ -85,7 +85,7 @@ Se a lista vier vazia, explique como exportar no celular: grupo, nome do grupo, 
 PYTHON SKILL/scripts/run_pipeline.py --obra "1001" --cliente "Nome do cliente" --zip "CAMINHO-DO-ZIP"
 ```
 
-Os comandos do passo 2 já rodam o pipeline. Com `--zip CAMINHO` o pipeline roda direto num arquivo que a pessoa indicou. Se a pessoa pediu para entender os áudios, a primeira vez pode baixar cerca de 484 MB e ficar só neste computador. Se ela não quiser esperar, rode com `--skip-transcribe` e diga que o que foi falado ficou como dado não identificado.
+Os comandos do passo 2 já rodam o pipeline. Com `--zip CAMINHO` o pipeline roda direto num arquivo que a pessoa indicou. O script segue a resposta do preparo sobre os áudios (`baixar_modelo_whisper` no config.json). Com sim, a primeira vez pode baixar cerca de 484 MB, que ficam só neste computador; se a pessoa não quiser esperar, rode com `--skip-transcribe`. Com não, o script não transcreve nem baixa nada e avisa; se a pessoa mudar de ideia, rode de novo com `--transcrever`. Sem transcrição, diga que o que foi falado ficou como dado não identificado.
 
 A transcrição demora: em obra com dezenas de áudios e vídeos passa de meia hora. Se o seu aplicativo permitir, rode o comando em segundo plano e, enquanto isso, comece a ler a conversa (passo 4). O pipeline mostra "Transcrevendo N/total: arquivo". Cada áudio ou vídeo é transcrito uma vez só: se o comando parar no meio, rode de novo e ele continua de onde parou. Com `--skip-transcribe`, o que já foi transcrito continua no relatório.
 

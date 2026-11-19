@@ -419,6 +419,7 @@ def executar(argv: list[str] | None = None) -> int:
     parser.add_argument("--chat", default=None)
     parser.add_argument("--downloads", default=None)
     parser.add_argument("--skip-transcribe", action="store_true")
+    parser.add_argument("--transcrever", action="store_true", help="Transcreve os áudios mesmo que o preparo tenha escolhido não")
     parser.add_argument("--skip-keyframes", action="store_true")
     parser.add_argument("--whisper-model", default="small")
     parser.add_argument("--rebuild-only", action="store_true")
@@ -572,13 +573,20 @@ def executar(argv: list[str] | None = None) -> int:
     except Exception as erro:
         print(f"Aviso: não consegui montar as folhas de contato: {erro}")
     relogio.marca("vídeos vistos")
+    pular, por_escolha = _pular_transcricao(args, config)
     transcricoes = transcrever_pasta(
         pasta_obra / "03-midias",
         pasta_obra / "04-transcricoes",
-        pular=args.skip_transcribe,
+        pular=pular,
         modelo=args.whisper_model,
         progresso=lambda linha: print(linha, flush=True),
     )
+    if por_escolha and any(item["status"] == "ignorado" for item in transcricoes):
+        print(
+            "Os áudios e vídeos não foram transcritos: no preparo, a pessoa escolheu não entender os áudios, "
+            "e nada foi baixado. Se ela quiser agora, rode de novo com --transcrever "
+            "(na primeira vez baixa cerca de 484 MB, que ficam só neste computador)."
+        )
     if transcricoes and all(item["status"] != "ok" for item in transcricoes):
         print("Transcrição local não executada. A fala dos áudios fica como dado não identificado.")
 
@@ -616,6 +624,17 @@ def executar(argv: list[str] | None = None) -> int:
     print("Análise gravada em:")
     print(caminho_json)
     return 0
+
+
+def _pular_transcricao(args, config: dict | None) -> tuple[bool, bool]:
+    """(pular, pulou pela escolha do preparo). "Não" na pergunta dos áudios vale aqui:
+    sem isso, o primeiro relatório baixaria os 484 MB que a pessoa recusou."""
+    if args.skip_transcribe:
+        return True, False
+    if args.transcrever or config is None:
+        return False, False
+    recusou = not config.get("baixar_modelo_whisper")
+    return recusou, recusou
 
 
 def _listar(config: dict | None, downloads: str | None) -> int:
@@ -668,7 +687,7 @@ def _processar_escolha(args, config: dict | None) -> int:
         for opcao, valor in (("--workspace", args.workspace), ("--downloads", args.downloads)):
             if valor:
                 argv += [opcao, valor]
-        for opcao, ligada in (("--skip-transcribe", args.skip_transcribe), ("--skip-keyframes", args.skip_keyframes), ("--pdf", args.pdf), ("--mostrar", args.mostrar)):
+        for opcao, ligada in (("--skip-transcribe", args.skip_transcribe), ("--transcrever", args.transcrever), ("--skip-keyframes", args.skip_keyframes), ("--pdf", args.pdf), ("--mostrar", args.mostrar)):
             if ligada:
                 argv.append(opcao)
         if item.get("numero"):

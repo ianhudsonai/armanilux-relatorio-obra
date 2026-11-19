@@ -15,7 +15,7 @@ Depois, para cada obra, escreva `$relatorio-cronologico-obra` ou `faz o relatór
 
 Esta pasta ensina o computador a ler o grupo de WhatsApp de uma obra e entregar um **Relatório Cronológico de Obra** em Word. O relatório segue as etapas A, B, C, D, E, F, G, H, I, J e L (não existe etapa K), com dias úteis de São Paulo e as fotos, áudios e vídeos citados pelo nome.
 
-Tudo roda **neste computador**. A conversa não vai para um serviço de transcrição na internet.
+Os áudios e os vídeos viram texto **neste computador**, sem serviço de transcrição na internet. Para escrever o relatório, o ChatGPT (Codex) lê a conversa, o texto dos áudios, os documentos e as fotos da obra. Veja **Privacidade**, mais abaixo.
 
 O exemplo que vem junto é inventado (Obra 1001, Família Almeida). Não é cliente real.
 
@@ -63,8 +63,8 @@ O WhatsApp do Windows **não exporta** a conversa. A exportação é no celular.
 
 ## Se algo der errado
 
-- A instalação parou com erro: leia a última frase na conversa do Codex. Sem internet, ela não termina. Peça o relatório de novo quando a rede voltar. Repetir não estraga o que já foi instalado.
-- "Não encontrei o winget": instale o "Instalador de Aplicativo" pela Microsoft Store e peça o relatório outra vez.
+- A instalação parou com erro: leia a última frase na conversa do Codex. Sem internet, ela não termina. Peça a preparação de novo quando a rede voltar. Repetir não estraga o que já foi instalado.
+- "Não encontrei o winget": instale o "Instalador de Aplicativo" pela Microsoft Store e peça a preparação outra vez.
 - A skill não aparece no Codex: feche e abra o Codex. Confira se está em **Este computador**, não em Cloud.
 - O Codex pede aprovação para usar a rede ou para rodar um comando: aprove. No dia a dia não precisa de internet, salvo a primeira vez em que ele baixa o que precisa para entender os áudios.
 - Não saiu transcrição: o Word continua válido. A fala fica marcada como `dado não identificado`.
@@ -72,6 +72,10 @@ O WhatsApp do Windows **não exporta** a conversa. A exportação é no celular.
 - O nome de um arquivo apareceu com letras trocadas (`Ã`, `├`): o script tenta corrigir. Se um anexo importante não entrou, diga o nome do arquivo na conversa do Codex.
 
 ## Privacidade
+
+Os áudios e os vídeos viram texto aqui mesmo, no computador. Mas quem escreve e confere o relatório é o ChatGPT (Codex): ele lê a conversa da obra, o texto dos áudios, os documentos e as fotos, e esse material passa pelos servidores da OpenAI, como qualquer conversa no ChatGPT.
+
+Antes da primeira obra, no ChatGPT, abra **Configurações**, depois **Controles de dados**, e desligue **Melhorar o modelo para todos**. Assim as conversas das obras não são usadas para treinar o modelo.
 
 A obra tem nome de cliente e conversa interna. O Word fica na pasta do computador. Não publique esse arquivo num link aberto. Este repositório no GitHub é **público**: nunca coloque aqui zip, conversa ou relatório de obra real. O exemplo da pasta `examples` é fictício.
 

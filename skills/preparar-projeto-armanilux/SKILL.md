@@ -41,7 +41,7 @@ $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Env
 powershell -ExecutionPolicy Bypass -File "<pasta-desta-skill>\scripts\instalar.ps1"
 ```
 
-O instalador prefere `winget install Python.Python.3.12 --scope user` e o mesmo escopo para o FFmpeg. O pip fica em `%USERPROFILE%\.armanilux-relatorio\venv`. Pode rodar de novo. Se já estiver instalado, só confere.
+O instalador aceita um Python 3.10 a 3.13 que já exista; fora disso, instala com `winget install Python.Python.3.12 --scope user`, e o mesmo escopo para o FFmpeg. O pip fica em `%USERPROFILE%\.armanilux-relatorio\venv`, com as versões fixas de `scripts/requirements.txt`; um ambiente antigo de outro Python é guardado ao lado como `venv-antigo-<data>` e refeito. Pode rodar de novo. Se já estiver instalado, só confere.
 
 Se terminar com erro, explique em português e pare. Não mande a pessoa atrás de um arquivo.
 
@@ -62,3 +62,5 @@ Isso grava `config.json`, cria a pasta escolhida, `Relatorios-de-Obra\_modelo` c
 ## 4. Encerrar
 
 Diga onde ficou a pasta, o nome que vai no relatório e como o relatório vai ser entregue (Word, PDF ou link, com a pasta da nuvem). Diga que, para cada obra, o próximo chat usa `$relatorio-cronologico-obra`.
+
+Diga também, curto e sem esconder: os áudios e os vídeos viram texto neste computador, mas para escrever o relatório o ChatGPT lê a conversa da obra, o texto dos áudios, os documentos e as fotos. Peça para, no ChatGPT, abrir Configurações, Controles de dados, e desligar "Melhorar o modelo para todos", para as conversas das obras não serem usadas no treino do modelo.
