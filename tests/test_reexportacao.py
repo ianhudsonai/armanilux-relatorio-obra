@@ -122,6 +122,20 @@ class ReexportacaoTeste(unittest.TestCase):
         self._remontar()
         self.assertTrue((self.relatorios / "Relatorio-Cronologico-Obra-1001-v1.docx").exists())
 
+    def test_revisado_sem_conferencia_rodar_grava_rascunho(self):
+        self._rodar(_zip(self.base / "export1" / "WhatsApp Chat - Obra 1001.zip", CHAT))
+        self._revisar()
+        for conversa in (self.obra / "01-conversas").glob("*.txt"):
+            conversa.rename(conversa.with_suffix(".bak"))
+
+        saida = io.StringIO()
+        with redirect_stdout(saida):
+            self._remontar()
+
+        self.assertFalse((self.relatorios / "Relatorio-Cronologico-Obra-1001-v1.docx").exists())
+        self.assertTrue((self.relatorios / "Relatorio-Cronologico-Obra-1001-v1-rascunho.docx").exists())
+        self.assertIn("conferência dos fatos não rodou", saida.getvalue())
+
     def test_conversa_nova_de_obra_revisada_volta_a_ser_rascunho_com_os_fatos_da_revisao(self):
         self._rodar(_zip(self.base / "export1" / "WhatsApp Chat - Obra 1001.zip", CHAT))
         self._revisar()

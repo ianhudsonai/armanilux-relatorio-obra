@@ -223,17 +223,9 @@ def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_
     gantt = grafico_gantt(analise.get("eventos") or [], figuras / "gantt.png")
     pasta = pasta_obra / "05-relatorios"
     numero = analise["obra"].get("numero") or "sem-numero"
+    if analise.get("revisado") and not _final_liberada(problemas):
+        analise = {**analise, "revisado": False}  # só para este Word: a faixa RASCUNHO vem de "revisado"
     rascunho = not analise.get("revisado")
-    if not rascunho and problemas:
-        # "revisado": true não basta: a versão final só sai com a conferência sem pendência.
-        fatos = "1 fato não bate" if problemas == 1 else f"{problemas} fatos não batem"
-        print(
-            f"O analise.json está com \"revisado\": true, mas {fatos} com o grupo "
-            "(lista em 04-transcricoes/verificacao.md). Gravei rascunho, não a versão final. "
-            "Corrija ou tire cada item da lista e remonte."
-        )
-        rascunho = True
-        analise = {**analise, "revisado": False}  # a faixa RASCUNHO vem de "revisado"
     versao = analise.get("versao")
     copia = 1
     while True:
@@ -288,6 +280,21 @@ def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_
         except Exception as erro:  # abrir a pasta ajuda, mas não pode derrubar o relatório
             print(f"Aviso: não consegui abrir a pasta: {erro}")
     return destino
+
+
+def _final_liberada(problemas: int | None) -> bool:
+    """Com "revisado": true, a versão final só sai se a conferência rodou e não achou pendência."""
+    if problemas == 0:
+        return True
+    if problemas is None:
+        motivo = "a conferência dos fatos não rodou"
+        pedido = "Confira se a conversa está em 01-conversas e remonte."
+    else:
+        fatos = "1 fato não bate" if problemas == 1 else f"{problemas} fatos não batem"
+        motivo = f"{fatos} com o grupo (lista em 04-transcricoes/verificacao.md)"
+        pedido = "Corrija ou tire cada item da lista e remonte."
+    print(f"O analise.json está com \"revisado\": true, mas {motivo}. Gravei rascunho, não a versão final. {pedido}")
+    return False
 
 
 def _numero_da_versao(arquivo: Path) -> int:
