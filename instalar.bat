@@ -2,7 +2,7 @@
 cd /d "%~dp0"
 echo.
 echo Armanilux - este atalho e opcional.
-echo O jeito normal e colar o link do repositorio no Codex e escrever: instale as skills
+echo O jeito normal e colar no Codex as tres linhas do comeco do README.
 echo Se o Windows pedir permissao, clique em Sim.
 echo.
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0skills\preparar-projeto-armanilux\scripts\instalar.ps1"

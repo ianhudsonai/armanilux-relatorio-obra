@@ -1,10 +1,14 @@
 # Instalar as skills da Armanilux
 
-A pessoa cola uma linha só:
+A pessoa cola isto:
 
 ```text
-https://github.com/ianhudsonai/armanilux-relatorio-obra instale as skills
+$skill-installer instale estas skills:
+https://github.com/ianhudsonai/armanilux-relatorio-obra/tree/main/skills/preparar-projeto-armanilux
+https://github.com/ianhudsonai/armanilux-relatorio-obra/tree/main/skills/relatorio-cronologico-obra
 ```
+
+Versões antigas do README mandavam colar só `https://github.com/ianhudsonai/armanilux-relatorio-obra instale as skills`. Se vier assim, faça o mesmo.
 
 Faça as duas skills. Fale com ela em português.
 
@@ -20,6 +24,7 @@ Skills:
 Conferido no script `install-skill-from-github.py` do `$skill-installer` (openai/skills, pasta `skills/.system/skill-installer/scripts`, branch main):
 
 - Um endereço só com `https://github.com/dono/repo`, sem caminho interno, faz o script parar com `Missing --path for GitHub URL.` Ele não descobre sozinho a pasta `skills/`.
+- `--url` com `/tree/main/skills/<nome>` instala uma skill por execução. Com os dois endereços da linha de colagem, rode uma vez para cada um, ou use o comando abaixo.
 - `--path` aceita vários caminhos na mesma execução. O nome da skill é o nome da pasta.
 - Para listar antes: `list-skills.py --repo ianhudsonai/armanilux-relatorio-obra --path skills`
 - Se a pasta de destino já existir, essa skill não é reinstalada. Apague a pasta antiga ou use outro destino só se a pessoa pedir para reinstalar.
