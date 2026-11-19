@@ -39,6 +39,7 @@ CHAVES_PRESERVAR = (
     "gargalos_personalizados",
     "responsabilidades_personalizadas",
     "produtividade_personalizada",
+    "lacunas_adicionais",
 )
 
 

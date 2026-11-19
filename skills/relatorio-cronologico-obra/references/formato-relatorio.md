@@ -59,7 +59,11 @@ Lista numerada.
 
 ## 7. Conclusão
 
-Diagnóstico do fluxo, ponto crítico, impacto e uma recomendação final. Em seguida, o anexo de mídias (uma linha por arquivo relevante, mais as imagens que couberem) e a nota de rastreabilidade.
+Diagnóstico do fluxo, ponto crítico, impacto e uma recomendação final. Em seguida:
+
+- Registro fotográfico: só as fotos e quadros de vídeo que a revisão descreveu, em ordem de data, com legenda "data · Etapa X — o que a imagem mostra (arquivo)". Sem tabela de nomes de arquivo.
+- Lacunas de contexto: o que não pôde ser lido ou confirmado (arquivos fora da exportação, documentos sem texto, áudios sem transcrição e o que a revisão anotou).
+- Nota de rastreabilidade.
 
 ## Postura
 

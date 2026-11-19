@@ -4,7 +4,7 @@ description: Gera o Relatório Cronológico de Obra da Armanilux (etapas A a L, 
 license: MIT
 metadata:
   author: Armanilux
-  version: "1.2"
+  version: "1.3"
   idioma: pt-BR
 ---
 
@@ -99,39 +99,40 @@ O PDF só aparece se o LibreOffice estiver instalado. O arquivo que vale é o Wo
 
 A leitura automática é só um rascunho: num grupo grande ela deixa etapas vazias (chapas, medição, entrega, conclusão) e pode classificar errado. Esta revisão é obrigatória, não opcional. Não entregue o relatório sem ela.
 
-1. Abra `04-transcricoes/candidatos-por-etapa.md`. Ele lista, por etapa, as mensagens do grupo que provavelmente falam dela, em ordem de data. A lista é larga de propósito: confira cada mensagem e use só as que realmente marcam a etapa. Se precisar de mais contexto, procure a mensagem no `.txt` em `01-conversas`.
-2. Para cada fato real que faltou, acrescente em `eventos_adicionais` do `analise.json`:
+O objetivo é o relatório mais completo e mais correto que o material permite. Tudo o que entra precisa estar no grupo: numa mensagem, numa transcrição, num documento ou numa imagem. O que você não conseguiu ler ou confirmar não some do relatório: vira lacuna, escrita como lacuna.
+
+### 4.1 Ler todo o material
+
+Leia tudo antes de escrever. Não basta a lista de candidatos.
+
+- **Conversa inteira.** Leia o `.txt` de `01-conversas` do começo ao fim. Se o seu aplicativo permitir subagentes e a conversa for grande, divida por período (por exemplo, um subagente por trimestre) e peça a cada um: por data, os fatos de cada etapa com data, hora, autor e o trecho exato da mensagem; as pendências; quem é quem (empresa, função). Sem subagentes, leia você mesmo, em partes. `04-transcricoes/candidatos-por-etapa.md` serve de índice, não de limite.
+- **Mensagens coladas.** Linha com "(encaminhada no grupo por …)" é mensagem de outra conversa colada no grupo. A data do fato é a original; quem colou e quando está no fim da linha.
+- **Áudios e vídeos.** Leia todas as transcrições em `analise.json` (`transcricoes`), não só as que parecem relevantes. Vídeo muitas vezes é o registro de uma visita ou de uma medição e traz a data e o fato que faltam no texto.
+- **Documentos.** Leia o texto de cada documento em `documentos_texto` (projetos, folhas de medição, cronogramas, memoriais). Documento sem texto (desenho técnico) aparece nas lacunas: se o seu aplicativo abre PDF, abra o arquivo em `02-projetos-pdf` e olhe; se não abre, deixe como lacuna.
+- **Imagens.** O pipeline monta `04-transcricoes/folhas-de-contato/folha-NN.jpg`: cada folha tem 12 miniaturas numeradas (fotos e um quadro de cada vídeo), com o nome do arquivo e a data. O `indice.json` da mesma pasta liga cada número ao arquivo. Olhe todas as folhas. Se o seu aplicativo permitir subagentes, distribua as folhas entre eles em paralelo, mesmo usando um modelo mais simples: cada um devolve, por número, uma frase objetiva do que a imagem mostra e se ela é relevante para a obra (trinca, base sem acabamento, frente sem liberação, peça instalada, desenho técnico). Sem subagentes, olhe as folhas você mesmo. Se uma miniatura parecer importante e pequena demais, abra o arquivo original em `03-midias`.
+- **Arquivos fora da exportação.** O WhatsApp não exporta tudo. Mensagem `<Mídia oculta>` é arquivo que não veio no zip: o nome pode aparecer, o conteúdo não. Não deduza o conteúdo pelo nome.
+
+### 4.2 Registrar no `analise.json`
+
+1. Para cada fato real que faltou, acrescente em `eventos_adicionais` do `analise.json`:
 
 ```json
 {"data": "2026-01-13", "hora": "10:30", "etapa": "C", "autor": "Nome", "ocorrencia": "Medição in loco realizada na cozinha.", "impacto": ""}
 ```
 
-`impacto` só vale na etapa J. Etapa é uma letra de A a J ou L. Se a mensagem trouxer arquivo, ponha o nome em `midias` ou `documentos`.
-3. Para tirar um fato que a leitura automática classificou errado, use `ajustes_eventos` com `{"data": "2026-01-13", "hora": "10:30", "etapa_original": "J", "remover": true}`. Para só trocar a etapa, use `"etapa": "C"` no lugar de `remover`.
+`data`, `hora` e `autor` são os da mensagem, copiados do `.txt`: a conferência do passo 4.4 compara com a conversa. `impacto` só vale na etapa J. Etapa é uma letra de A a J ou L. Se a mensagem trouxer arquivo, ponha o nome em `midias` ou `documentos`. Fato que veio de áudio ou vídeo leva `midias` com o arquivo e a marca "[fonte: vídeo transcrito, conferir]" na ocorrência.
+2. Para tirar um fato que a leitura automática classificou errado, use `ajustes_eventos` com `{"data": "2026-01-13", "hora": "10:30", "etapa_original": "J", "remover": true}`. Para só trocar a etapa, use `"etapa": "C"` no lugar de `remover`.
+3. Para cada imagem que esclareça a obra, acrescente em `observacoes_visuais` `{"arquivo": "nome-do-arquivo.jpg", "observacao": "uma frase objetiva do que a imagem mostra"}`. Só imagem com observação entra no Registro fotográfico do Word. Se a imagem não mostrar nada útil, não invente: deixe sem observação.
 4. Confira também a lista de pendências (`pendencias`) e o endereço e demais campos de `obra`. Apague o que não for pendência de verdade.
 5. Não invente data nem fato. O que o grupo não diz fica `dado não identificado`. Não crie etapa K.
-6. O diagnóstico automático é genérico e não pode ficar como está num relatório revisado. Escreva, com fatos do grupo e datas, em `analise.json`:
+6. Seja honesto sobre o que faltou. `lacunas_automaticas` já traz o que o computador sabe que não leu. Acrescente em `lacunas_adicionais` o que você percebeu: etapa sem nenhum registro, documento citado e nunca enviado, decisão tomada fora do grupo ("conforme conversamos por telefone"), imagem ilegível, fala que a transcrição não pegou. Uma frase por lacuna, sem suposição.
+7. O diagnóstico automático é genérico e não pode ficar como está num relatório revisado. Escreva, com fatos do grupo e datas, em `analise.json`:
    - `diagnostico_prompt`: `{"reprocessos": "...", "tempos_ociosos": "...", "atrasos_internos": "...", "dependencias_externas": "..."}`, os quatro blocos que o prompt padrão exige. O que o grupo não sustenta fica `dado não identificado`.
    - `gargalos_personalizados`: lista de `{"titulo": "...", "texto": "..."}`.
    - `responsabilidades_personalizadas`: lista de `{"natureza": "...", "diagnostico": "..."}`.
    - `produtividade_personalizada`: um texto sobre o impacto da etapa J na produtividade.
    - `obra_ajustes`: campos de `obra` que o grupo não traz em formato fixo (`construtora`, `engenheiro`, `arquitetura`, `responsavel_armanilux`, `endereco`, `prazo_contratual`).
    - `pendencias_revisadas`: lista `{"item": "...", "status": "Pendente"}` com só as pendências reais.
-7. Só depois de revisar tudo isso, grave `"revisado": true` no `analise.json`. Sem isso o Word sai com a faixa vermelha "RASCUNHO NÃO REVISADO" no topo, de propósito, para ninguém enviar um relatório sem conferência.
-
-Não deixe imagem de lado. O pipeline monta `04-transcricoes/folhas-de-contato/folha-NN.jpg`: cada folha tem 12 miniaturas numeradas (fotos e um quadro de cada vídeo), com o nome do arquivo e a data. O `indice.json` da mesma pasta liga cada número ao arquivo.
-
-Olhe todas as folhas. Se o seu aplicativo permitir subagentes, distribua as folhas entre eles em paralelo, mesmo usando um modelo mais simples: cada um devolve, por número, uma frase objetiva do que a imagem mostra e se ela é relevante para a obra (trinca, base sem acabamento, frente sem liberação, peça instalada, desenho técnico). Sem subagentes, olhe as folhas você mesmo. Se uma miniatura parecer importante e pequena demais, abra o arquivo original em `03-midias`.
-
-Áudios e vídeos já vêm transcritos em `analise.json` (`transcricoes`). Leia as transcrições: muitas vezes o vídeo é o registro de uma visita ou de uma medição e traz a data e o fato que faltam no texto. Use o que for relevante em `eventos_adicionais`, com `midias` apontando para o arquivo e a marca "[fonte: vídeo transcrito, conferir]".
-
-Para cada imagem que esclareça a obra, acrescente em `observacoes_visuais`:
-
-```json
-{"arquivo": "nome-do-arquivo.jpg", "observacao": "uma frase objetiva do que a imagem mostra"}
-```
-
-Se a imagem não mostrar nada útil, não invente. A observação continua `dado não identificado`.
 
 Textos que você reescrever vão nestes campos, para o script não apagar na remontagem:
 
@@ -140,6 +141,23 @@ Textos que você reescrever vão nestes campos, para o script não apagar na rem
 - `conclusao_personalizada` — um texto só
 
 Postura do texto: formal, neutra, a favor do registro da Armanilux, sem acusar pessoa. Intervalo em dias úteis não é atraso atribuído. Reprocesso, espera e dependência de obra (marcenaria, contrapiso, ponto hidráulico, medição pendente) precisam aparecer separados.
+
+### 4.3 Remontar
+
+Remonte o Word com o comando do passo 5. Toda remontagem grava `04-transcricoes/verificacao.md`: o script confere cada fato contra a conversa (mesmo dia, mesma hora, mesmo autor) ou contra a mídia transcrita, e lista o que não bateu. Corrija cada item da lista no `analise.json` ou tire o fato. Remonte até a lista ficar vazia.
+
+### 4.4 Conferência independente
+
+A conferência do script só vê data, hora e autor. Ela não vê se o texto diz o que a mensagem diz. Antes de dar o relatório por revisado, faça uma conferência de conteúdo por alguém que não escreveu o texto:
+
+- Se o seu aplicativo permitir subagentes, abra um subagente novo, sem o contexto desta conversa. Entregue a ele só os caminhos de `analise.json`, do `.txt` da conversa e de `04-transcricoes`, com esta tarefa: "Para cada fato em `eventos` e cada frase de `diagnostico_prompt`, `gargalos_personalizados`, `responsabilidades_personalizadas`, `comentarios`, `recomendacoes_personalizadas` e `conclusao_personalizada`, ache no material a mensagem, transcrição ou documento que sustenta o que está escrito. Responda, item por item: sustentado (com data, hora e autor da fonte), não sustentado, ou diferente do que a fonte diz (com o que a fonte diz). Não corrija nada."
+- Sem subagentes, faça você mesmo uma segunda passada, item por item, procurando cada fato no `.txt`.
+
+Corrija ou tire tudo o que voltar como não sustentado ou diferente. O que não der para confirmar vira lacuna em `lacunas_adicionais`, não afirmação.
+
+### 4.5 Marcar como revisado
+
+Só depois de 4.1 a 4.4, grave `"revisado": true` no `analise.json` e remonte. Sem isso o Word sai com a faixa vermelha "RASCUNHO NÃO REVISADO" no topo, de propósito, para ninguém enviar um relatório sem conferência.
 
 ## 5. Remontar o Word
 
@@ -155,7 +173,7 @@ Não entregue um Word escrito à mão por fora do script. O arquivo versionado (
 
 ## 6. O que dizer à pessoa
 
-Responda em português, curto, sem emoji. Informe o caminho completo do `.docx`, o número da versão, quantas pendências ficaram com status Pendente e se a transcrição rodou. Avise que o prazo contratual, quando for `dado não identificado`, não foi declarado no grupo, então o relatório não fala em atraso contratual.
+Responda em português, curto, sem emoji. Informe o caminho completo do `.docx`, o número da versão, quantas pendências ficaram com status Pendente, se a transcrição rodou, quantos fatos a conferência confirmou e quantas lacunas de contexto o relatório registra. Avise que o prazo contratual, quando for `dado não identificado`, não foi declarado no grupo, então o relatório não fala em atraso contratual.
 
 Não copie a pasta da obra para o repositório público desta skill. Não publique o relatório em link aberto.
 
