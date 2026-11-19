@@ -10,7 +10,7 @@ Campos que a revisão preenche e o script preserva:
 
 - `eventos_adicionais`: fatos que a leitura automática não achou. Cada item tem `data` (AAAA-MM-DD), `hora`, `etapa` (A a J ou L), `autor`, `ocorrencia` (uma frase, até 25 palavras), na etapa J `impacto`, e opcionalmente `destaque` (`reprocesso`, `ocioso` ou `nenhum`). Repetidos são ignorados. A cada remontagem os fatos desta lista são refeitos: editar ou tirar um item muda o relatório, sem deixar a versão antiga
 - `ajustes_eventos`: correções aplicadas também numa nova leitura do zip. Cada item escolhe o evento por `data`, `hora`, `autor`, `etapa_original` e traz `etapa`, `ocorrencia`, `impacto`, `destaque`, ou `"remover": true`
-- `prazos_contratuais`: prazos declarados no grupo ou em documento. Cada item tem `descricao`, `limite_du`, `fonte` e o período: `de` e `para` (etapas) ou `inicio` e `fim` (datas). `"unidade": "dias_corridos"` quando o prazo escrito é em dias, sem "úteis"; sem `unidade`, conta dias úteis
+- `prazos_contratuais`: prazos declarados no grupo ou em documento. Cada item tem `descricao`, `limite_du`, `fonte` e o período: `de` e `para` (etapas) ou `inicio` e `fim` (datas). `fonte_data` (AAAA-MM-DD, quando a regra apareceu no grupo; obrigatório). `"unidade": "dias_corridos"` quando o prazo escrito é em dias, sem "úteis"; sem `unidade`, conta dias úteis
 - `comentarios`: por letra de etapa, `introducao` (antes da tabela) e `leitura` (Leitura da Etapa)
 - `diagnostico_prompt`: listas de tópicos em `reprocessos`, `tempos_ociosos`, `atrasos_internos`, `dependencias_externas`, `interferencias`
 - `pontos_criticos`: lista de frases

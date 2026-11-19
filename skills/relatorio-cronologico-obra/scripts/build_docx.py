@@ -403,12 +403,20 @@ def _confronto_contrato(documento: Document, confronto: list[dict]) -> None:
         linha = tabela.rows[indice]
         sigla = "dias corridos" if item.get("unidade") == "dias_corridos" else "d.u."
         realizado = f"{item['realizado']} {sigla}" if item["realizado"] is not None else DADO
-        _texto_celula(linha.cells[0], item["descricao"], tamanho=9)
+        _texto_celula(linha.cells[0], item["descricao"] + (" *" if item.get("fonte_posterior") else ""), tamanho=9)
         _texto_celula(linha.cells[1], f"{item['limite_du']} {sigla}" if item["limite_du"] else DADO, tamanho=9)
         _texto_celula(linha.cells[2], realizado, tamanho=9, negrito=True, cor=VERMELHO if item["excedeu"] else None)
         if item["excedeu"]:
             for celula in linha.cells:
                 _sombrear(celula, AMARELO)
+    if any(item.get("fonte_posterior") for item in confronto):
+        _paragrafo(
+            documento,
+            "* Fonte escrita no grupo depois do início do período medido: o prazo serve de referência, "
+            "mas o grupo não mostra que já valia na época.",
+            tamanho=9,
+            italico=True,
+        )
     documento.add_paragraph()
 
 
