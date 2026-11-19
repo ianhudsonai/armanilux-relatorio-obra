@@ -4,7 +4,7 @@ description: Gera o Relatório Cronológico de Obra da Armanilux (etapas A a L, 
 license: MIT
 metadata:
   author: Armanilux
-  version: "1.7"
+  version: "1.8"
   idioma: pt-BR
 ---
 
@@ -86,6 +86,8 @@ PYTHON SKILL/scripts/run_pipeline.py --obra "1001" --cliente "Nome do cliente" -
 ```
 
 Os comandos do passo 2 já rodam o pipeline. Com `--zip CAMINHO` o pipeline roda direto num arquivo que a pessoa indicou. Se a pessoa pediu para entender os áudios, a primeira vez pode baixar cerca de 484 MB e ficar só neste computador. Se ela não quiser esperar, rode com `--skip-transcribe` e diga que o que foi falado ficou como dado não identificado.
+
+A transcrição demora: em obra com dezenas de áudios e vídeos passa de meia hora. Se o seu aplicativo permitir, rode o comando em segundo plano e, enquanto isso, comece a ler a conversa (passo 4). O pipeline mostra "Transcrevendo N/total: arquivo". Cada áudio ou vídeo é transcrito uma vez só: se o comando parar no meio, rode de novo e ele continua de onde parou. Com `--skip-transcribe`, o que já foi transcrito continua no relatório.
 
 Saídas:
 

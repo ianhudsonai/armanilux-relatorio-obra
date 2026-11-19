@@ -456,6 +456,7 @@ def executar(argv: list[str] | None = None) -> int:
         pasta_obra / "04-transcricoes",
         pular=args.skip_transcribe,
         modelo=args.whisper_model,
+        progresso=lambda linha: print(linha, flush=True),
     )
     if transcricoes and all(item["status"] != "ok" for item in transcricoes):
         print("Transcrição local não executada. A fala dos áudios fica como dado não identificado.")
