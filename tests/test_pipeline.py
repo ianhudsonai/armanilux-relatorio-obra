@@ -113,6 +113,7 @@ class PipelineTeste(unittest.TestCase):
                 "Diagnóstico",
                 "Pendente",
                 "Intervalos relevantes",
+                "Lacunas de contexto",
                 "Nota de rastreabilidade",
             ):
                 self.assertIn(trecho, texto, trecho)
@@ -125,6 +126,8 @@ class PipelineTeste(unittest.TestCase):
             )
             self.assertEqual(codigo_v2, 0)
             self.assertTrue((obra / "05-relatorios" / "Relatorio-Cronologico-Obra-1001-v2.docx").exists())
+            conferencia = (obra / "04-transcricoes" / "verificacao.md").read_text(encoding="utf-8")
+            self.assertIn("fatos conferidos", conferencia)
 
 
 if __name__ == "__main__":

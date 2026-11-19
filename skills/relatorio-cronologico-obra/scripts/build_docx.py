@@ -653,6 +653,15 @@ def montar_docx(analise: dict, destino: Path, grafico_barras: Path | None, grafi
         _paragrafo(documento, "Anexo: dado não identificado.")
     _anexar_imagens(documento, analise, destino.parent.parent)
 
+    documento.add_heading("Lacunas de contexto", level=1)
+    _paragrafo(
+        documento,
+        "O que não pôde ser lido ou confirmado no material do grupo. Nada aqui foi suposto: "
+        "o que falta fica registrado como falta.",
+    )
+    for lacuna in analise.get("lacunas") or ["Nenhuma lacuna registrada."]:
+        _paragrafo(documento, f"• {lacuna}")
+
     documento.add_heading("Nota de rastreabilidade", level=1)
     _paragrafo(documento, analise.get("rastreabilidade") or DADO)
 

@@ -13,7 +13,7 @@ import argparse
 import time
 from pathlib import Path
 
-from analyze import aplicar_ajustes, completar_relato, montar_analise
+from analyze import _lacunas_automaticas, aplicar_ajustes, completar_relato, montar_analise
 from build_charts import grafico_barras, grafico_gantt
 from build_docx import montar_docx, proxima_versao, tentar_pdf
 from common import configurar_saida, escrever_json, ler_json
@@ -115,7 +115,39 @@ def _preservar(novo: dict, antigo: dict | None) -> dict:
     return novo
 
 
+def _conferir(pasta_obra: Path, analise: dict) -> None:
+    """Confere cada fato contra a conversa e grava 04-transcricoes/verificacao.md."""
+    from verificacao import escrever_verificacao, verificar_eventos
+
+    conversa = _conversa_extraida(pasta_obra)
+    if conversa is None:
+        print("Aviso: sem a conversa em 01-conversas, a conferência dos fatos não rodou.")
+        return
+    try:
+        itens = verificar_eventos(analise.get("eventos") or [], ler_conversa(conversa), analise.get("transcricoes") or [])
+        destino = escrever_verificacao(itens, pasta_obra / "04-transcricoes" / "verificacao.md")
+    except Exception as erro:  # a conferência ajuda, mas não pode impedir o Word
+        print(f"Aviso: não consegui conferir os fatos: {erro}")
+        return
+    problemas = sum(1 for item in itens if not item["situacao"].startswith("confirmado"))
+    print(f"Conferência dos fatos: {len(itens) - problemas} de {len(itens)} batem com o grupo. Detalhes: {destino}")
+
+
+def _lacunas_se_faltar(pasta_obra: Path, analise: dict) -> None:
+    """analise.json de versão antiga não tem as lacunas automáticas: calcula a partir da conversa."""
+    if "lacunas_automaticas" in analise:
+        return
+    conversa = _conversa_extraida(pasta_obra)
+    if conversa is None:
+        return
+    analise["lacunas_automaticas"] = _lacunas_automaticas(
+        ler_conversa(conversa), analise.get("documentos_texto") or [], analise.get("transcricoes") or []
+    )
+    analise["lacunas"] = completar_relato(analise)["lacunas"]
+
+
 def _gravar(pasta_obra: Path, analise: dict, gerar_pdf: bool = False) -> Path:
+    _conferir(pasta_obra, analise)
     figuras = pasta_obra / "05-relatorios" / "figuras"
     barras = grafico_barras(analise.get("intervalos_marcos") or [], figuras / "dias-uteis.png")
     gantt = grafico_gantt(analise.get("eventos") or [], analise.get("intervalos") or [], figuras / "gantt.png")
@@ -164,6 +196,7 @@ def _reconstruir(args, raiz: Path, config: dict | None) -> int:
     if analise.get("ajustes_eventos"):
         # Correções feitas pela revisão (trocar etapa, remover) valem também na remontagem.
         analise["eventos"] = aplicar_ajustes(list(analise.get("eventos") or []), analise["ajustes_eventos"])
+    _lacunas_se_faltar(pasta, analise)
     if args.recalcular:
         analise = completar_relato(analise)
         escrever_json(caminho, analise)
