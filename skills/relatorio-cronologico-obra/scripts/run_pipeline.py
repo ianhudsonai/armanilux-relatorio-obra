@@ -10,6 +10,7 @@ Tudo acontece neste computador. Não há chamada de API.
 from __future__ import annotations
 
 import argparse
+import time
 from pathlib import Path
 
 from analyze import aplicar_ajustes, completar_relato, montar_analise
@@ -30,6 +31,7 @@ CHAVES_PRESERVAR = (
     "recomendacoes_personalizadas",
     "conclusao_personalizada",
     "ajustes_eventos",
+    "eventos_adicionais",
 )
 
 
@@ -101,7 +103,7 @@ def _preservar(novo: dict, antigo: dict | None) -> dict:
         if antigo.get(chave):
             novo[chave] = antigo[chave]
     if novo.get("ajustes_eventos"):
-        aplicar_ajustes(novo["eventos"], novo["ajustes_eventos"])
+        novo["eventos"] = aplicar_ajustes(novo["eventos"], novo["ajustes_eventos"])
         novo = completar_relato(novo)
     return novo
 
@@ -158,6 +160,18 @@ def _reconstruir(args, raiz: Path, config: dict | None) -> int:
     _aplicar_preferencias(analise, config)
     _gravar(pasta, analise, bool(args.pdf or (config or {}).get("gerar_pdf")))
     return 0
+
+
+class _Relogio:
+    """Mostra quanto cada etapa levou, para a pessoa ver que o programa não travou."""
+
+    def __init__(self) -> None:
+        self.inicio = self.ultimo = time.time()
+
+    def marca(self, texto: str) -> None:
+        agora = time.time()
+        print(f"  [{agora - self.ultimo:.0f}s] {texto}", flush=True)
+        self.ultimo = agora
 
 
 def executar(argv: list[str] | None = None) -> int:
@@ -232,7 +246,8 @@ def executar(argv: list[str] | None = None) -> int:
         print(erro)
         return 2
 
-    print(f"Exportação encontrada ({tipo}): {origem}")
+    relogio = _Relogio()
+    print(f"Exportação encontrada ({tipo}): {origem}", flush=True)
     if tipo == "zip":
         resumo = None
         # A extração de verdade ocorre depois que a pasta da obra existe.
@@ -282,6 +297,7 @@ def executar(argv: list[str] | None = None) -> int:
 
     if tipo == "zip":
         resumo = extrair_zip(origem, pasta_obra)
+        relogio.marca("arquivos extraídos")
         print(f"Arquivos organizados: {len(resumo['arquivos'])}.")
         if resumo["grande"]:
             print(
@@ -299,6 +315,7 @@ def executar(argv: list[str] | None = None) -> int:
         mensagens = ler_conversa(conversa)
 
     documentos = extrair_pasta(pasta_obra / "02-projetos-pdf")
+    relogio.marca(f"{len(documentos)} documentos lidos")
     if args.skip_keyframes:
         quadros: list[Path] = []
         print("Extração de quadros de vídeo não executada nesta rodada.")
@@ -310,6 +327,7 @@ def executar(argv: list[str] | None = None) -> int:
         elif resultado_quadros.get("videos"):
             print(f"Quadros de vídeo: {len(quadros)}.")
 
+    relogio.marca("vídeos vistos")
     transcricoes = transcrever_pasta(
         pasta_obra / "03-midias",
         pasta_obra / "04-transcricoes",
@@ -319,6 +337,7 @@ def executar(argv: list[str] | None = None) -> int:
     if transcricoes and all(item["status"] != "ok" for item in transcricoes):
         print("Transcrição local não executada. A fala dos áudios fica como dado não identificado.")
 
+    relogio.marca("áudios e vídeos tratados")
     analise = montar_analise(
         mensagens,
         fonte=origem.name,
@@ -333,7 +352,16 @@ def executar(argv: list[str] | None = None) -> int:
     analise = _preservar(analise, antigo)
     _aplicar_preferencias(analise, config)
     escrever_json(caminho_json, analise)
+    try:
+        from candidatos import escrever as escrever_candidatos
+
+        candidatos = escrever_candidatos(mensagens, pasta_obra / "04-transcricoes" / "candidatos-por-etapa.md")
+        print(f"Candidatos por etapa, para revisar: {candidatos}")
+    except Exception as erro:
+        print(f"Aviso: não consegui montar os candidatos por etapa: {erro}")
+    relogio.marca("conversa analisada")
     destino = _gravar(pasta_obra, analise, gerar_pdf)
+    relogio.marca("Word montado")
     try:
         _anotar_relatorio(origem, args.sha, destino, pasta_obra)
     except Exception as erro:

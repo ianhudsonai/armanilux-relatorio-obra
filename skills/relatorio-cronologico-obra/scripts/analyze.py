@@ -92,6 +92,18 @@ def _campo(texto: str, padrao: str) -> str:
     return " ".join(achado.group(1).split()).strip(" .")
 
 
+def _endereco(texto: str) -> str:
+    """Endereço até o fim da frase, sem cortar em 'R.' ou 'Av.' (abreviação)."""
+    achado = re.search(r"Endere[cç]o:\s*([^\n]+)", texto, flags=re.IGNORECASE)
+    if not achado:
+        return ""
+    linha = achado.group(1)
+    corte = re.search(r"(?:(?<=[A-Za-zÀ-ÿ]{4})|(?<=\d))\.(?:\s|$)", linha)
+    if corte:
+        linha = linha[: corte.start()]
+    return " ".join(linha.split()).strip(" .")
+
+
 def metadados_da_conversa(mensagens: list[Mensagem], fonte: str, overrides: dict | None = None) -> dict:
     texto = "\n".join(item.texto for item in mensagens)
     obra = {
@@ -101,7 +113,7 @@ def metadados_da_conversa(mensagens: list[Mensagem], fonte: str, overrides: dict
         "engenheiro": _campo(texto, r"Engenheiro:\s*([^.\n]+)"),
         "arquitetura": _campo(texto, r"Arquitetura:\s*([^.\n]+)"),
         "responsavel_armanilux": _campo(texto, r"Respons[aá]vel Armanilux:\s*([^.\n]+)"),
-        "endereco": _campo(texto, r"Endere[cç]o:\s*([^.\n]+)"),
+        "endereco": _endereco(texto),
         "prazo_contratual": "",
         "fonte": fonte,
     }
@@ -149,22 +161,22 @@ def _impacto(texto: str) -> str:
 
 
 def _pendencias(mensagens: list[Mensagem]) -> list[dict]:
+    """Só o que o grupo diz claramente que está em aberto. Mensagem longa não vira pendência."""
     itens: list[dict] = []
     vistos: set[str] = set()
     for mensagem in mensagens:
         base = normalizar(mensagem.texto)
+        texto_curto = texto_util(mensagem)
         if "termo assinado" in base or "devolver o termo" in base:
             texto = "Devolução do termo de entrega assinado pelo cliente."
-        elif "falta " in base and "nao foi lancado" not in base:
-            texto = texto_util(mensagem)
-            if len(texto) > 180:
-                texto = texto[:180].rstrip() + "…"
+        elif len(texto_curto) <= 140 and not texto_curto.endswith("?") and re.search(r"\b(ainda )?falta(m)?\b|\bpendente\b|\bpendencia\b", base):
+            texto = texto_curto
         else:
             continue
         if texto not in vistos:
             vistos.add(texto)
             itens.append({"item": texto, "status": "Pendente"})
-    return itens
+    return itens[:12]
 
 
 def _indice_arquivos(caminhos: list[Path]) -> dict[str, Path]:
@@ -845,9 +857,33 @@ def _nota_rastreabilidade(mensagens: list[Mensagem], eventos: list[dict], anexo:
     )
 
 
+def _juntar_adicionais(base: dict) -> list[dict]:
+    """Eventos lidos do grupo mais os que o agente acrescentou à mão, sem repetir."""
+    eventos = list(base.get("eventos") or [])
+    vistos = {(e["data"], e.get("hora", ""), e["etapa"], e.get("ocorrencia", "")) for e in eventos}
+    for extra in base.get("eventos_adicionais") or []:
+        if extra.get("etapa") not in ORDEM or not extra.get("data"):
+            continue
+        item = {
+            "data": extra["data"],
+            "hora": extra.get("hora") or "00:00",
+            "etapa": extra["etapa"],
+            "autor": extra.get("autor", ""),
+            "ocorrencia": extra.get("ocorrencia", ""),
+            "impacto": extra.get("impacto", ""),
+            "midias": list(extra.get("midias") or []),
+            "documentos": list(extra.get("documentos") or []),
+        }
+        chave = (item["data"], item["hora"], item["etapa"], item["ocorrencia"])
+        if chave not in vistos:
+            vistos.add(chave)
+            eventos.append(item)
+    return eventos
+
+
 def completar_relato(base: dict) -> dict:
     """Recalcula intervalos, textos e indicadores a partir dos eventos já classificados."""
-    eventos = list(base.get("eventos") or [])
+    eventos = _juntar_adicionais(base)
     eventos.sort(key=lambda item: (item["data"], item["hora"], _posicao(item["etapa"])))
     obra = base["obra"]
     pendencias = list(base.get("pendencias") or [])
@@ -908,6 +944,7 @@ def montar_analise(
         "recomendacoes_personalizadas": [],
         "conclusao_personalizada": "",
         "ajustes_eventos": [],
+        "eventos_adicionais": [],
         "rastreabilidade": _nota_rastreabilidade(mensagens, eventos, anexo, documentos, transcricoes),
     }
     return completar_relato(base)
@@ -934,9 +971,10 @@ def _marcos(eventos: list[dict], pendencias: list[dict]) -> list[dict]:
     ]
 
 
-def aplicar_ajustes(eventos: list[dict], ajustes: list[dict]) -> None:
+def aplicar_ajustes(eventos: list[dict], ajustes: list[dict]) -> list[dict]:
+    """Corrige etapa, texto ou impacto de eventos já lidos, ou remove ("remover": true)."""
     for ajuste in ajustes or []:
-        for evento in eventos:
+        for evento in list(eventos):
             if ajuste.get("data") and evento["data"] != ajuste["data"]:
                 continue
             if ajuste.get("hora") and evento["hora"] != ajuste["hora"]:
@@ -945,9 +983,13 @@ def aplicar_ajustes(eventos: list[dict], ajustes: list[dict]) -> None:
                 continue
             if ajuste.get("etapa_original") and evento["etapa"] != ajuste["etapa_original"]:
                 continue
+            if ajuste.get("remover"):
+                eventos.remove(evento)
+                continue
             if ajuste.get("etapa"):
                 evento["etapa"] = ajuste["etapa"]
             if ajuste.get("ocorrencia"):
                 evento["ocorrencia"] = ajuste["ocorrencia"]
             if ajuste.get("impacto"):
                 evento["impacto"] = ajuste["impacto"]
+    return eventos
