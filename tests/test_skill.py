@@ -97,6 +97,11 @@ class SkillTeste(unittest.TestCase):
         self.assertIn("config.json", texto)
         self.assertIn("preparar-projeto-armanilux\\scripts\\instalar.ps1", texto)
         preparo = (preparar / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn(
+            "Quer que eu também entenda os áudios e vídeos das conversas? Isso precisa de um download único (cerca de 484 MB), mas é seguro e fica só no seu computador. Sim ou não.",
+            preparo,
+        )
+        self.assertNotIn("modelo de voz", preparo.lower())
         self.assertIn("scripts/instalar.ps1", preparo)
         self.assertIn("powershell -ExecutionPolicy Bypass -File", preparo)
         self.assertIn("Python.Python.3.12", preparo)
