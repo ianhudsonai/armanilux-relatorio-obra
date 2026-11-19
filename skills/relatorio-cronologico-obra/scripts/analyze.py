@@ -357,6 +357,8 @@ def intervalos_marcos_de(eventos: list[dict]) -> tuple[list[dict], dict]:
     como na tabela do relatório aprovado, e a duração do primeiro ao último registro."""
     primeiros: dict[str, str] = {}
     for evento in eventos:
+        if evento["etapa"] == "L" and not fecha_a_obra(evento):
+            continue  # reclamação ou reparo na etapa L não é o marco de conclusão
         if evento["data"] < primeiros.get(evento["etapa"], "9999"):
             primeiros[evento["etapa"]] = evento["data"]
     marcos = sorted(primeiros.items(), key=lambda par: (par[1], _posicao(par[0])))
@@ -628,6 +630,13 @@ def _comentarios_etapa(
                 else "Interferências registradas. Pendência residual em aberto: dado não identificado."
             ),
         }
+    if codigo == "L" and not any(fecha_a_obra(item) for item in eventos):
+        return {
+            "ponto_critico": "Não há registro de conclusão dos serviços e validação final no histórico.",
+            "gargalo": "dado não identificado.",
+            "avaliacao": "Os registros desta etapa (reparos, pendências, entregas parciais) não fecham a obra.",
+            "conclusao": "Conclusão e validação final: dado não identificado (pendente).",
+        }
     if codigo == "L":
         return {
             "ponto_critico": (
@@ -669,7 +678,9 @@ def _montar_etapas(eventos: list[dict], desde_map: dict[str, dict], pendencias: 
             continue
         internos = _internos(eventos, codigo)
         comentarios = _comentarios_etapa(codigo, do_codigo, internos, pendencias)
-        if codigo == "L" and pendencias:
+        if codigo == "L" and not data_da_conclusao(eventos):
+            situacao = "Conclusão não registrada"
+        elif codigo == "L" and pendencias:
             situacao = "Pendência identificada"
         elif codigo == "J" and pendencias:
             situacao = "Pendência identificada"
@@ -1072,6 +1083,8 @@ def _juntar_adicionais(base: dict) -> list[dict]:
         }
         if extra.get("destaque"):
             item["destaque"] = extra["destaque"]
+        if extra.get("conclusao") and item["etapa"] == "L":
+            item["conclusao"] = True
         chave = (item["data"], item["hora"], item["etapa"], item["ocorrencia"])
         if chave not in vistos:
             vistos.add(chave)
@@ -1121,7 +1134,7 @@ def completar_relato(base: dict) -> dict:
     relato["responsabilidades"] = _responsabilidades(obra, eventos, intervalos)
     relato["recomendacoes"] = _recomendacoes(eventos, intervalos, pendencias)
     relato["conclusao"] = _conclusao(obra, eventos, intervalos, pendencias, dias_periodo)
-    relato["marcos"] = _marcos(eventos, pendencias)
+    relato["marcos"] = marcos_de(eventos, pendencias)
     # Textos escritos por quem revisou o grupo substituem os textos automáticos.
     if base.get("produtividade_personalizada"):
         relato["produtividade"] = base["produtividade_personalizada"]
@@ -1173,13 +1186,27 @@ def montar_analise(
     return completar_relato(base)
 
 
+def fecha_a_obra(evento: dict) -> bool:
+    """Só o fato da etapa L que a revisão marcou com "conclusao": true fecha a obra.
+    Outro fato da etapa L (reclamação, reparo, entrega parcial) não fecha."""
+    return evento["etapa"] == "L" and bool(evento.get("conclusao"))
+
+
+def data_da_conclusao(eventos: list[dict]) -> str:
+    """Data do último fato que fecha a obra, ou "" (conclusão: dado não identificado)."""
+    datas = sorted(item["data"] for item in eventos if fecha_a_obra(item))
+    return datas[-1] if datas else ""
+
+
 def _situacao_marco(eventos: list[dict], codigo: str) -> str:
+    if codigo == "L":
+        return "Concluído" if data_da_conclusao(eventos) else "dado não identificado (pendente)"
     if any(item["etapa"] == codigo for item in eventos):
         return "Concluído"
     return "dado não identificado"
 
 
-def _marcos(eventos: list[dict], pendencias: list[dict]) -> list[dict]:
+def marcos_de(eventos: list[dict], pendencias: list[dict]) -> list[dict]:
     return [
         {"marco": "Aprovação de chapas", "situacao": _situacao_marco(eventos, "A")},
         {"marco": "Medição in loco", "situacao": _situacao_marco(eventos, "C")},
@@ -1217,4 +1244,6 @@ def aplicar_ajustes(eventos: list[dict], ajustes: list[dict]) -> list[dict]:
                 evento["impacto"] = ajuste["impacto"]
             if ajuste.get("destaque"):
                 evento["destaque"] = ajuste["destaque"]
+            if "conclusao" in ajuste:  # aceita false, para desmarcar
+                evento["conclusao"] = bool(ajuste["conclusao"])
     return eventos

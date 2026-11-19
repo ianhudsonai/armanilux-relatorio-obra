@@ -17,7 +17,7 @@ Um parágrafo sobre a fonte (grupo, documentos, transcrições locais) e a regra
 
 ## Quadro-Resumo da Obra
 
-Tabela Indicador | Valor: início do grupo, primeiros marcos (chapas, medição, aprovação, entrega, instalação), último registro, duração em dias corridos e úteis, conclusão, prazo contratual.
+Tabela Indicador | Valor: início do grupo, primeiros marcos (chapas, medição, aprovação, entrega, instalação), último registro, duração em dias corridos e úteis, conclusão (só com fato da etapa L marcado `conclusao`; sem ele, "DADO NÃO IDENTIFICADO (pendente — ver Etapa L)"), prazo contratual.
 
 ## Etapas A a L
 
