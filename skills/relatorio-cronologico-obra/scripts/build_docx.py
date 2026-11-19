@@ -6,7 +6,7 @@ import re
 from datetime import date
 from pathlib import Path
 
-from analyze import LIMITE_INTERVALO_LONGO, ORDEM, TITULOS, data_da_conclusao, intervalos_marcos_de, marcos_de
+from analyze import LIMITE_INTERVALO_LONGO, ORDEM, TITULOS, data_da_conclusao, intervalos_marcos_de, marcos_de, primeiros_marcos
 from business_days import dias_uteis_entre
 from common import DADO, LARGURA_FIGURA_CM, formatar_data
 from docx import Document
@@ -209,8 +209,9 @@ def _linha_dourada(documento: Document) -> None:
 
 
 def _primeira(analise: dict, etapa: str) -> str:
-    datas = sorted(e["data"] for e in analise.get("eventos") or [] if e["etapa"] == etapa)
-    return formatar_data(datas[0]) if datas else DADO
+    """Primeira data realizada da etapa: programação não conta; vale a data do fato."""
+    data = primeiros_marcos(analise.get("eventos") or []).get(etapa)
+    return formatar_data(data) if data else DADO
 
 
 def _quadro_resumo(documento: Document, analise: dict) -> None:
@@ -282,6 +283,17 @@ def _texto_evento(evento: dict) -> str:
     return texto or DADO
 
 
+_JA_DIZ_PROGRAMADO = re.compile(r"program|agend|previs", re.IGNORECASE)
+
+
+def _data_da_linha(evento: dict) -> str:
+    """Data da mensagem; programação ganha a marca, se o texto ainda não diz."""
+    data = formatar_data(evento["data"])
+    if evento.get("programado") and not _JA_DIZ_PROGRAMADO.search(evento.get("ocorrencia") or ""):
+        return f"{data} (programado)"
+    return data
+
+
 def _cor_do_evento(evento: dict) -> str | None:
     destaque = evento.get("destaque") or evento.get("destaque_auto") or ""
     return _COR_DESTAQUE.get(destaque)
@@ -341,10 +353,10 @@ def _escrever_etapa(documento: Document, analise: dict, codigo: str) -> None:
     eventos = sorted(_eventos_da_etapa(analise, codigo), key=lambda e: (e["data"], e.get("hora") or ""))
     cores = [_cor_do_evento(item) for item in eventos] or [None]
     if codigo == "J":
-        linhas = [[formatar_data(item["data"]), _texto_evento(item), item.get("impacto") or DADO] for item in eventos]
+        linhas = [[_data_da_linha(item), _texto_evento(item), item.get("impacto") or DADO] for item in eventos]
         _tabela_linhas(documento, ["Data", "Interferência", "Impacto"], linhas or [["—", DADO, DADO]], [2.6, 8.0, 6.8], cores)
     else:
-        linhas = [[formatar_data(item["data"]), _texto_evento(item)] for item in eventos]
+        linhas = [[_data_da_linha(item), _texto_evento(item)] for item in eventos]
         _tabela_linhas(documento, ["Data", "Evento / Ocorrência"], linhas or [["—", DADO]], [2.6, 14.8], cores)
     if codigo == "L":
         # Refeito dos eventos, como o Quadro-Resumo: remontar sem --recalcular não pode contradizê-lo.
@@ -401,7 +413,12 @@ def _confronto_contrato(documento: Document, confronto: list[dict]) -> None:
     for indice, item in enumerate(confronto, start=1):
         linha = tabela.rows[indice]
         sigla = "dias corridos" if item.get("unidade") == "dias_corridos" else "d.u."
-        realizado = f"{item['realizado']} {sigla}" if item["realizado"] is not None else DADO
+        if item.get("programado"):
+            realizado = "programado, sem confirmação"
+        elif item["realizado"] is not None:
+            realizado = f"{item['realizado']} {sigla}"
+        else:
+            realizado = DADO
         _texto_celula(linha.cells[0], item["descricao"] + (" *" if item.get("fonte_posterior") else ""), tamanho=9)
         _texto_celula(linha.cells[1], f"{item['limite_du']} {sigla}" if item["limite_du"] else DADO, tamanho=9)
         _texto_celula(linha.cells[2], realizado, tamanho=9, negrito=True, cor=VERMELHO if item["excedeu"] else None)
