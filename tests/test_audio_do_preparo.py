@@ -72,7 +72,7 @@ class AudioDoPreparoTeste(unittest.TestCase):
         saida, transcricoes = self._rodar()
 
         self.assertEqual([t["status"] for t in transcricoes], ["ignorado"])
-        self.assertNotIn("Carregando o modelo", saida)
+        self.assertNotIn("Carregando o", saida)  # nem o aviso de carregar o programa dos áudios
         self.assertIn("--transcrever", saida)
 
     def test_transcrever_vale_mesmo_com_nao_no_preparo(self):
