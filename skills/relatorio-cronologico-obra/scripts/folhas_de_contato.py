@@ -23,6 +23,15 @@ def _data_do_nome(nome: str) -> str:
     return f"{achado.group(3)}/{achado.group(2)}/{achado.group(1)}" if achado else ""
 
 
+def _data(nome: str, datas: dict[str, str]) -> str:
+    """A data da mensagem que anexou o arquivo. O nome do arquivo engana (foto antiga
+    reenviada, celular com data errada); só vale quando nenhuma mensagem cita o arquivo."""
+    if nome in datas:
+        return datas[nome]
+    pelo_nome = _data_do_nome(nome)
+    return f"{pelo_nome} (nome do arquivo)" if pelo_nome else ""
+
+
 def listar_imagens(pasta_midias: Path) -> list[tuple[str, Path]]:
     """Fotos da pasta e o quadro do meio de cada vídeo, em ordem de nome (que segue a data)."""
     itens: list[tuple[str, Path]] = []
@@ -42,8 +51,11 @@ def listar_imagens(pasta_midias: Path) -> list[tuple[str, Path]]:
     return itens
 
 
-def gerar(pasta_obra: Path) -> list[Path]:
+def gerar(pasta_obra: Path, datas: dict[str, str] | None = None) -> list[Path]:
+    """`datas`: nome do arquivo -> DD/MM/AAAA da mensagem que o anexou."""
     from PIL import Image, ImageDraw
+
+    datas = datas or {}
 
     itens = listar_imagens(pasta_obra / "03-midias")
     destino = pasta_obra / "04-transcricoes" / "folhas-de-contato"
@@ -68,9 +80,10 @@ def gerar(pasta_obra: Path) -> list[Path]:
                 folha.paste(miniatura, (x + 5, y + 5))
             except Exception:
                 desenho.text((x + 10, y + 10), "imagem ilegível", fill="red")
-            rotulo = f"{numero}. {nome[:34]} {_data_do_nome(nome)}"
+            data = _data(nome, datas)
+            rotulo = f"{numero}. {nome[:34]} {data}"
             desenho.text((x + 6, y + LADO + 6), rotulo, fill="black")
-            indice[nome_folha].append({"numero": numero, "arquivo": nome, "data": _data_do_nome(nome), "video": Path(nome).suffix.lower() in EXT_VIDEO})
+            indice[nome_folha].append({"numero": numero, "arquivo": nome, "data": data, "video": Path(nome).suffix.lower() in EXT_VIDEO})
         caminho_folha = destino / nome_folha
         folha.save(caminho_folha, format="JPEG", quality=80)
         folhas.append(caminho_folha)

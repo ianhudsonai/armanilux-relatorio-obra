@@ -194,6 +194,17 @@ def mostrar_no_explorer(arquivo: Path) -> None:
         subprocess.Popen(["xdg-open", str(arquivo.parent)])
 
 
+def _datas_dos_anexos(mensagens) -> dict[str, str]:
+    """Nome do arquivo (como ficou em 03-midias) -> data da primeira mensagem que o anexou."""
+    from common import formatar_data
+
+    datas: dict[str, str] = {}
+    for mensagem in mensagens:
+        for anexo in mensagem.anexos:
+            datas.setdefault(nome_seguro(anexo), formatar_data(mensagem.data.isoformat()))
+    return datas
+
+
 def _avisar_se_cortada(mensagens) -> None:
     from analyze import exportacao_parece_cortada
     from common import formatar_data
@@ -561,7 +572,7 @@ def executar(argv: list[str] | None = None) -> int:
     try:
         from folhas_de_contato import gerar as gerar_folhas
 
-        folhas = gerar_folhas(pasta_obra)
+        folhas = gerar_folhas(pasta_obra, _datas_dos_anexos(mensagens))
         if folhas:
             print(f"Folhas de contato para revisar as imagens: {len(folhas)} (em 04-transcricoes/folhas-de-contato).")
     except Exception as erro:
