@@ -42,7 +42,6 @@ CHAVES_PRESERVAR = (
     "conclusao_personalizada",
     "ajustes_eventos",
     "eventos_adicionais",
-    "revisado",
     "obra_ajustes",
     "pendencias_revisadas",
     "diagnostico_prompt",
@@ -89,20 +88,30 @@ def _checar_bibliotecas() -> bool:
     return True
 
 
-def _conversa_extraida(pasta_obra: Path) -> Path | None:
+def _conversa_extraida(pasta_obra: Path, analise: dict | None = None) -> Path | None:
+    """A conversa da última exportação lida. analise.json guarda qual é ("conversa").
+    Sem essa marca (análise antiga), vale o .txt gravado por último, não o maior:
+    exportar sem mídia deixa o arquivo novo menor que o antigo."""
+    marcada = (analise or {}).get("conversa")
+    if marcada and (pasta_obra / marcada).is_file():
+        return pasta_obra / marcada
     pasta = pasta_obra / "01-conversas"
     if not pasta.exists():
         return None
-    melhor: Path | None = None
-    melhor_tamanho = -1
-    for item in pasta.glob("*.txt"):
-        if item.name.lower() in {"origem.txt", "leia-me.txt"}:
-            continue
-        tamanho = item.stat().st_size
-        if tamanho > melhor_tamanho:
-            melhor = item
-            melhor_tamanho = tamanho
-    return melhor
+    candidatos = [item for item in pasta.glob("*.txt") if item.name.lower() not in {"origem.txt", "leia-me.txt"}]
+    if not candidatos:
+        return None
+    return max(candidatos, key=lambda item: (item.stat().st_mtime, item.stat().st_size))
+
+
+def _conversa_do_zip(pasta_obra: Path, resumo: dict, nome_txt: str) -> Path | None:
+    """Onde o .txt da exportação que acabou de ser lida foi parar dentro da obra."""
+    from common import nome_seguro
+
+    for item in resumo["arquivos"]:
+        if nome_seguro(item["origem"]) == nome_txt:
+            return pasta_obra / item["destino"]
+    return None
 
 
 def _arquivos_da_obra(pasta_obra: Path) -> list[Path]:
@@ -118,22 +127,28 @@ def _arquivos_da_obra(pasta_obra: Path) -> list[Path]:
 
 
 def _preservar(novo: dict, antigo: dict | None) -> dict:
+    """Conversa nova de uma obra que já tem análise: guarda o trabalho da revisão.
+    "revisado" não passa adiante: há mensagens novas, então o relatório volta a ser rascunho."""
     if not antigo:
         return novo
     for chave in CHAVES_PRESERVAR:
         if antigo.get(chave):
             novo[chave] = antigo[chave]
+    if antigo.get("revisado"):
+        print(
+            "Esta obra já tinha relatório revisado. Com a conversa nova, o relatório volta a ser rascunho: "
+            "confira as mensagens novas e grave \"revisado\": true de novo."
+        )
     if novo.get("ajustes_eventos"):
         novo["eventos"] = aplicar_ajustes(novo["eventos"], novo["ajustes_eventos"])
-        novo = completar_relato(novo)
-    return novo
+    return completar_relato(novo)
 
 
 def _conferir(pasta_obra: Path, analise: dict) -> None:
     """Confere cada fato contra a conversa e grava 04-transcricoes/verificacao.md."""
     from verificacao import confirmado, escrever_verificacao, verificar_eventos
 
-    conversa = _conversa_extraida(pasta_obra)
+    conversa = _conversa_extraida(pasta_obra, analise)
     if conversa is None:
         print("Aviso: sem a conversa em 01-conversas, a conferência dos fatos não rodou.")
         return
@@ -156,7 +171,7 @@ def _lacunas_se_faltar(pasta_obra: Path, analise: dict) -> None:
     """analise.json de versão antiga não tem as lacunas automáticas: calcula a partir da conversa."""
     if "lacunas_automaticas" in analise:
         return
-    conversa = _conversa_extraida(pasta_obra)
+    conversa = _conversa_extraida(pasta_obra, analise)
     if conversa is None:
         return
     analise["lacunas_automaticas"] = lacunas_automaticas(
@@ -406,7 +421,7 @@ def executar(argv: list[str] | None = None) -> int:
         if not lido:
             print("O zip abriu, mas não há conversa do WhatsApp dentro dele. Exporte de novo pelo celular.")
             return 2
-        _nome_txt, texto = lido
+        nome_txt, texto = lido
         from parse_whatsapp import analisar_conversa
 
         mensagens = analisar_conversa(texto)
@@ -446,6 +461,7 @@ def executar(argv: list[str] | None = None) -> int:
 
     if tipo == "zip":
         resumo = extrair_zip(origem, pasta_obra)
+        conversa = _conversa_do_zip(pasta_obra, resumo, nome_txt)
         relogio.marca("arquivos extraídos")
         novos = len(resumo["arquivos"]) - resumo.get("ja_existiam", 0)
         print(f"Arquivos organizados: {len(resumo['arquivos'])} ({novos} novos, {resumo.get('ja_existiam', 0)} já estavam na obra).")
@@ -458,11 +474,11 @@ def executar(argv: list[str] | None = None) -> int:
         if resumo["ignorados"]:
             print(f"Itens ignorados por caminho inseguro: {len(resumo['ignorados'])}.")
     else:
-        copiar_txt_avulso(origem, pasta_obra)
+        conversa = copiar_txt_avulso(origem, pasta_obra)
 
-    conversa = _conversa_extraida(pasta_obra)
-    if conversa:
+    if conversa and conversa.is_file():
         mensagens = ler_conversa(conversa)
+        print(f"Conversa usada: {conversa.name}")
 
     documentos = extrair_pasta(pasta_obra / "02-projetos-pdf")
     relogio.marca(f"{len(documentos)} documentos lidos")
@@ -506,6 +522,8 @@ def executar(argv: list[str] | None = None) -> int:
         quadros=quadros,
         overrides=sobrepor,
     )
+    if conversa and conversa.is_file():
+        analise["conversa"] = conversa.relative_to(pasta_obra).as_posix()
     caminho_json = pasta_obra / "04-transcricoes" / "analise.json"
     antigo = ler_json(caminho_json) if caminho_json.exists() else None
     analise = _preservar(analise, antigo)
