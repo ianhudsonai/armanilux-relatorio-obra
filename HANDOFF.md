@@ -1,7 +1,7 @@
 # HANDOFF — armanilux-relatorio-obra (2026-11-19)
 
 ## Estado atual
-Duas skills na `main` (PRs #5 a #12 mergeados; 75 testes; skill instalada em `.claude/skills` é a 1.4): `preparar-projeto-armanilux` (perguntas + instalação) e `relatorio-cronologico-obra` (zip do WhatsApp → Word).
+Duas skills na `main` (PRs #5 a #15; 82 testes; skill instalada em `.claude/skills` é a 1.6): `preparar-projeto-armanilux` (perguntas + instalação) e `relatorio-cronologico-obra` (zip do WhatsApp → Word).
 Já funciona: busca automática do zip (nome com acento e parênteses), registro por SHA-256 (pendente → em andamento → relatório gerado → concluído), PDFs em ~25 s, transcrição local de áudio e vídeo, não duplica arquivos ao reprocessar, candidatos por etapa, folhas de contato (12 miniaturas por folha), capa, quadro-resumo, cores da marca, faixa "RASCUNHO NÃO REVISADO" até a revisão gravar `"revisado": true`.
 Teste real feito com uma obra de ~595 MB (pasta em `Documents\Armanilux\Relatorios-de-Obra\`, FORA do repo).
 
@@ -13,6 +13,11 @@ Teste real feito com uma obra de ~595 MB (pasta em `Documents\Armanilux\Relatori
 - Ian viu o v7: texto demais, registro fotográfico inútil, descrição de imagem pelo agente é imprecisa. Virou `relatorio-compacto` (SKILL 1.4): mesmo formato do 8665.1 V3 — Nota Metodológica (com limites do material e convenção de cores), Quadro-Resumo, etapas A–L com tabela Data | Evento de uma frase por linha (salmão = reprocesso, amarelo = ocioso; `destaque_auto` sugere, a revisão troca com `destaque`), "Leitura da Etapa", Análise de Prazos (d.u. em vermelho), Diagnóstico em 5 blocos de tópicos, Conclusão Estratégica. Imagem é só contexto para o agente.
 - Prazo contratual: Ian pediu para usar quando houver. A revisão grava `prazos_contratuais` (só o que está escrito no grupo ou em documento, com fonte); o Word mostra o confronto Contrato × Realizado em vermelho e os prazos na Nota. Na obra de teste os prazos estão na mensagem de abertura do grupo (29/08/2025) e num orçamento da obra — os mesmos 4 do PDF aprovado (8665.1 V3).
 - Word v10 da obra de teste (layout compacto + prazos; backups `analise.antes-v7.json` e `analise.antes-v8.json`): 4.318 palavras (v7: 6.730; PDF aprovado (8665.1 V3): 4.359). Os textos ainda são os da revisão antiga (v6) — falta a revisão completa da SKILL 1.4.
+
+### Sessão 2026-11-19 (continuação) — PRs #14 e #15
+- Revisão completa da SKILL 1.4 feita na obra de teste (v11, sessão separada).
+- #14: a skill entrega o Word na conversa (`RELATORIO_WORD:` e `--mostrar`).
+- #15 (SKILL 1.6), três falhas da revisão do v11: fato acrescentado e depois editado não duplica; rascunho sai como `-vN-rascunho.docx` e é regravado a cada remontagem (vN só com `"revisado": true`); prazo escrito em "dias" usa `"unidade": "dias_corridos"`.
 
 ## Decisões desta sessão
 - Seguir o `prompt.md` do Rogério; só melhorias pequenas, sem decidir nada por ele — pedido do Ian.
@@ -31,8 +36,8 @@ Teste real feito com uma obra de ~595 MB (pasta em `Documents\Armanilux\Relatori
 - Repo é PÚBLICO: nunca commitar nome de cliente, zip, conversa ou relatório real (`tests/test_skill.py` barra alguns nomes).
 
 ## Pendências (em ordem)
-1. Ian abrir o v10 e comparar com o PDF aprovado (8665.1 V3).
-2. Rodar a revisão completa da SKILL 1.4 na obra de teste (ler tudo, frases curtas, cores, leituras, diagnóstico em tópicos, prazos com `inicio`/`fim` por frente, conferência independente). Hoje o confronto usa o primeiro registro de cada etapa, que numa obra de várias frentes é aproximado (ex.: medição 29 d.u., entrega 126 d.u.). Reprocessar do zip para os eventos usarem as datas originais das mensagens coladas.
+1. Ian abrir o v11 e comparar com o PDF aprovado (8665.1 V3).
+2. Conferir se o v11 já usa as datas originais das mensagens coladas; se não, reprocessar a obra de teste do zip.
 3. Instalação: linha de colagem citando `$skill-installer` e as URLs `/tree/main/skills/<nome>` (README, AGENTS.md).
 4. Transcrição com cache por arquivo (não refazer tudo), e rodar em segundo plano.
 5. `analyze.py` ainda calcula textos automáticos antigos (`_impacto`, `_produtividade`, `_comentarios_etapa`, gargalos, responsabilidades) que o Word compacto não usa mais; limpar.
