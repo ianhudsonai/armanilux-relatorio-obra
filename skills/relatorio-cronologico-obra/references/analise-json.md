@@ -4,7 +4,7 @@ O arquivo fica em `04-transcricoes/analise.json`. O Word é montado a partir del
 
 Campos que o script recalcula com `--recalcular`: `intervalos`, `intervalos_marcos`, `duracao_marcos`, `confronto_contrato`, `lacunas`, `kpis`, `etapas`, `marcos` e, em cada evento, `destaque_auto` (cor sugerida).
 
-Campos que vêm da leitura do zip, para o agente consultar. Não edite: `lacunas_automaticas`, `arquivos_fora_da_exportacao` (nomes dos arquivos que o WhatsApp não exportou), `documentos_texto`, `transcricoes`.
+Campos que vêm da leitura do zip, para o agente consultar. Não edite: `lacunas_automaticas`, `arquivos_fora_da_exportacao` (nomes dos arquivos que o WhatsApp não exportou), `documentos_texto`, `transcricoes`, `conversa` (caminho, dentro da obra, da conversa da última exportação lida; a conferência e a remontagem usam esta).
 
 Campos que a revisão preenche e o script preserva:
 
@@ -18,7 +18,9 @@ Campos que a revisão preenche e o script preserva:
 - `conclusao_personalizada`: texto único (diagnóstico da eficiência do fluxo)
 - `recomendacoes_personalizadas`: lista de frases
 - `lacunas_adicionais`: lista de frases curtas com o que faltou e não está em `lacunas_automaticas`
-- `obra_ajustes`, `pendencias_revisadas`, `revisado`
+- `obra_ajustes`, `pendencias_revisadas`
+
+`revisado` não é preservado: uma exportação nova da mesma obra traz mensagens novas, então o relatório volta a ser rascunho até a revisão gravar `"revisado": true` de novo.
 
 `eventos` é a lista cronológica. `etapa` é uma letra de A, B, C, D, E, F, G, H, I, J ou L. `pendencias` usa `status` igual a `Pendente` só para item que o grupo deixou aberto.
 

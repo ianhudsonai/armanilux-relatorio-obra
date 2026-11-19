@@ -26,7 +26,7 @@ from analyze import (
 from build_charts import grafico_barras, grafico_gantt
 from build_docx import montar_docx, proxima_versao
 from entrega import converter_pdf, copiar_para_link, formato_entrega
-from common import configurar_saida, escrever_json, ler_json
+from common import configurar_saida, escrever_json, ler_json, nome_seguro
 from config_io import carregar, pasta_relatorios
 from extract_documents import extrair_pasta
 from extract_keyframes import extrair_pasta as extrair_quadros
@@ -106,8 +106,6 @@ def _conversa_extraida(pasta_obra: Path, analise: dict | None = None) -> Path | 
 
 def _conversa_do_zip(pasta_obra: Path, resumo: dict, nome_txt: str) -> Path | None:
     """Onde o .txt da exportação que acabou de ser lida foi parar dentro da obra."""
-    from common import nome_seguro
-
     for item in resumo["arquivos"]:
         if nome_seguro(item["origem"]) == nome_txt:
             return pasta_obra / item["destino"]
@@ -137,7 +135,7 @@ def _preservar(novo: dict, antigo: dict | None) -> dict:
     if antigo.get("revisado"):
         print(
             "Esta obra já tinha relatório revisado. Com a conversa nova, o relatório volta a ser rascunho: "
-            "confira as mensagens novas e grave \"revisado\": true de novo."
+            "confira as mensagens novas e a conclusão, e grave \"revisado\": true de novo."
         )
     if novo.get("ajustes_eventos"):
         novo["eventos"] = aplicar_ajustes(novo["eventos"], novo["ajustes_eventos"])

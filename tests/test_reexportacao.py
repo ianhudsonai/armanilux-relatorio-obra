@@ -84,7 +84,7 @@ class ReexportacaoTeste(unittest.TestCase):
         self.assertEqual(codigo, 0)
 
     def _remontar(self) -> None:
-        self.assertEqual(executar(["--workspace", str(self.workspace), "--rebuild-only", "--obra-dir", str(self.obra)]), 0)
+        self.assertEqual(executar(["--workspace", str(self.workspace), "--rebuild-only", "--recalcular", "--obra-dir", str(self.obra)]), 0)
 
     def _revisar(self) -> None:
         caminho = self.obra / "04-transcricoes" / "analise.json"
@@ -124,6 +124,23 @@ class ReexportacaoTeste(unittest.TestCase):
 
         # A remontagem confere os fatos contra a mesma conversa nova, não contra a antiga (maior).
         caminho = self.obra / "04-transcricoes" / "analise.json"
+        analise["eventos_adicionais"] = [
+            {"data": "2026-03-16", "hora": "10:00", "etapa": "L", "autor": "Helena Duarte", "ocorrencia": "Termo assinado devolvido."}
+        ]
+        escrever_json(caminho, analise)
+        self._remontar()
+        conferencia = (self.obra / "04-transcricoes" / "verificacao.md").read_text(encoding="utf-8")
+        self.assertNotIn("Termo assinado devolvido", conferencia)
+
+    def test_analise_antiga_sem_marca_da_conversa_usa_a_conversa_mais_recente(self):
+        self._rodar(_zip(self.base / "export1" / "WhatsApp Chat - Obra 1001.zip", CHAT))
+        self._rodar(_zip(self.base / "export2" / "WhatsApp Chat - Obra 1001.zip", _sem_midia(CHAT) + FATO_NOVO))
+        antiga = self.obra / "01-conversas" / "_chat.txt"
+        os.utime(antiga, (antiga.stat().st_atime, antiga.stat().st_mtime - 3600))
+
+        caminho = self.obra / "04-transcricoes" / "analise.json"
+        analise = ler_json(caminho)
+        analise.pop("conversa", None)  # analise.json de antes desta marca
         analise["eventos_adicionais"] = [
             {"data": "2026-03-16", "hora": "10:00", "etapa": "L", "autor": "Helena Duarte", "ocorrencia": "Termo assinado devolvido."}
         ]
