@@ -97,7 +97,19 @@ O PDF só aparece se o LibreOffice estiver instalado. O arquivo que vale é o Wo
 
 ## 4. Revisar a análise
 
-Abra `analise.json` e confira cada evento contra o `.txt` da conversa. A classificação automática erra quando a frase é ambígua. Corrija `etapa`, `ocorrencia` e `impacto`. Não crie etapa K.
+A leitura automática é só um rascunho: num grupo grande ela deixa etapas vazias (chapas, medição, entrega, conclusão) e pode classificar errado. Esta revisão é obrigatória, não opcional. Não entregue o relatório sem ela.
+
+1. Abra `04-transcricoes/candidatos-por-etapa.md`. Ele lista, por etapa, as mensagens do grupo que provavelmente falam dela, em ordem de data. A lista é larga de propósito: confira cada mensagem e use só as que realmente marcam a etapa. Se precisar de mais contexto, procure a mensagem no `.txt` em `01-conversas`.
+2. Para cada fato real que faltou, acrescente em `eventos_adicionais` do `analise.json`:
+
+```json
+{"data": "2026-01-13", "hora": "10:30", "etapa": "C", "autor": "Nome", "ocorrencia": "Medição in loco realizada na cozinha.", "impacto": ""}
+```
+
+`impacto` só vale na etapa J. Etapa é uma letra de A a J ou L. Se a mensagem trouxer arquivo, ponha o nome em `midias` ou `documentos`.
+3. Para tirar um fato que a leitura automática classificou errado, use `ajustes_eventos` com `{"data": "2026-01-13", "hora": "10:30", "etapa_original": "J", "remover": true}`. Para só trocar a etapa, use `"etapa": "C"` no lugar de `remover`.
+4. Confira também a lista de pendências (`pendencias`) e o endereço e demais campos de `obra`. Apague o que não for pendência de verdade.
+5. Não invente data nem fato. O que o grupo não diz fica `dado não identificado`. Não crie etapa K.
 
 Abra as fotos e os quadros em `03-midias` (até três quadros por vídeo, não um filme inteiro). Para cada imagem que esclareça a obra, acrescente em `observacoes_visuais`:
 

@@ -5,23 +5,38 @@ from __future__ import annotations
 from pathlib import Path
 
 
-def _texto_pdf(caminho: Path) -> str:
-    try:
-        import pdfplumber
+import logging
 
-        trechos: list[str] = []
-        with pdfplumber.open(caminho) as pdf:
-            for pagina in pdf.pages:
-                trechos.append(pagina.extract_text() or "")
-        texto = "\n".join(trechos).strip()
+# PDF de desenho técnico gera centenas de avisos inofensivos; não mostrar para a pessoa.
+for _nome in ("pypdf", "pdfminer", "pdfplumber"):
+    logging.getLogger(_nome).setLevel(logging.CRITICAL)
+
+PAGINAS_MAX = 15
+PDFPLUMBER_ATE = 300 * 1024
+
+
+def _texto_pdf(caminho: Path) -> str:
+    """Texto do PDF. O pypdf é rápido; o pdfplumber trava em desenho técnico pesado,
+    então só entra para arquivo pequeno, quando o pypdf não achou texto."""
+    try:
+        from pypdf import PdfReader
+
+        leitor = PdfReader(str(caminho))
+        paginas = leitor.pages[:PAGINAS_MAX]
+        texto = "\n".join((pagina.extract_text() or "") for pagina in paginas).strip()
         if texto:
             return texto
     except Exception:
         pass
-    from pypdf import PdfReader
+    if caminho.stat().st_size > PDFPLUMBER_ATE:
+        return ""
+    try:
+        import pdfplumber
 
-    leitor = PdfReader(str(caminho))
-    return "\n".join((pagina.extract_text() or "") for pagina in leitor.pages).strip()
+        with pdfplumber.open(caminho) as pdf:
+            return "\n".join((pagina.extract_text() or "") for pagina in pdf.pages[:PAGINAS_MAX]).strip()
+    except Exception:
+        return ""
 
 
 def _texto_docx(caminho: Path) -> str:
