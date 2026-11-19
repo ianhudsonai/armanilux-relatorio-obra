@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import unittest
 import zipfile
@@ -23,6 +24,21 @@ def _texto_docx(caminho: Path) -> str:
 
 
 class PipelineTeste(unittest.TestCase):
+    def setUp(self):
+        # O teste não pode escrever no registro de verdade do computador.
+        self._temp = TemporaryDirectory()
+        self._antigo = {k: os.environ.get(k) for k in ("ARMANILUX_REGISTRO", "ARMANILUX_CONFIG")}
+        os.environ["ARMANILUX_REGISTRO"] = str(Path(self._temp.name) / "registro.json")
+        os.environ["ARMANILUX_CONFIG"] = str(Path(self._temp.name) / "sem-config.json")
+
+    def tearDown(self):
+        for chave, valor in self._antigo.items():
+            if valor is None:
+                os.environ.pop(chave, None)
+            else:
+                os.environ[chave] = valor
+        self._temp.cleanup()
+
     def test_exemplo_ficticio_gera_docx(self):
         from gerar_exemplo import criar_exemplo
 

@@ -176,13 +176,28 @@ def executar(argv: list[str] | None = None) -> int:
     parser.add_argument("--rebuild-only", action="store_true")
     parser.add_argument("--recalcular", action="store_true", help="Recalcula dias úteis e textos a partir dos eventos já salvos")
     parser.add_argument("--pdf", action="store_true", help="Mantido por compatibilidade; o PDF é tentado sempre que o LibreOffice existe")
+    parser.add_argument("--listar", action="store_true", help="Só mostra as conversas sem relatório")
+    parser.add_argument("--indice", action="append", default=None, help="Número(s) da lista, como 1 ou 1,3")
+    parser.add_argument("--todas", action="store_true", help="Gera de todas as conversas da lista, uma por vez")
+    parser.add_argument("--concluir", action="store_true", help="A pessoa aprovou o relatório: guarda o zip na obra")
+    parser.add_argument("--copiar", action="store_true", help="Ao concluir, copia o zip em vez de mover")
+    parser.add_argument("--sha", default=None, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+
+    if args.concluir:
+        return _concluir(args)
 
     config = carregar()
     if not args.workspace and not args.obra_dir and config is None:
         print("Não encontrei as preferências da Armanilux (config.json).")
         print("Abra um chat novo e rode a skill $preparar-projeto-armanilux.")
         return 2
+
+    sem_origem = not (args.zip_path or args.chat or args.rebuild_only or args.obra_dir)
+    if args.listar or args.indice or args.todas or sem_origem:
+        if args.indice or args.todas:
+            return _processar_escolha(args, config)
+        return _listar(config, args.downloads)
 
     if not _checar_bibliotecas():
         return 1
@@ -240,15 +255,29 @@ def executar(argv: list[str] | None = None) -> int:
         return 2
 
     from analyze import metadados_da_conversa
+    from descoberta import inferir_identidade
 
-    meta = metadados_da_conversa(
-        mensagens,
-        origem.name,
-        {"numero": args.obra or "", "cliente": args.cliente or ""},
-    )
-    numero = meta.get("numero") or "sem-numero"
-    cliente = meta.get("cliente") or "cliente"
+    texto_grupo = "\n".join(m.texto for m in mensagens[:60])
+    identidade = inferir_identidade(origem.name, texto_grupo)
+    sobrepor = {
+        "numero": args.obra or identidade["numero"],
+        "cliente": args.cliente or identidade["cliente"],
+    }
+    if not sobrepor["numero"] or not sobrepor["cliente"]:
+        print(
+            "Não consegui descobrir sozinho o número da obra e o nome do cliente "
+            "pelo nome do arquivo nem pelo grupo. Pergunte só isso à pessoa e rode de novo "
+            "com --obra e --cliente."
+        )
+        return 2
+    meta = metadados_da_conversa(mensagens, origem.name, sobrepor)
+    numero = meta.get("numero") or sobrepor["numero"]
+    cliente = meta.get("cliente") or sobrepor["cliente"]
     pasta_obra = garantir_obra(raiz, numero, cliente, modelo)
+    try:
+        _marcar_andamento(origem, args.sha, sobrepor)
+    except Exception as erro:
+        print(f"Aviso: o registro local não foi atualizado: {erro}")
     print(f"Pasta da obra: {pasta_obra}")
 
     if tipo == "zip":
@@ -297,17 +326,135 @@ def executar(argv: list[str] | None = None) -> int:
         documentos=documentos,
         transcricoes=transcricoes,
         quadros=quadros,
-        overrides={"numero": args.obra or "", "cliente": args.cliente or ""},
+        overrides=sobrepor,
     )
     caminho_json = pasta_obra / "04-transcricoes" / "analise.json"
     antigo = ler_json(caminho_json) if caminho_json.exists() else None
     analise = _preservar(analise, antigo)
     _aplicar_preferencias(analise, config)
     escrever_json(caminho_json, analise)
-    _gravar(pasta_obra, analise, gerar_pdf)
+    destino = _gravar(pasta_obra, analise, gerar_pdf)
+    try:
+        _anotar_relatorio(origem, args.sha, destino, pasta_obra)
+    except Exception as erro:
+        print(f"Aviso: o relatório foi gravado, mas o registro local não atualizou: {erro}")
     print("Análise gravada em:")
     print(caminho_json)
     return 0
+
+
+def _listar(config: dict | None, downloads: str | None) -> int:
+    import registro
+    from descoberta import descobrir_em, pastas_de_busca
+
+    if downloads:
+        # Pasta indicada na linha de comando: procura só nela (e na pasta da Armanilux).
+        raizes = [Path(downloads)] if Path(downloads).is_dir() else []
+        if config and config.get("pasta_raiz") and Path(config["pasta_raiz"]).is_dir():
+            raizes.append(Path(config["pasta_raiz"]))
+    else:
+        raizes = pastas_de_busca(config=config)
+    dados = registro.sincronizar(descobrir_em(raizes))
+    print(registro.formatar_lista(dados))
+    return 0
+
+
+def _numeros(valores: list[str] | None) -> list[int]:
+    saida: list[int] = []
+    for valor in valores or []:
+        for pedaco in str(valor).replace(" ", ",").split(","):
+            if pedaco.strip():
+                saida.append(int(pedaco))
+    return saida
+
+
+def _processar_escolha(args, config: dict | None) -> int:
+    """Gera o relatório das conversas escolhidas, uma de cada vez."""
+    import registro
+
+    dados = registro.carregar()
+    if not dados["fila"]:
+        _listar(config, args.downloads)
+        dados = registro.carregar()
+    try:
+        shas = registro.escolher(dados, _numeros(args.indice), args.todas)
+    except (IndexError, ValueError):
+        print("Esse número não está na lista. Rode --listar e escolha um número que apareceu.")
+        return 2
+    if not shas:
+        print("Nenhuma conversa escolhida.")
+        return 2
+    resultado = 0
+    for posicao, sha in enumerate(shas, start=1):
+        item = dados["exportacoes"][sha]
+        print(f"\n=== Conversa {posicao} de {len(shas)}: Obra {item.get('numero') or '?'} – {item.get('cliente') or '?'} ===")
+        argv = ["--sha", sha]
+        argv += ["--chat" if item.get("tipo") == "txt" else "--zip", item["caminho"]]
+        for opcao, valor in (("--workspace", args.workspace), ("--downloads", args.downloads)):
+            if valor:
+                argv += [opcao, valor]
+        for opcao, ligada in (("--skip-transcribe", args.skip_transcribe), ("--skip-keyframes", args.skip_keyframes), ("--pdf", args.pdf)):
+            if ligada:
+                argv.append(opcao)
+        if item.get("numero"):
+            argv += ["--obra", item["numero"]]
+        if item.get("cliente"):
+            argv += ["--cliente", item["cliente"]]
+        try:
+            codigo = executar(argv)
+        except Exception as erro:
+            print(f"Não foi possível concluir esta conversa: {erro}")
+            codigo = 1
+        resultado = resultado or codigo
+    return resultado
+
+
+def _concluir(args) -> int:
+    import registro
+
+    dados = registro.carregar()
+    prontos = [s for s, i in dados["exportacoes"].items() if i.get("status") == registro.GERADO]
+    prontos.sort(key=lambda s: dados["exportacoes"][s].get("atualizado_em", ""))
+    try:
+        numeros = _numeros(args.indice)
+        shas = prontos if args.todas else [prontos[n - 1] for n in numeros]
+    except (IndexError, ValueError):
+        print("Esse número não está na lista de relatórios prontos.")
+        return 2
+    if not shas:
+        print("Não há relatório gerado para concluir. Diga qual conversa a pessoa aprovou.")
+        return 2
+    for sha in shas:
+        destino = registro.concluir(sha, copiar=args.copiar)
+        print(f"Concluída. Conversa guardada em:\n{destino}")
+    return 0
+
+
+def _marcar_andamento(origem: Path, sha: str | None, identidade: dict) -> None:
+    import registro
+    from descoberta import examinar_arquivo
+
+    sha = sha or registro.sha256_arquivo(origem)
+    if sha not in registro.carregar()["exportacoes"]:
+        achado = examinar_arquivo(origem) or {
+            "tipo": "zip" if origem.suffix.lower() == ".zip" else "txt",
+            "caminho": str(origem),
+            "nome": origem.name,
+        }
+        achado["numero"] = identidade["numero"]
+        achado["cliente"] = identidade["cliente"]
+        registro.sincronizar([achado])
+    registro.marcar_andamento(sha)
+
+
+def _anotar_relatorio(origem: Path, sha: str | None, destino: Path, pasta_obra: Path) -> None:
+    import re
+
+    import registro
+
+    sha = sha or registro.sha256_arquivo(origem)
+    achado = re.search(r"-v(\d+)\.docx$", destino.name, re.IGNORECASE)
+    registro.registrar_relatorio(sha, str(destino), int(achado.group(1)) if achado else 1, str(pasta_obra))
 
 
 def main(argv: list[str] | None = None) -> int:

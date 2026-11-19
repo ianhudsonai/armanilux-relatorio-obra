@@ -29,7 +29,7 @@ Quem já tiver esta pasta no computador pode, se quiser, dar dois cliques em `in
 ## Usar no dia a dia
 
 1. No celular, abra o grupo da obra no WhatsApp. Toque no nome do grupo. Escolha **Exportar conversa** e **Incluir mídia** (com mídia).
-2. Mande o zip para o computador e salve em **Downloads**, ou dentro da pasta da obra.
+2. Mande o zip para o computador. Pode ficar em **Downloads**, na **Área de Trabalho** ou na pasta da Armanilux. O nome pode ser longo, com acento e parênteses.
 3. No Codex, neste computador, escreva por exemplo: `faz o relatório da obra 1001 do cliente Família Almeida`. Também pode chamar `$relatorio-cronologico-obra`.
 
 O computador cria (se ainda não existir):
@@ -85,3 +85,7 @@ The one-line paste is `https://github.com/ianhudsonai/armanilux-relatorio-obra i
 `skills/relatorio-cronologico-obra/scripts/run_pipeline.py` creates `Documents\Armanilux\Relatorios-de-Obra\<obra - cliente>\{01-conversas,02-projetos-pdf,03-midias,04-transcricoes,05-relatorios}`, streams the zip (zip-slip is dropped; mojibake filenames are repaired), parses Android and iPhone WhatsApp exports, transcribes speech locally, pulls a few video frames, reads PDF/docx, and writes a versioned docx. Business days are `(start, end]` excluding weekends, Brazilian national holidays, Carnival Monday and Tuesday, SP state 9 July, and São Paulo city 25 January and Corpus Christi (`holidays` subdiv São Paulo Capital, plus Carnival added in code). Ash Wednesday stays a business day. Intervals are not summed into an "Armanilux delay".
 
 Codex is expected to review `04-transcricoes/analise.json`, look at photos/keyframes, and rerun with `--rebuild-only --recalcular`. Tests: `python -m unittest discover -s tests -v` (transcription is skipped in the sample run; CI does not install faster-whisper). Limitations: stage labels are keyword heuristics until Codex corrects them; visual descriptions stay `dado não identificado` until something that can see the image fills `observacoes_visuais`; PDF needs LibreOffice; the first Whisper `small` run downloads the model once.
+
+O programa acha as conversas sozinho, mostra as que ainda não têm relatório e pergunta por qual começar. Pode escolher várias ou todas. Se o mesmo arquivo foi baixado duas vezes, ele ignora a cópia. Se chegar uma conversa nova de uma obra que já tem relatório, ele oferece a próxima versão (v2). O número da obra e o cliente saem do nome do arquivo. Quando você disser que o relatório está bom, o zip vai para a pasta `01-conversas` da obra.
+
+Ian (English): `descoberta.py` scans Downloads, Desktop, OneDrive-redirected folders and the Armanilux root with pathlib, matching WhatsApp exports by name and by content. `registro.py` keeps `registro.json`, keyed by SHA-256: pendente, em andamento, relatório gerado, concluído. Same hash is a duplicate; a new hash for an obra that already has a report is offered as the next version. Flags: `--listar`, `--indice 1,3`, `--todas`, `--concluir`, `--copiar`.
