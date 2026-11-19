@@ -46,6 +46,14 @@ class LacunaTeste(unittest.TestCase):
         )
         self.assertEqual(lacunas_automaticas(analisar_conversa(android), [], []), [])
 
+    def test_nome_do_grupo_com_dois_pontos_nao_engana(self):
+        # "Obra: 1001" faz o leitor separar autor e texto no ":" do nome do grupo.
+        android = (
+            "05/09/2025 09:40 - Ana Lima criou o grupo \"Obra: 1001\"\n"
+            "05/09/2025 09:41 - Ana Lima: Bom dia a todos.\n"
+        )
+        self.assertEqual(lacunas_automaticas(analisar_conversa(android), [], []), [])
+
 
 class AvisoNaExecucaoTeste(unittest.TestCase):
     def setUp(self):

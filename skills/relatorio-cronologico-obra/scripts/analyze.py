@@ -986,7 +986,8 @@ def exportacao_parece_cortada(mensagens: list[Mensagem]) -> bool:
     e não avisa: o que sobra começa no meio, sem o aviso de criptografia nem a criação do grupo."""
     if not mensagens:
         return False
-    comeco = " ".join(normalizar(mensagem.texto) for mensagem in mensagens[:3])
+    # O autor entra também: um ":" no nome do grupo ("Obra: 1001") manda o começo da linha para o autor.
+    comeco = " ".join(normalizar(f"{mensagem.autor or ''} {mensagem.texto}") for mensagem in mensagens[:3])
     return not any(marca in comeco for marca in _INICIO_DO_GRUPO)
 
 

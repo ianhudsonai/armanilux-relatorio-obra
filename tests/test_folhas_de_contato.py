@@ -23,6 +23,8 @@ CHAT = (
     "[13/01/2026, 10:30:18] Helena Duarte: Foto da bancada.\n"
     "‎<anexado: IMG-20240305-WA0007.jpg>\n"
     "[14/01/2026, 09:00:00] Helena Duarte: Foto que ninguém citou no texto segue no zip.\n"
+    "[15/01/2026, 08:00:00] Helena Duarte: Outra foto.\n"
+    "\u200e<anexado: IMG-20240101-WA0002.jpg>\n"
 )
 
 
@@ -57,6 +59,7 @@ class DatasDasFotosTeste(unittest.TestCase):
             arquivo.writestr("_chat.txt", CHAT.encode("utf-8"))
             arquivo.writestr("IMG-20240305-WA0007.jpg", _jpg())
             arquivo.writestr("IMG-20251120-WA0001.jpg", _jpg())
+            arquivo.writestr("IMG-20240101-WA0002.JPG", _jpg())  # a mensagem cita ".jpg", minúsculo
         workspace = self.base / "obras"
         with redirect_stdout(io.StringIO()):
             codigo = executar(
@@ -76,6 +79,7 @@ class DatasDasFotosTeste(unittest.TestCase):
         )
         datas = {item["arquivo"]: item["data"] for folha in indice.values() for item in folha}
         self.assertEqual(datas["IMG-20240305-WA0007.jpg"], "13/01/2026")
+        self.assertEqual(datas["IMG-20240101-WA0002.JPG"], "15/01/2026")
         # Sem mensagem que cite o arquivo, sobra o nome; a folha diz de onde veio a data.
         self.assertEqual(datas["IMG-20251120-WA0001.jpg"], "20/11/2025 (nome do arquivo)")
 

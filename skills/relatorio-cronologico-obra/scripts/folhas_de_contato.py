@@ -26,8 +26,8 @@ def _data_do_nome(nome: str) -> str:
 def _data(nome: str, datas: dict[str, str]) -> str:
     """A data da mensagem que anexou o arquivo. O nome do arquivo engana (foto antiga
     reenviada, celular com data errada); só vale quando nenhuma mensagem cita o arquivo."""
-    if nome in datas:
-        return datas[nome]
+    if nome.lower() in datas:
+        return datas[nome.lower()]
     pelo_nome = _data_do_nome(nome)
     return f"{pelo_nome} (nome do arquivo)" if pelo_nome else ""
 
@@ -55,7 +55,7 @@ def gerar(pasta_obra: Path, datas: dict[str, str] | None = None) -> list[Path]:
     """`datas`: nome do arquivo -> DD/MM/AAAA da mensagem que o anexou."""
     from PIL import Image, ImageDraw
 
-    datas = datas or {}
+    datas = {nome.lower(): data for nome, data in (datas or {}).items()}
 
     itens = listar_imagens(pasta_obra / "03-midias")
     destino = pasta_obra / "04-transcricoes" / "folhas-de-contato"
@@ -81,8 +81,9 @@ def gerar(pasta_obra: Path, datas: dict[str, str] | None = None) -> list[Path]:
             except Exception:
                 desenho.text((x + 10, y + 10), "imagem ilegível", fill="red")
             data = _data(nome, datas)
-            rotulo = f"{numero}. {nome[:34]} {data}"
-            desenho.text((x + 6, y + LADO + 6), rotulo, fill="black")
+            # Nome e data em duas linhas: com "(nome do arquivo)" uma linha só passaria da miniatura.
+            desenho.text((x + 6, y + LADO + 2), f"{numero}. {nome[:50]}", fill="black")
+            desenho.text((x + 6, y + LADO + 16), data, fill="black")
             indice[nome_folha].append({"numero": numero, "arquivo": nome, "data": data, "video": Path(nome).suffix.lower() in EXT_VIDEO})
         caminho_folha = destino / nome_folha
         folha.save(caminho_folha, format="JPEG", quality=80)
