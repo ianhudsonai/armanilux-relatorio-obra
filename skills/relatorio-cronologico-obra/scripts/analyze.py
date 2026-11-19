@@ -22,7 +22,7 @@ from common import (
     normalizar,
     tipo_midia,
 )
-from parse_whatsapp import Mensagem, texto_util
+from parse_whatsapp import MARCADOR_MIDIA_OCULTA, Mensagem, texto_util
 
 ORDEM = ("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "L")
 
@@ -120,7 +120,8 @@ def metadados_da_conversa(mensagens: list[Mensagem], fonte: str, overrides: dict
     for chave, valor in (overrides or {}).items():
         if valor:
             obra[chave] = valor
-    datas = [item.data for item in mensagens]
+    # Mensagem colada de outra conversa não muda o período do grupo.
+    datas = [item.data for item in mensagens if not item.encaminhada_por]
     if datas:
         obra["periodo_inicio"] = min(datas).isoformat()
         obra["periodo_fim"] = max(datas).isoformat()
@@ -204,17 +205,32 @@ _MARCADOR_ANEXO = re.compile(
     r"\s+\((?:arquivo anexado|file attached)\)",
     re.IGNORECASE,
 )
+_FORA_DA_EXPORTACAO = "(arquivo não incluído na exportação; conteúdo: dado não identificado)."
+
+
+def _so_o_nome(mensagem: Mensagem) -> bool:
+    """Documento exportado sem mídia: o texto é só '<Mídia oculta>' e o nome do arquivo."""
+    return mensagem.midia_omitida and bool(mensagem.anexos) and bool(
+        MARCADOR_MIDIA_OCULTA.match(mensagem.texto)
+    )
 
 
 def _ocorrencia(mensagem: Mensagem, arquivos: list[str], transcricoes: list[dict]) -> str:
-    corpo = _MARCADOR_ANEXO.sub("", texto_util(mensagem))
+    if _so_o_nome(mensagem):
+        corpo = MARCADOR_MIDIA_OCULTA.sub("", texto_util(mensagem), count=1).replace(mensagem.anexos[0], "", 1)
+
+    else:
+        corpo = _MARCADOR_ANEXO.sub("", texto_util(mensagem))
     corpo = " ".join(corpo.split())
     if len(corpo) > 700:
         corpo = corpo[:700].rstrip() + "…"
     if mensagem.autor:
-        partes = [f"{mensagem.autor}: {corpo}"]
+        partes = [f"{mensagem.autor}: {corpo}" if corpo else f"{mensagem.autor}:"]
     else:
-        partes = [corpo]
+        partes = [corpo] if corpo else []
+    if mensagem.encaminhada_por and mensagem.encaminhada_em:
+        quando = mensagem.encaminhada_em.strftime("%d/%m/%Y %H:%M")
+        partes.append(f"(encaminhada no grupo por {mensagem.encaminhada_por} em {quando})")
     midias = []
     documentos = []
     for nome in arquivos:
@@ -226,7 +242,10 @@ def _ocorrencia(mensagem: Mensagem, arquivos: list[str], transcricoes: list[dict
         partes.append("Mídia: " + ", ".join(midias))
     for nome in documentos:
         partes.append("Documento: " + nome)
-    if mensagem.midia_omitida and not midias:
+    if _so_o_nome(mensagem):
+        rotulo = "Documento" if Path(mensagem.anexos[0]).suffix.lower() in EXT_DOCUMENTO else "Mídia"
+        partes.append(f"{rotulo}: {mensagem.anexos[0]} {_FORA_DA_EXPORTACAO}")
+    elif mensagem.midia_omitida and not arquivos:
         partes.append("Mídia: dado não identificado (mídia omitida na exportação).")
     for nome in midias:
         transcricao = _transcricao_de(nome, transcricoes)
@@ -257,7 +276,7 @@ def extrair_eventos(
         etapas = classificar_etapas(mensagem.texto)
         if not etapas:
             continue
-        nomes = _ligar_anexos(mensagem, indice)
+        nomes = [] if _so_o_nome(mensagem) else _ligar_anexos(mensagem, indice)
         ocorrencia = _ocorrencia(mensagem, nomes, transcricoes)
         for etapa in etapas:
             eventos.append(

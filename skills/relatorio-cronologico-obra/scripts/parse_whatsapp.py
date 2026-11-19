@@ -41,6 +41,18 @@ _MIDIA_OCULTA = re.compile(
     r"<mídia oculta>)",
     re.IGNORECASE,
 )
+# Documento exportado "sem mídia": o nome do arquivo vem na linha logo abaixo
+# de "<Mídia oculta>". Legenda de foto não termina em extensão e fica de fora.
+# Qualquer extensão que comece por letra (pdf, dwg, xlsm, skp…); "R$ 1.500" não casa.
+MARCADOR_MIDIA_OCULTA = re.compile(r"<m[ií]dia oculta>", re.IGNORECASE)
+_NOME_APOS_MIDIA_OCULTA = re.compile(
+    r"^<m[ií]dia oculta>\s*\n\s*([^<>\n/\\]+\.[A-Za-z][A-Za-z0-9]{1,4})\s*(?:\n|$)",
+    re.IGNORECASE,
+)
+# Linha de mensagem colada de outra conversa: "[21/08, 08:54] Nome: texto" (sem ano).
+_LINHA_ENCAMINHADA = re.compile(
+    r"^\[(\d{1,2})/(\d{1,2}),?\s+(\d{1,2}):(\d{2})\]\s*([^:\]\n]{1,80}?):(?:\s(.*))?$"
+)
 
 
 @dataclass
@@ -51,6 +63,9 @@ class Mensagem:
     anexos: list[str] = field(default_factory=list)
     midia_omitida: bool = False
     sistema: bool = False
+    # Mensagem colada/reencaminhada: quem colou no grupo e quando.
+    encaminhada_por: str | None = None
+    encaminhada_em: datetime | None = None
 
     @property
     def data(self):
@@ -117,7 +132,56 @@ def _anexos_do_texto(texto: str) -> list[str]:
             nome = corrigir_mojibake(achado.strip().strip("."))
             if nome and nome not in encontrados:
                 encontrados.append(nome)
+    oculta = _NOME_APOS_MIDIA_OCULTA.match(texto)
+    if oculta:
+        nome = corrigir_mojibake(oculta.group(1).strip())
+        if nome not in encontrados:
+            encontrados.append(nome)
     return encontrados
+
+
+def _data_encaminhada(achado: re.Match, postada: datetime) -> datetime | None:
+    """Sem ano no colchete: é a data mais recente, até a de envio (29/02 volta ao último ano bissexto)."""
+    dia, mes, hora, minuto = (int(achado.group(i)) for i in range(1, 5))
+    for ano in range(postada.year, postada.year - 5, -1):
+        try:
+            original = datetime(ano, mes, dia, hora, minuto)
+        except ValueError:
+            continue
+        if original <= postada:
+            return original
+    return None
+
+
+def _desmembrar(mensagem: Mensagem) -> list[Mensagem]:
+    """Separa as mensagens coladas, cada uma com a data e o autor originais."""
+    if mensagem.sistema or not mensagem.autor:
+        return [mensagem]
+    propria: list[str] = []
+    coladas: list[Mensagem] = []
+    for linha in mensagem.texto.split("\n"):
+        achado = _LINHA_ENCAMINHADA.match(linha)
+        quando = _data_encaminhada(achado, mensagem.quando) if achado else None
+        if quando is not None:
+            coladas.append(
+                Mensagem(
+                    quando=quando,
+                    autor=achado.group(5).strip(),
+                    texto=achado.group(6) or "",
+                    encaminhada_por=mensagem.autor,
+                    encaminhada_em=mensagem.quando,
+                )
+            )
+        elif coladas:
+            coladas[-1].texto += "\n" + linha
+        else:
+            propria.append(linha)
+    if not coladas:
+        return [mensagem]
+    for colada in coladas:
+        colada.texto = colada.texto.strip()
+    mensagem.texto = "\n".join(propria).strip()
+    return ([mensagem] if mensagem.texto else []) + coladas
 
 
 def analisar_conversa(texto: str) -> list[Mensagem]:
@@ -129,9 +193,10 @@ def analisar_conversa(texto: str) -> list[Mensagem]:
         if atual is None:
             return
         atual.texto = corrigir_mojibake(atual.texto).strip()
-        atual.anexos = _anexos_do_texto(atual.texto)
-        atual.midia_omitida = bool(_MIDIA_OCULTA.search(atual.texto))
-        mensagens.append(atual)
+        for parte in _desmembrar(atual):
+            parte.anexos = _anexos_do_texto(parte.texto)
+            parte.midia_omitida = bool(_MIDIA_OCULTA.search(parte.texto))
+            mensagens.append(parte)
         atual = None
 
     for bruta in texto.splitlines():
