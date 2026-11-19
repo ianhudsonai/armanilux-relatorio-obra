@@ -20,6 +20,8 @@ Obra de teste (pasta em `Documents\Armanilux\Relatorios-de-Obra\`, FORA do repo)
 - Conversa sem o aviso de criptografia nem a criação do grupo nas 3 primeiras mensagens = "parece cortada": aviso e lacuna. Na obra de teste não dispara. Quem entrou depois no grupo ou conversa em outro idioma também cai nisso (aceito).
 - Folhas de contato: data da mensagem que anexou a foto; sem mensagem, a do nome com "(nome do arquivo)".
 - Antes de gerar, o agente pergunta "Obra N, cliente X, certo?". Correção vai com `--indice N --obra --cliente` e fica no registro. "Obra 8977" no nome vale mais que outro número. A remontagem atualiza o registro.
+- "Limites do material" no v13 está certo, não é erro: 64 arquivos com nome (56 PDFs) e 165 `<Mídia oculta>` não vieram porque o WhatsApp só põe no zip o que está baixado no celular que exporta (faltas espalhadas por todos os meses, não é corte). Vieram 180 mídias (118 fotos, 51 vídeos, 10 áudios, 1 figurinha); os quadros saem desses 51 vídeos (153 em `03-midias\quadros`). Os 4 `DP_DET …` são desenhos sem camada de texto (não há OCR). Ian: lista dos 64 faltantes não é necessária agora, é só teste.
+- Estado combinado com o Ian: instalação e segurança prontas; texto do relatório ainda não está pronto para cliente (pendência 1).
 - Antes já valiam: transcrição com cache por arquivo; entrega Word, PDF ou link escolhida no preparo; prazo contratual só com fonte escrita da época (`fonte_data`; posterior leva `*`); "dias" sem "úteis" = `dias_corridos`; cores marrom `#442819` e dourado `#C3A56D`.
 
 ## Não mexer
@@ -31,11 +33,11 @@ Obra de teste (pasta em `Documents\Armanilux\Relatorios-de-Obra\`, FORA do repo)
 - Instalar skills só no app em uso (Codex → `.codex\skills`; Claude Code → `.claude\skills`).
 
 ## Pendências (em ordem)
-1. Ian abrir o `v13` e comparar com o PDF aprovado. A remontagem não relê a conversa: as 77 coladas só entram numa exportação nova da obra.
-2. Rodar `$preparar-projeto-armanilux` neste PC para trocar o venv 3.14 pelo 3.12 com as versões fixas (o antigo fica guardado).
-3. Sobras aceitas de #29–#32 (só se incomodarem): "Cliente:" solto no grupo ainda vale mais que o nome do arquivo (a pergunta sim/não pega); remontar não refaz folhas de contato nem lacunas automáticas; instalador cortado na criação do venv pode deixar ambiente sem pip.
-4. Lacunas de qualidade do v12/v13 (conclusão em 14/09 errada, intervalos misturando frentes, "programado" contado como feito, datas finais e total 304/302, etapa J por tipo).
-5. Teste real no PC do Rogério (passos em `3-pronto-para-enviar.md`, "What Rogério must do himself"): é o único jeito de provar a instalação no Codex sem Python e a pasta de skills que o Codex usa.
+1. Lacunas de qualidade do v13 (é o que o Rogério vai julgar; próxima tarefa): conclusão em 14/09 errada, intervalos misturando frentes, "programado" contado como feito, datas finais e total 304/302 que não batem, etapa J agrupada por tipo. Uma correção por vez, com teste antes; conferir depois remontando a obra de teste (`v13` é regravado, não vira v14).
+2. Ian abrir o `v13` e comparar com o PDF aprovado. A remontagem não relê a conversa: as 77 coladas só entram numa exportação nova da obra.
+3. Teste real no PC do Rogério (passos em `3-pronto-para-enviar.md`, "What Rogério must do himself"): é o único jeito de provar a instalação no Codex sem Python e a pasta de skills que o Codex usa.
+4. Rodar `$preparar-projeto-armanilux` neste PC para trocar o venv 3.14 pelo 3.12 com as versões fixas (o antigo fica guardado).
+5. Sobras aceitas de #29–#32 (só se incomodarem): "Cliente:" solto no grupo ainda vale mais que o nome do arquivo (a pergunta sim/não pega); remontar não refaz folhas de contato nem lacunas automáticas; instalador cortado na criação do venv pode deixar ambiente sem pip.
 6. Limpar textos automáticos antigos de `analyze.py` que o Word compacto não usa.
 
 ## Como rodar
