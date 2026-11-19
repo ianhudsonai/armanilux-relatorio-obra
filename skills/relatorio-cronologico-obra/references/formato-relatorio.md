@@ -45,7 +45,9 @@ Evidência de arquivo na ocorrência: `Mídia: nome-do-arquivo` para foto, áudi
 
 ## 4. Dias úteis entre marcos
 
-Tabela De | Até | Marcos | Dias úteis | Leitura, com a célula de leitura colorida. Figura 1: gráfico de barras colorido. Figura 2: linha do tempo (Gantt) das etapas, com borda vermelha quando a etapa vem depois de um intervalo longo.
+Marco é o primeiro registro de cada etapa, como na tabela do relatório aprovado (8665.1 V3). Tabela Intervalo entre marcos | Dias úteis: uma linha por par de marcos em ordem de data, com o nome da etapa e a data entre parênteses, e a última linha "Duração total registrada". Sem cor de semáforo: intervalo de calendário não é veredito. Figura 1: barras deitadas, uma por intervalo entre marcos. Figura 2: linha do tempo (Gantt) das etapas, do primeiro ao último registro. As figuras são desenhadas na largura da página (16,2 cm) para a letra não encolher.
+
+Os intervalos entre todas as datas com registro continuam no `analise.json` (`intervalos`) e servem aos textos das etapas e dos gargalos.
 
 ## 5. Diagnóstico
 
