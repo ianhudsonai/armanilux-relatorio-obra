@@ -80,6 +80,22 @@ class ConclusaoTeste(unittest.TestCase):
         marcos = {m["marco"]: m["situacao"] for m in relato["marcos"]}
         self.assertEqual(marcos["Conclusão dos serviços e validação final"], "Concluído")
 
+    def test_word_sem_recalcular_nao_contradiz_o_quadro(self):
+        """Remontar sem --recalcular usa "marcos" antigo do analise.json; a linha da conclusão
+        precisa seguir os eventos, como o Quadro-Resumo."""
+        relato = completar_relato({"obra": {"numero": "1001", "cliente": "Cliente Teste"}, "eventos": BASE + [RECLAMACAO]})
+        relato["marcos"] = [{"marco": "Conclusão dos serviços e validação final", "situacao": "Concluído"}]
+        self.assertEqual(
+            _linhas(_word(relato), "Marco")["Conclusão dos serviços e validação final"],
+            "dado não identificado (pendente)",
+        )
+
+    def test_com_dois_fatos_marcados_vale_o_ultimo(self):
+        parcial = _evento("2026-03-18", "L", "Banhos concluídos.", conclusao=True)
+        final = _evento("2026-03-25", "L", "Obra entregue e validada.", conclusao=True)
+        relato = completar_relato({"obra": {}, "eventos": BASE + [parcial, final]})
+        self.assertEqual(_linhas(_word(relato), "Indicador")["Conclusão e validação final"], "25/03/2026")
+
 
 if __name__ == "__main__":
     unittest.main()

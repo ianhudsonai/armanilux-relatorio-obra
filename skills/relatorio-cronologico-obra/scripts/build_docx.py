@@ -6,7 +6,7 @@ import re
 from datetime import date
 from pathlib import Path
 
-from analyze import LIMITE_INTERVALO_LONGO, ORDEM, TITULOS, data_da_conclusao, intervalos_marcos_de
+from analyze import LIMITE_INTERVALO_LONGO, ORDEM, TITULOS, data_da_conclusao, intervalos_marcos_de, marcos_de
 from business_days import dias_uteis_entre
 from common import DADO, LARGURA_FIGURA_CM, formatar_data
 from docx import Document
@@ -347,7 +347,8 @@ def _escrever_etapa(documento: Document, analise: dict, codigo: str) -> None:
         linhas = [[formatar_data(item["data"]), _texto_evento(item)] for item in eventos]
         _tabela_linhas(documento, ["Data", "Evento / Ocorrência"], linhas or [["—", DADO]], [2.6, 14.8], cores)
     if codigo == "L":
-        marcos = analise.get("marcos") or []
+        # Refeito dos eventos, como o Quadro-Resumo: remontar sem --recalcular não pode contradizê-lo.
+        marcos = marcos_de(analise.get("eventos") or [], analise.get("pendencias") or [])
         if marcos:
             _tabela_simples(documento, ["Marco", "Situação"], [[item["marco"], item["situacao"]] for item in marcos], [12.2, 5.2])
         pendencias = [item for item in analise.get("pendencias") or [] if (item.get("status") or "Pendente") == "Pendente"]
