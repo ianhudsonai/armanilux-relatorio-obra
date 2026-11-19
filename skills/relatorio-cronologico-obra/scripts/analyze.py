@@ -204,17 +204,25 @@ _MARCADOR_ANEXO = re.compile(
     r"\s+\((?:arquivo anexado|file attached)\)",
     re.IGNORECASE,
 )
+_MIDIA_OCULTA_TEXTO = re.compile(r"<m[ií]dia oculta>", re.IGNORECASE)
 
 
 def _ocorrencia(mensagem: Mensagem, arquivos: list[str], transcricoes: list[dict]) -> str:
     corpo = _MARCADOR_ANEXO.sub("", texto_util(mensagem))
+    if mensagem.midia_omitida and mensagem.anexos:
+        corpo = _MIDIA_OCULTA_TEXTO.sub("", corpo)
+        for nome in mensagem.anexos:
+            corpo = corpo.replace(nome, "")
     corpo = " ".join(corpo.split())
     if len(corpo) > 700:
         corpo = corpo[:700].rstrip() + "…"
     if mensagem.autor:
-        partes = [f"{mensagem.autor}: {corpo}"]
+        partes = [f"{mensagem.autor}: {corpo}" if corpo else f"{mensagem.autor}:"]
     else:
-        partes = [corpo]
+        partes = [corpo] if corpo else []
+    if mensagem.encaminhada_por and mensagem.encaminhada_em:
+        quando = mensagem.encaminhada_em.strftime("%d/%m/%Y %H:%M")
+        partes.append(f"(encaminhada no grupo por {mensagem.encaminhada_por} em {quando})")
     midias = []
     documentos = []
     for nome in arquivos:
@@ -226,7 +234,7 @@ def _ocorrencia(mensagem: Mensagem, arquivos: list[str], transcricoes: list[dict
         partes.append("Mídia: " + ", ".join(midias))
     for nome in documentos:
         partes.append("Documento: " + nome)
-    if mensagem.midia_omitida and not midias:
+    if mensagem.midia_omitida and not arquivos:
         partes.append("Mídia: dado não identificado (mídia omitida na exportação).")
     for nome in midias:
         transcricao = _transcricao_de(nome, transcricoes)

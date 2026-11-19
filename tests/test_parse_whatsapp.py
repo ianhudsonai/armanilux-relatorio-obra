@@ -62,6 +62,47 @@ class ParserTeste(unittest.TestCase):
         self.assertEqual(mensagens[2].quando, datetime(2026, 1, 18, 9, 20))
         self.assertEqual(mensagens[2].autor, "Paulo Ribeiro")
 
+    def test_midia_oculta_com_nome_do_arquivo_na_linha_seguinte(self):
+        texto = (
+            "29/08/2025 14:49 - Ana Lima: <Mídia oculta>\n"
+            "CRONOGRAMA DE PRAZOS 2025.v2.pdf\n"
+            "29/08/2025 14:50 - Ana Lima: <Mídia oculta>\n"
+            "30/08/2025 10:48 - Bruno Reis: <Mídia oculta>\n"
+            "estucado somente no box, correto?\n"
+        )
+        doc, sem_nome, legenda = analisar_conversa(texto)
+        self.assertEqual(doc.anexos, ["CRONOGRAMA DE PRAZOS 2025.v2.pdf"])
+        self.assertTrue(doc.midia_omitida)
+        self.assertEqual(sem_nome.anexos, [])
+        # Legenda de foto não é nome de arquivo.
+        self.assertEqual(legenda.anexos, [])
+
+    def test_reencaminhada_usa_data_e_autor_originais(self):
+        texto = (
+            "28/09/2026 15:55 - Rogerio Lima: [21/08, 08:54] Sergio Katz: Preciso da cozinha liberada\n"
+            "para a civil\n"
+            "[21/08, 08:55] Rogerio Lima: Registro de obra\n"
+            "28/09/2026 16:00 - Ana Lima: Ok\n"
+        )
+        primeira, segunda, depois = analisar_conversa(texto)
+        self.assertEqual(primeira.quando, datetime(2026, 8, 21, 8, 54))
+        self.assertEqual(primeira.autor, "Sergio Katz")
+        self.assertEqual(primeira.texto, "Preciso da cozinha liberada\npara a civil")
+        self.assertEqual(primeira.encaminhada_por, "Rogerio Lima")
+        self.assertEqual(primeira.encaminhada_em, datetime(2026, 9, 28, 15, 55))
+        self.assertEqual(segunda.quando, datetime(2026, 8, 21, 8, 55))
+        self.assertEqual(segunda.autor, "Rogerio Lima")
+        self.assertEqual(depois.autor, "Ana Lima")
+        self.assertIsNone(depois.encaminhada_por)
+
+    def test_reencaminhada_de_dezembro_postada_em_janeiro_e_do_ano_anterior(self):
+        texto = "05/01/2026 09:00 - Ana Lima: Segue o combinado\n[30/12, 17:10] Bruno Reis: Medimos a cozinha\n"
+        propria, original = analisar_conversa(texto)
+        self.assertEqual(propria.texto, "Segue o combinado")
+        self.assertEqual(propria.autor, "Ana Lima")
+        self.assertEqual(original.quando, datetime(2025, 12, 30, 17, 10))
+        self.assertEqual(original.autor, "Bruno Reis")
+
     def test_mojibake_simples_duplo_e_cp437_nao_estraga_texto_certo(self):
         uma = "medição".encode("utf-8").decode("latin-1")
         duas = uma.encode("utf-8").decode("latin-1")
