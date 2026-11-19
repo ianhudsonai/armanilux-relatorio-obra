@@ -53,6 +53,17 @@ def _converter_para_wav(origem: Path, destino: Path) -> bool:
     return resultado.returncode == 0 and destino.exists() and destino.stat().st_size > 0
 
 
+def _ler_amostras(wav: Path):
+    """Lê o WAV de 16 kHz mono e devolve amostras float32 entre -1 e 1."""
+    import wave
+
+    import numpy as np
+
+    with wave.open(str(wav), "rb") as arquivo:
+        bruto = arquivo.readframes(arquivo.getnframes())
+    return np.frombuffer(bruto, dtype=np.int16).astype(np.float32) / 32768.0
+
+
 def _registro(caminho: Path, status: str, texto: str = "", erro: str = "") -> dict:
     return {
         "arquivo": caminho.name,
@@ -93,21 +104,23 @@ def transcrever_pasta(
     resultados = []
     for arquivo in arquivos:
         wav = pasta_saida / f"{arquivo.stem}-16k.wav"
-        fonte = arquivo
-        if arquivo.suffix.lower() in EXT_VIDEO or arquivo.suffix.lower() in {".opus", ".ogg", ".m4a", ".aac"}:
-            if _converter_para_wav(arquivo, wav):
-                fonte = wav
-            elif localizar_ferramenta("ffmpeg") is None:
-                resultados.append(
-                    _registro(arquivo, "erro", erro="FFmpeg não encontrado para preparar o áudio")
-                )
-                continue
+        # Sempre passa pelo FFmpeg e entrega ao Whisper as amostras já lidas. Assim a
+        # transcrição não depende da biblioteca PyAV, que quebrou em versões novas.
+        if not _converter_para_wav(arquivo, wav):
+            motivo = (
+                "FFmpeg não encontrado para preparar o áudio"
+                if localizar_ferramenta("ffmpeg") is None
+                else "não consegui preparar o áudio com o FFmpeg"
+            )
+            resultados.append(_registro(arquivo, "erro", erro=motivo))
+            continue
         try:
+            amostras = _ler_amostras(wav)
             try:
-                segmentos, _info = motor.transcribe(str(fonte), language="pt", vad_filter=True)
+                segmentos, _info = motor.transcribe(amostras, language="pt", vad_filter=True)
                 texto = " ".join(pedaço.text.strip() for pedaço in segmentos).strip()
             except Exception:
-                segmentos, _info = motor.transcribe(str(fonte), language="pt", vad_filter=False)
+                segmentos, _info = motor.transcribe(amostras, language="pt", vad_filter=False)
                 texto = " ".join(pedaço.text.strip() for pedaço in segmentos).strip()
         except Exception as erro:
             resultados.append(_registro(arquivo, "erro", erro=str(erro)))

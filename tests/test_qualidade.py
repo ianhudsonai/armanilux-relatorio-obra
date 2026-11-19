@@ -12,6 +12,7 @@ sys.path.insert(0, str(RAIZ / "skills" / "relatorio-cronologico-obra" / "scripts
 
 from analyze import _endereco, _pendencias, aplicar_ajustes, completar_relato, montar_analise  # noqa: E402
 from candidatos import escrever, selecionar  # noqa: E402
+from transcribe_media import _ler_amostras  # noqa: E402
 from parse_whatsapp import analisar_conversa  # noqa: E402
 
 CHAT = (
@@ -104,6 +105,25 @@ class CandidatosTeste(unittest.TestCase):
         self.assertIn("## L –", texto)
         self.assertIn("eventos_adicionais", texto)
         self.assertLess(len(texto), 20000)
+
+
+class AmostrasTeste(unittest.TestCase):
+    def test_wav_vira_amostras_sem_depender_do_pyav(self):
+        import struct
+        import wave
+
+        with TemporaryDirectory() as temporario:
+            caminho = Path(temporario) / "a.wav"
+            with wave.open(str(caminho), "wb") as arquivo:
+                arquivo.setnchannels(1)
+                arquivo.setsampwidth(2)
+                arquivo.setframerate(16000)
+                arquivo.writeframes(struct.pack("<4h", 0, 16384, -16384, 32767))
+            amostras = _ler_amostras(caminho)
+        self.assertEqual(amostras.dtype.name, "float32")
+        self.assertEqual(len(amostras), 4)
+        self.assertAlmostEqual(float(amostras[1]), 0.5, places=3)
+        self.assertAlmostEqual(float(amostras[2]), -0.5, places=3)
 
 
 if __name__ == "__main__":
