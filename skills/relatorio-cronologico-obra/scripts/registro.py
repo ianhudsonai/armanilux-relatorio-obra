@@ -132,9 +132,14 @@ def sincronizar(achados: list[dict], salvar_agora: bool = True) -> dict:
     return dados
 
 
-def marcar_andamento(sha: str) -> dict:
+def marcar_andamento(sha: str, numero: str | None = None, cliente: str | None = None) -> dict:
+    """`numero` e `cliente`: os que valeram nesta rodada (a pessoa pode ter corrigido o adivinhado)."""
     dados = carregar()
     item = dados["exportacoes"][sha]
+    if numero:
+        item["numero"] = numero
+    if cliente:
+        item["cliente"] = cliente
     item["status"] = ANDAMENTO
     item["atualizado_em"] = _agora()
     salvar(dados)
@@ -146,13 +151,36 @@ def registrar_relatorio(sha: str, caminho_relatorio: str, versao: int, pasta_obr
     item = dados["exportacoes"][sha]
     item["status"] = GERADO
     item["pasta_obra"] = pasta_obra
+    _anotar_word(dados, item, caminho_relatorio, versao)
+    return item
+
+
+def _anotar_word(dados: dict, item: dict, caminho_relatorio: str, versao: int) -> None:
     item["atualizado_em"] = _agora()
     item.setdefault("relatorios", []).append(
         {"caminho": caminho_relatorio, "versao": versao, "em": item["atualizado_em"]}
     )
     dados["fila"] = [i["sha256"] for i in _fila(dados)]
     salvar(dados)
-    return item
+
+
+def anotar_remontagem(pasta_obra: str, caminho_relatorio: str, versao: int) -> bool:
+    """Remontagem (sem zip novo): anota o Word novo na exportação mais recente da obra.
+    Conversa já concluída continua concluída. Devolve False se a obra não está no registro."""
+    dados = carregar()
+    alvo = os.path.normcase(os.path.abspath(pasta_obra))
+    da_obra = [
+        item
+        for item in dados["exportacoes"].values()
+        if item.get("pasta_obra") and os.path.normcase(os.path.abspath(item["pasta_obra"])) == alvo
+    ]
+    if not da_obra:
+        return False
+    item = max(da_obra, key=lambda i: i.get("atualizado_em", ""))
+    if item.get("status") != CONCLUIDO:
+        item["status"] = GERADO
+    _anotar_word(dados, item, caminho_relatorio, versao)
+    return True
 
 
 def concluir(sha: str, copiar: bool = False) -> Path:
@@ -207,7 +235,9 @@ def formatar_lista(dados: dict) -> str:
         cliente = item.get("cliente") or "cliente não identificado"
         quando = formatar_data(item["ultima_mensagem"]) if item.get("ultima_mensagem") else "data não identificada"
         extra = " — conversa nova de uma obra que já tem relatório; dá para gerar a próxima versão" if item.get("atualiza_relatorio") else ""
-        linhas.append(f"{indice}) Obra {numero} – {cliente} (até {quando}){extra}")
+        # O nome do arquivo deixa a pessoa conferir número e cliente, que são adivinhados dele.
+        arquivo = item.get("arquivo_original") or Path(item.get("caminho") or "").name
+        linhas.append(f"{indice}) Obra {numero} – {cliente} (até {quando}){extra}\n   arquivo: {arquivo}")
     linhas.append("Quer começar por qual? (pode escolher várias ou todas)")
     if dados.get("repetidos"):
         linhas.append(f"Ignorei {dados['repetidos']} arquivo(s) repetido(s): mesmo conteúdo, outro nome.")

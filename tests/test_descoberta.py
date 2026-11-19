@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import unicodedata
@@ -101,6 +102,10 @@ class BuscaTeste(Ambiente):
         e = inferir_identidade("sem-pista.zip")
         self.assertEqual(e["numero"], "")
 
+    def test_numero_depois_de_obra_vale_mais_que_outro_numero_do_nome(self):
+        # "apto 302" é o apartamento; a obra é a 8977.
+        self.assertEqual(inferir_identidade("Conversa do WhatsApp com apto 302 - Obra 8977.zip")["numero"], "8977")
+
     def test_zip_corrompido_nao_derruba_a_busca(self):
         (self.base / "Downloads").mkdir()
         (self.base / "Downloads" / "Conversa do WhatsApp com 1.zip").write_bytes(b"nao e zip")
@@ -121,6 +126,12 @@ class RegistroTeste(Ambiente):
         self.assertEqual(len(dados["fila"]), 1)
         self.assertGreaterEqual(dados["repetidos"], 1)
         self.assertIn("Achei 1 conversa sem relatório", registro.formatar_lista(dados))
+
+    def test_lista_mostra_o_nome_do_arquivo_para_a_pessoa_conferir_obra_e_cliente(self):
+        zip_com(self.base / "Downloads" / "Conversa do WhatsApp com apto 302 - Obra 8977.zip", SEM_IDENTIDADE)
+        lista = registro.formatar_lista(self._achar("Downloads"))
+        self.assertIn("Obra 8977", lista)
+        self.assertIn("arquivo: Conversa do WhatsApp com apto 302 - Obra 8977.zip", lista)
 
     def test_estados_ate_concluido_e_zip_vai_para_a_obra(self):
         zip_path = zip_com(self.base / "Downloads" / "Conversa do WhatsApp com 1001.zip", CONVERSA)
@@ -231,6 +242,36 @@ class FluxoTeste(Ambiente):
         self.assertEqual(executar(["--indice", "1", *base]), 0)
         obra = self.base / "Armanilux" / "Relatorios-de-Obra" / "8977.1 - Cliente Teste"
         self.assertTrue(obra.is_dir())
+
+    def test_obra_e_cliente_corrigidos_pela_pessoa_valem_na_escolha_da_lista(self):
+        self._preparar()
+        downloads = self.base / "Downloads"
+        zip_com(downloads / "Conversa do WhatsApp com apto 302 - Obra 8977.zip", SEM_IDENTIDADE)
+        base = ["--downloads", str(downloads), "--skip-transcribe", "--skip-keyframes"]
+        self.assertEqual(executar(["--indice", "1", "--obra", "8977", "--cliente", "Família Souza", *base]), 0)
+        pasta = self.base / "Armanilux" / "Relatorios-de-Obra"
+        self.assertEqual([p.name for p in pasta.iterdir() if p.is_dir() and p.name != "_modelo"], ["8977 - Família Souza"])
+        # O registro guarda o que a pessoa disse: a próxima conversa da obra 8977 vira v2 dela.
+        [item] = registro.carregar()["exportacoes"].values()
+        self.assertEqual((item["numero"], item["cliente"]), ("8977", "Família Souza"))
+
+    def test_remontagem_atualiza_o_registro_com_o_word_novo(self):
+        self._preparar()
+        downloads = self.base / "Downloads"
+        zip_com(downloads / "Conversa do WhatsApp com 1001 - Família Almeida.zip", CONVERSA)
+        base = ["--downloads", str(downloads), "--skip-transcribe", "--skip-keyframes"]
+        self.assertEqual(executar(["--indice", "1", *base]), 0)
+        obra = self.base / "Armanilux" / "Relatorios-de-Obra" / "1001 - Família Almeida"
+        caminho = obra / "04-transcricoes" / "analise.json"
+        analise = json.loads(caminho.read_text(encoding="utf-8"))
+        analise["revisado"] = True
+        caminho.write_text(json.dumps(analise, ensure_ascii=False), encoding="utf-8")
+
+        self.assertEqual(executar(["--rebuild-only", "--obra-dir", str(obra)]), 0)
+
+        [item] = registro.carregar()["exportacoes"].values()
+        self.assertEqual(item["status"], registro.GERADO)
+        self.assertEqual(Path(item["relatorios"][-1]["caminho"]).name, "Relatorio-Cronologico-Obra-1001-v1.docx")
 
     def test_sem_nenhuma_pista_pede_so_numero_e_cliente(self):
         self._preparar()
