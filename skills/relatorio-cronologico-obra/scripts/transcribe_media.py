@@ -206,7 +206,10 @@ def transcrever_pasta(
             continue
         if transcritor is None and falha is None:
             if progresso:
-                progresso("Carregando o modelo de transcrição (na primeira vez ele é baixado).")
+                progresso(
+                    "Carregando o programa que entende os áudios. Isso pode levar alguns minutos sem mostrar "
+                    "nada (na primeira vez ele baixa cerca de 484 MB); o computador não travou."
+                )
             try:
                 transcritor = _transcritor_whisper(modelo, pasta_saida)
             except _ErroDeTranscricao as erro:
