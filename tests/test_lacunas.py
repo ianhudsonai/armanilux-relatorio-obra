@@ -13,6 +13,7 @@ from analyze import completar_relato, montar_analise  # noqa: E402
 from parse_whatsapp import analisar_conversa  # noqa: E402
 
 CHAT = (
+    "05/09/2025 09:49 - As mensagens e as ligações são protegidas com a criptografia de ponta a ponta.\n"
     "05/09/2025 09:50 - Ana Lima: <Mídia oculta>\nProjeto R00.pdf\n"
     "05/09/2025 09:51 - Ana Lima: <Mídia oculta>\nPlanta.dwg\n"
     "05/09/2025 09:52 - Bruno Reis: <Mídia oculta>\n"

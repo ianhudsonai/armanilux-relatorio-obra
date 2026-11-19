@@ -194,6 +194,19 @@ def mostrar_no_explorer(arquivo: Path) -> None:
         subprocess.Popen(["xdg-open", str(arquivo.parent)])
 
 
+def _avisar_se_cortada(mensagens) -> None:
+    from analyze import exportacao_parece_cortada
+    from common import formatar_data
+
+    if exportacao_parece_cortada(mensagens):
+        print(
+            f"Aviso: a conversa parece cortada. Ela começa em {formatar_data(mensagens[0].data.isoformat())}, "
+            "sem o aviso de criptografia nem a criação do grupo. O WhatsApp corta conversas muito grandes "
+            "(cerca de 10 mil mensagens com mídia, 40 mil sem mídia). Se o grupo começou antes, exporte de novo "
+            "sem mídia. O relatório registra isso como lacuna."
+        )
+
+
 def _avisar_prazos(analise: dict) -> None:
     """Prazo precisa de fonte escrita antes do período que ele mede; senão não prova a regra da época."""
     from common import formatar_data
@@ -530,6 +543,7 @@ def executar(argv: list[str] | None = None) -> int:
     if conversa and conversa.is_file():
         mensagens = ler_conversa(conversa)
         print(f"Conversa usada: {conversa.name}")
+    _avisar_se_cortada(mensagens)
 
     documentos = extrair_pasta(pasta_obra / "02-projetos-pdf")
     relogio.marca(f"{len(documentos)} documentos lidos")

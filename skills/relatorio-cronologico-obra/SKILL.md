@@ -195,7 +195,7 @@ A pessoa não precisa saber onde o arquivo fica. Entregue o Word na própria con
 
 Siga a forma de entrega do preparo (`formato_entrega`). PDF: entregue o PDF da linha `RELATORIO_PDF` e diga que o Word está ao lado, para correções. Link: diga que o arquivo está na pasta do OneDrive ou do Google Drive (caminho da linha `RELATORIO_LINK`) e como mandar: clicar com o botão direito no arquivo, Compartilhar, e escolher só as pessoas que podem ver. O relatório tem dados do cliente: não sugira link aberto para qualquer pessoa. Se a linha de PDF ou de link não apareceu, entregue o Word e diga por quê, com a frase que o script imprimiu.
 
-Responda em português, curto, sem emoji. Informe o número da versão, quantas pendências ficaram com status Pendente, se a transcrição rodou, quantos fatos a conferência confirmou e quantas lacunas o relatório registra. Diga se havia prazo contratual declarado no grupo ou nos documentos; sem ele, o relatório não fala em atraso contratual. Se ficou algum "Aviso de prazo", diga qual e por quê.
+Responda em português, curto, sem emoji. Informe o número da versão, quantas pendências ficaram com status Pendente, se a transcrição rodou, quantos fatos a conferência confirmou e quantas lacunas o relatório registra. Diga se havia prazo contratual declarado no grupo ou nos documentos; sem ele, o relatório não fala em atraso contratual. Se ficou algum "Aviso de prazo", diga qual e por quê. Se o script avisou que a conversa parece cortada, diga a data em que ela começa e peça, se o grupo começou antes, uma exportação nova sem mídia.
 
 Não copie a pasta da obra para o repositório público desta skill. Não publique o relatório em link aberto.
 

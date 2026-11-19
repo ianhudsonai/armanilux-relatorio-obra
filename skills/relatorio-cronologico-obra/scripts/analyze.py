@@ -970,8 +970,34 @@ def arquivos_fora_da_exportacao(mensagens: list[Mensagem]) -> list[str]:
     return [mensagem.anexos[0] for mensagem in mensagens if _so_o_nome(mensagem)]
 
 
+# Toda exportação completa começa pelo aviso de criptografia ou pela criação do grupo.
+_INICIO_DO_GRUPO = (
+    "criptografia de ponta a ponta",
+    "end-to-end encrypted",
+    "criou o grupo",
+    "criou este grupo",
+    "created group",
+    "created this group",
+)
+
+
+def exportacao_parece_cortada(mensagens: list[Mensagem]) -> bool:
+    """O WhatsApp corta conversa muito grande (cerca de 10 mil mensagens com mídia, 40 mil sem)
+    e não avisa: o que sobra começa no meio, sem o aviso de criptografia nem a criação do grupo."""
+    if not mensagens:
+        return False
+    comeco = " ".join(normalizar(mensagem.texto) for mensagem in mensagens[:3])
+    return not any(marca in comeco for marca in _INICIO_DO_GRUPO)
+
+
 def lacunas_automaticas(mensagens: list[Mensagem], documentos: list[dict], transcricoes: list[dict]) -> list[str]:
     """O que o computador sabe que não conseguiu ler, em frases curtas para a Nota Metodológica."""
+    cortada = []
+    if exportacao_parece_cortada(mensagens):
+        cortada.append(
+            f"A exportação do WhatsApp parece cortada: a conversa começa em {formatar_data(mensagens[0].data.isoformat())}, "
+            "sem o início do grupo. O que veio antes é dado não identificado."
+        )
     lacunas = []
     fora = len(arquivos_fora_da_exportacao(mensagens))
     if fora:
@@ -993,7 +1019,7 @@ def lacunas_automaticas(mensagens: list[Mensagem], documentos: list[dict], trans
         lacunas.append(f"{sem_fala} {_plural(sem_fala, 'áudio ou vídeo', 'áudios ou vídeos')} sem transcrição.")
     if lacunas:
         lacunas[-1] = lacunas[-1][:-1] + "; o conteúdo desses itens é dado não identificado."
-    return lacunas
+    return cortada + lacunas
 
 
 def _nota_rastreabilidade(mensagens: list[Mensagem], eventos: list[dict], anexo: list[dict], documentos: list[dict], transcricoes: list[dict]) -> str:
