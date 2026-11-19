@@ -168,10 +168,10 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 if ($BaixarModelo) {
-    Escrever-Titulo "Baixando o modelo de voz para este computador. Isso só acontece uma vez..."
+    Escrever-Titulo "Baixando o que o computador precisa para entender os áudios e os vídeos. Cerca de 484 MB, só desta vez, e fica só neste computador."
     & $venvPython -c "from faster_whisper import WhisperModel; WhisperModel('small', device='cpu', compute_type='int8')"
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "O modelo de voz não baixou. O relatório ainda pode ser feito; a primeira transcrição tenta de novo."
+        Write-Host "Não consegui baixar isso. O relatório ainda pode ser feito. Os áudios ficam sem o texto do que foi falado até o download funcionar."
     }
 }
 
@@ -180,6 +180,6 @@ Escrever-Ok ""
 Escrever-Ok "Pronto."
 Write-Host "PYTHON=$venvPython"
 if ($ffmpeg) { Write-Host "FFMPEG=$ffmpeg" } else { Write-Host "FFMPEG=" }
-Write-Host "As pastas da Armanilux são criadas pelas preferências, não por este instalador."
+Write-Host "As pastas da Armanilux são criadas com as respostas que você deu."
 Write-Host "Pode continuar nesta mesma sessão, sem reiniciar o computador."
 exit 0

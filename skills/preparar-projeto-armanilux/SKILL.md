@@ -4,7 +4,7 @@ description: Prepara o computador de alguém da Armanilux para os relatórios de
 license: MIT
 metadata:
   author: Armanilux
-  version: "1.0"
+  version: "1.1"
   idioma: pt-BR
 ---
 
@@ -18,13 +18,15 @@ A pasta desta skill é a pasta deste arquivo. O instalador é `scripts/instalar.
 
 Se já existir `%USERPROFILE%\.armanilux-relatorio\config.json`, leia e use os valores como sugestão. Faça estas perguntas, uma de cada vez, em português simples:
 
-1. Você já tem uma pasta da Armanilux neste computador? Se sim, qual é o caminho? Se não, use `Documentos\Armanilux`.
-2. Qual é o seu nome, e qual é a sua função? Isso entra no cabeçalho do relatório.
-3. Além do Word, você quer um PDF? Sim ou não.
-4. Como quer o nome da pasta de cada obra? O padrão é `{numero} - {cliente}`. Pode ser também `{cliente} - {numero}` ou `{numero}`.
-5. Quer baixar agora o modelo de voz, para a primeira transcrição não esperar? Sim ou não. Diga que é um download único e que pode demorar.
+1. Você já tem uma pasta da Armanilux neste computador? Se tiver, me diga onde ela está. Se não tiver, eu crio em Documentos, com o nome Armanilux.
+2. Qual é o seu nome e qual é o seu cargo na Armanilux? Os dois aparecem no topo do relatório.
+3. Além do arquivo do Word, você também quer uma cópia em PDF? Sim ou não.
+4. Como quer o nome da pasta de cada obra? O mais comum é o número e depois o cliente, por exemplo "1001 - Família Almeida". Se preferir, o cliente pode vir primeiro, ou só o número.
+5. Quer que eu também entenda os áudios e vídeos das conversas? Isso precisa de um download único (cerca de 484 MB), mas é seguro e fica só no seu computador. Sim ou não.
 
-Não invente resposta. Se a pessoa não souber o caminho, use o padrão.
+Na pergunta 5, use esse texto. O arquivo baixado (modelo small, `model.bin`) tem 483.546.902 bytes, cerca de 484 MB. Não diga "modelo", "Whisper" nem "transcrição" para a pessoa.
+
+Não invente resposta. Se a pessoa não souber onde fica a pasta, use Documentos\Armanilux. Na pergunta 4, grave `{numero} - {cliente}`, `{cliente} - {numero}` ou `{numero}`, conforme a escolha, sem mostrar esses códigos para ela.
 
 ## 2. Instalar as ferramentas
 

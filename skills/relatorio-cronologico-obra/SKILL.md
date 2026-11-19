@@ -60,7 +60,7 @@ Se não houver exportação, pare e explique, em português simples, como export
 PYTHON SKILL/scripts/run_pipeline.py --obra "1001" --cliente "Nome do cliente" --zip "CAMINHO-DO-ZIP"
 ```
 
-Omita `--obra`, `--cliente` ou `--zip` quando não souber; o script procura e lê o grupo. A primeira transcrição pode baixar o modelo Whisper `small` (uma vez, para o cache local). Se a pessoa não quiser esperar, rode com `--skip-transcribe` e deixe a fala como dado não identificado, dizendo isso com clareza.
+Omita `--obra`, `--cliente` ou `--zip` quando não souber; o script procura e lê o grupo. Se a pessoa pediu para entender os áudios, a primeira vez pode baixar cerca de 484 MB e ficar só neste computador. Se ela não quiser esperar, rode com `--skip-transcribe` e diga que o que foi falado ficou como dado não identificado.
 
 Saídas:
 

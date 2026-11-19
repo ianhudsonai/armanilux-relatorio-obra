@@ -48,7 +48,7 @@ Dentro dela:
 
 Abra o arquivo `Relatorio-Cronologico-Obra-...-v1.docx` no Word. O PDF só é criado se o LibreOffice estiver instalado. O arquivo para mandar no grupo é o Word.
 
-Na primeira obra com áudio, o computador baixa um modelo de transcrição (uma vez). Depois disso funciona sem internet.
+Se você pediu para entender os áudios e os vídeos, o computador baixa isso uma vez (cerca de 484 MB). Fica só neste computador. Depois disso funciona sem internet.
 
 ## Se o zip for grande demais
 
@@ -63,7 +63,7 @@ O WhatsApp do Windows **não exporta** a conversa. A exportação é no celular.
 - A instalação parou com erro: leia a última frase na conversa do Codex. Sem internet, ela não termina. Peça o relatório de novo quando a rede voltar. Repetir não estraga o que já foi instalado.
 - "Não encontrei o winget": instale o "Instalador de Aplicativo" pela Microsoft Store e peça o relatório outra vez.
 - A skill não aparece no Codex: feche e abra o Codex. Confira se está em **Este computador**, não em Cloud.
-- O Codex pede aprovação para usar a rede ou para rodar um comando: aprove. O relatório do dia a dia não precisa de rede, salvo a primeira vez do modelo de voz.
+- O Codex pede aprovação para usar a rede ou para rodar um comando: aprove. No dia a dia não precisa de internet, salvo a primeira vez em que ele baixa o que precisa para entender os áudios.
 - Não saiu transcrição: o Word continua válido. A fala fica marcada como `dado não identificado`.
 - Não saiu PDF: normal. Use o Word.
 - O nome de um arquivo apareceu com letras trocadas (`Ã`, `├`): o script tenta corrigir. Se um anexo importante não entrou, diga o nome do arquivo na conversa do Codex.
