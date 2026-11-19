@@ -4,7 +4,7 @@ description: Gera o Relatório Cronológico de Obra da Armanilux (etapas A a L, 
 license: MIT
 metadata:
   author: Armanilux
-  version: "1.4"
+  version: "1.5"
   idioma: pt-BR
 ---
 
@@ -174,11 +174,15 @@ PYTHON SKILL/scripts/run_pipeline.py --rebuild-only --recalcular --obra-dir "PAS
 
 `--recalcular` refaz dias úteis, marcos, cores sugeridas e o confronto com o prazo contratual a partir dos eventos corrigidos. Os textos escritos na revisão são mantidos.
 
+Na última remontagem, a que vai para a pessoa, acrescente `--mostrar`: o script abre a pasta da obra com o Word já selecionado. Todo comando que grava o Word imprime uma linha `RELATORIO_WORD: <caminho>`; é por ela que você acha o arquivo.
+
 Não entregue um Word escrito à mão por fora do script. O arquivo versionado (`v1`, `v2`, …) é o que a pessoa abre.
 
 ## 6. O que dizer à pessoa
 
-Responda em português, curto, sem emoji. Informe o caminho completo do `.docx`, o número da versão, quantas pendências ficaram com status Pendente, se a transcrição rodou, quantos fatos a conferência confirmou e quantas lacunas o relatório registra. Diga se havia prazo contratual declarado no grupo ou nos documentos; sem ele, o relatório não fala em atraso contratual.
+A pessoa não precisa saber onde o arquivo fica. Entregue o Word na própria conversa: se o seu aplicativo tem uma ferramenta para enviar ou mostrar arquivo ao usuário, envie o `.docx` da linha `RELATORIO_WORD` (como anexo). Se não tem, rode a última remontagem com `--mostrar` para a pasta abrir com o arquivo selecionado. Nos dois casos, escreva também o caminho completo, numa linha só.
+
+Responda em português, curto, sem emoji. Informe o número da versão, quantas pendências ficaram com status Pendente, se a transcrição rodou, quantos fatos a conferência confirmou e quantas lacunas o relatório registra. Diga se havia prazo contratual declarado no grupo ou nos documentos; sem ele, o relatório não fala em atraso contratual.
 
 Não copie a pasta da obra para o repositório público desta skill. Não publique o relatório em link aberto.
 

@@ -9,6 +9,8 @@ Tudo acontece neste computador. Não há chamada de API.
 
 from __future__ import annotations
 
+import sys
+
 import argparse
 import time
 from pathlib import Path
@@ -162,7 +164,19 @@ def _lacunas_se_faltar(pasta_obra: Path, analise: dict) -> None:
     analise["lacunas"] = juntar_lacunas(analise)
 
 
-def _gravar(pasta_obra: Path, analise: dict, gerar_pdf: bool = False) -> Path:
+def mostrar_no_explorer(arquivo: Path) -> None:
+    """Abre a pasta do relatório com o Word já selecionado, para ninguém precisar do caminho."""
+    import subprocess
+
+    if sys.platform.startswith("win"):
+        subprocess.Popen(["explorer", f"/select,{arquivo}"])
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", "-R", str(arquivo)])
+    else:
+        subprocess.Popen(["xdg-open", str(arquivo.parent)])
+
+
+def _gravar(pasta_obra: Path, analise: dict, gerar_pdf: bool = False, mostrar: bool = False) -> Path:
     _conferir(pasta_obra, analise)
     figuras = pasta_obra / "05-relatorios" / "figuras"
     if "intervalos_marcos" in analise:
@@ -184,6 +198,13 @@ def _gravar(pasta_obra: Path, analise: dict, gerar_pdf: bool = False) -> Path:
     pendencias = analise.get("pendencias") or []
     if pendencias:
         print(f"Pendências com status Pendente: {len(pendencias)}.")
+    # Linha fixa para o agente achar o arquivo e entregá-lo na conversa.
+    print(f"RELATORIO_WORD: {destino}")
+    if mostrar:
+        try:
+            mostrar_no_explorer(destino)
+        except Exception as erro:  # abrir a pasta ajuda, mas não pode derrubar o relatório
+            print(f"Aviso: não consegui abrir a pasta: {erro}")
     return destino
 
 
@@ -221,7 +242,7 @@ def _reconstruir(args, raiz: Path, config: dict | None) -> int:
         analise = completar_relato(analise)
         escrever_json(caminho, analise)
     _aplicar_preferencias(analise, config)
-    _gravar(pasta, analise, bool(args.pdf or (config or {}).get("gerar_pdf")))
+    _gravar(pasta, analise, bool(args.pdf or (config or {}).get("gerar_pdf")), args.mostrar)
     return 0
 
 
@@ -253,6 +274,7 @@ def executar(argv: list[str] | None = None) -> int:
     parser.add_argument("--rebuild-only", action="store_true")
     parser.add_argument("--recalcular", action="store_true", help="Recalcula dias úteis e textos a partir dos eventos já salvos")
     parser.add_argument("--pdf", action="store_true", help="Mantido por compatibilidade; o PDF é tentado sempre que o LibreOffice existe")
+    parser.add_argument("--mostrar", action="store_true", help="Abre a pasta do relatório com o Word selecionado")
     parser.add_argument("--listar", action="store_true", help="Só mostra as conversas sem relatório")
     parser.add_argument("--indice", action="append", default=None, help="Número(s) da lista, como 1 ou 1,3")
     parser.add_argument("--todas", action="store_true", help="Gera de todas as conversas da lista, uma por vez")
@@ -432,7 +454,7 @@ def executar(argv: list[str] | None = None) -> int:
     except Exception as erro:
         print(f"Aviso: não consegui montar os candidatos por etapa: {erro}")
     relogio.marca("conversa analisada")
-    destino = _gravar(pasta_obra, analise, gerar_pdf)
+    destino = _gravar(pasta_obra, analise, gerar_pdf, args.mostrar)
     relogio.marca("Word montado")
     try:
         _anotar_relatorio(origem, args.sha, destino, pasta_obra)
@@ -493,7 +515,7 @@ def _processar_escolha(args, config: dict | None) -> int:
         for opcao, valor in (("--workspace", args.workspace), ("--downloads", args.downloads)):
             if valor:
                 argv += [opcao, valor]
-        for opcao, ligada in (("--skip-transcribe", args.skip_transcribe), ("--skip-keyframes", args.skip_keyframes), ("--pdf", args.pdf)):
+        for opcao, ligada in (("--skip-transcribe", args.skip_transcribe), ("--skip-keyframes", args.skip_keyframes), ("--pdf", args.pdf), ("--mostrar", args.mostrar)):
             if ligada:
                 argv.append(opcao)
         if item.get("numero"):
