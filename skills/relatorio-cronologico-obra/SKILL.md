@@ -1,10 +1,10 @@
 ---
 name: relatorio-cronologico-obra
-description: Gera o Relatório Cronológico de Obra da Armanilux (etapas A a L, sem etapa K) a partir do zip do WhatsApp, com transcrição local, dias úteis de São Paulo e arquivo Word. Use quando o usuário pedir o relatório da obra, o relatório cronológico, $relatorio-cronologico-obra, organizar o export do WhatsApp, transcrever áudios ou vídeos da obra, ou calcular dias úteis da instalação.
+description: Gera o Relatório Cronológico de Obra da Armanilux (etapas A a L, sem etapa K) a partir do zip do WhatsApp, com transcrição local, dias úteis de São Paulo e arquivo Word. Use quando pedirem o relatório da obra, o relatório cronológico, $relatorio-cronologico-obra, organizar o export do WhatsApp ou calcular dias úteis. Se não houver config.json, mande rodar $preparar-projeto-armanilux primeiro.
 license: MIT
 metadata:
   author: Armanilux
-  version: "1.1"
+  version: "1.2"
   idioma: pt-BR
 ---
 
@@ -21,42 +21,30 @@ Leia, antes de redigir ou corrigir o texto:
 
 O script já aplica esse formato. Não improvise outro sumário, não some intervalos como "atraso da Armanilux" e não invente data, nome ou prazo. O que não estiver no histórico fica escrito `dado não identificado`.
 
-## Conferir o ambiente antes de cada relatório
+## Preferências e ferramentas
 
-A pasta desta skill é a pasta deste arquivo. O instalador é `scripts/instalar.ps1`, ao lado de `run_pipeline.py`. Use esse caminho absoluto. O skill-installer só copia esta pasta para `%USERPROFILE%\.codex\skills\relatorio-cronologico-obra\`. Não existe `instalar.bat` na raiz do computador da pessoa.
+Esta skill só faz o relatório. A preparação do computador é a skill `$preparar-projeto-armanilux`.
 
-Em toda execução, antes de abrir o zip, confira o ambiente. No PowerShell, releia o PATH do registro e teste o Python do ambiente e o FFmpeg:
+Antes de abrir o zip, leia `%USERPROFILE%\.armanilux-relatorio\config.json`. Se o arquivo não existir, pare e diga, em português, para abrir um chat e rodar `$preparar-projeto-armanilux`. Não invente pasta, nome nem função.
+
+Se o arquivo existir, use `pasta_raiz`, `modelo_pasta_obra`, `nome`, `funcao` e `gerar_pdf`. O Python do relatório é `%USERPROFILE%\.armanilux-relatorio\venv\Scripts\python.exe`.
+
+Confira também se esse Python importa docx, faster_whisper, matplotlib, holidays, PIL e numpy, e se o FFmpeg está no PATH (releia o PATH do registro antes). Se faltar biblioteca ou FFmpeg, ofereça rodar o instalador da outra skill, sem pedir para a pessoa procurar arquivo:
 
 ```powershell
 $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User') + ';' + "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
-$py = "$env:USERPROFILE\.armanilux-relatorio\venv\Scripts\python.exe"
-& $py -c "import docx, faster_whisper, matplotlib, holidays, PIL, numpy, importlib.util as u; assert u.find_spec('pdfplumber') or u.find_spec('pypdf')"
-Get-Command ffmpeg
+powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.codex\skills\preparar-projeto-armanilux\scripts\instalar.ps1"
 ```
 
-O ambiente está pronto só se o arquivo `python.exe` existe, o comando de importação termina sem erro e o `Get-Command ffmpeg` acha o programa.
+Diga só isto: vai instalar o que falta; aprove o comando; se o Windows mostrar Sim ou Não, clique em Sim. Quando terminar, releia o PATH e continue o relatório. Se a outra skill não estiver instalada, mande rodar `$preparar-projeto-armanilux` num chat novo.
 
-Se faltar o Python, alguma dessas bibliotecas ou o FFmpeg, não peça para a pessoa procurar, baixar ou dar dois cliques em arquivo nenhum. Diga apenas, em português: vai instalar o que falta neste computador; quando o aplicativo pedir permissão, aprove; se o Windows abrir uma janela Sim ou Não, clique em Sim. Aí execute você mesmo, com o caminho absoluto da pasta que contém este arquivo:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File "<pasta-desta-skill>\scripts\instalar.ps1"
-```
-
-O instalador usa `winget install Python.Python.3.12 --scope user` quando o Python não existe, e o mesmo escopo de usuário para o FFmpeg. O pip fica no ambiente `%USERPROFILE%\.armanilux-relatorio\venv`. Isso evita a janela de administrador sempre que o Windows permite. Se mesmo assim o UAC aparecer, quem clica em Sim é a pessoa. Você não consegue clicar nessa janela.
-
-Pode rodar o instalador de novo. Se já estiver tudo certo, ele só confere. Quando terminar com código 0, releia o PATH do registro na mesma sessão, com a primeira linha do bloco acima, e siga o relatório sem pedir para reiniciar o Codex nem o computador. Use o Python impresso em `PYTHON=` e, se precisar, o FFmpeg impresso em `FFMPEG=`.
-
-No Linux ou no teste, use `python3` se o ambiente do Windows não existir. Nos comandos abaixo, `PYTHON` é o `python.exe` desse ambiente e `SKILL` é a pasta desta skill.
-
-Se o instalador falhar, explique o erro em português e pare. Não mande a pessoa atrás de um arquivo.
+No Linux ou no teste, use `python3`. Nos comandos abaixo, `PYTHON` é o Python do ambiente e `SKILL` é a pasta desta skill.
 
 ## 1. Preparar a pasta
 
-Na primeira execução o script cria, se ainda não existir:
+A pasta dos relatórios é `Relatorios-de-Obra` dentro de `pasta_raiz` do config.json. Cada obra usa `modelo_pasta_obra` (padrão `{numero} - {cliente}`).
 
-`%USERPROFILE%\Documents\Armanilux\Relatorios-de-Obra\<numero> - <cliente>\`
-
-com `01-conversas`, `02-projetos-pdf`, `03-midias`, `04-transcricoes` e `05-relatorios`.
+Dentro da obra ficam `01-conversas`, `02-projetos-pdf`, `03-midias`, `04-transcricoes` e `05-relatorios`.
 
 Se a pessoa informar o número da obra e o cliente, passe `--obra` e `--cliente`. Se não informar, o script tenta ler do próprio grupo. Não chute um nome de cliente.
 

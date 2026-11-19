@@ -1,6 +1,10 @@
-﻿# Instalador do Relatório Cronológico de Obra (Armanilux).
+﻿# Instalador da skill preparar-projeto-armanilux.
 # Fica dentro da skill, que é a pasta copiada para %USERPROFILE%\.codex\skills\.
 # Pode rodar de novo: se Python, FFmpeg e as bibliotecas já existem, só confere.
+
+param(
+    [switch]$BaixarModelo
+)
 
 $OutputEncoding = [System.Text.Encoding]::UTF8
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
@@ -155,7 +159,7 @@ if (-not (Test-Path $requisitos)) {
     Write-Host "Não encontrei requirements.txt ao lado de instalar.ps1."
     exit 1
 }
-Escrever-Titulo "Instalando bibliotecas. Na primeira vez o modelo de voz é baixado para este computador..."
+Escrever-Titulo "Instalando bibliotecas neste computador..."
 & $venvPython -m pip install --upgrade pip
 & $venvPython -m pip install -r $requisitos
 if ($LASTEXITCODE -ne 0) {
@@ -163,20 +167,12 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-$pasta = Join-Path $env:USERPROFILE "Documents\Armanilux\Relatorios-de-Obra"
-New-Item -ItemType Directory -Force -Path $pasta | Out-Null
-$aviso = Join-Path $pasta "LEIA-ME.txt"
-if (-not (Test-Path $aviso)) {
-    @"
-Pasta de relatórios de obra da Armanilux.
-
-Cada obra ganha uma subpasta com cinco pastas:
-01-conversas, 02-projetos-pdf, 03-midias, 04-transcricoes, 05-relatorios.
-
-Coloque o zip do WhatsApp em Downloads ou aqui.
-O relatório em Word aparece em 05-relatorios.
-Nada é enviado para um serviço de transcrição na internet.
-"@ | Set-Content -Path $aviso -Encoding UTF8
+if ($BaixarModelo) {
+    Escrever-Titulo "Baixando o modelo de voz para este computador. Isso só acontece uma vez..."
+    & $venvPython -c "from faster_whisper import WhisperModel; WhisperModel('small', device='cpu', compute_type='int8')"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "O modelo de voz não baixou. O relatório ainda pode ser feito; a primeira transcrição tenta de novo."
+    }
 }
 
 Atualizar-Caminho
@@ -184,6 +180,6 @@ Escrever-Ok ""
 Escrever-Ok "Pronto."
 Write-Host "PYTHON=$venvPython"
 if ($ffmpeg) { Write-Host "FFMPEG=$ffmpeg" } else { Write-Host "FFMPEG=" }
-Write-Host "Pasta das obras: $pasta"
-Write-Host "O relatório pode continuar agora, sem reiniciar o computador."
+Write-Host "As pastas da Armanilux são criadas pelas preferências, não por este instalador."
+Write-Host "Pode continuar nesta mesma sessão, sem reiniciar o computador."
 exit 0

@@ -16,6 +16,7 @@ from analyze import aplicar_ajustes, completar_relato, montar_analise
 from build_charts import grafico_barras, grafico_gantt
 from build_docx import montar_docx, proxima_versao, tentar_pdf
 from common import configurar_saida, escrever_json, ler_json
+from config_io import carregar, pasta_relatorios
 from extract_documents import extrair_pasta
 from extract_keyframes import extrair_pasta as extrair_quadros
 from organize_export import ExportacaoNaoEncontrada, copiar_txt_avulso, extrair_zip, localizar_exportacao
@@ -56,7 +57,11 @@ def _checar_bibliotecas() -> bool:
         faltando.append("pdfplumber ou pypdf")
     if faltando:
         print("Faltam bibliotecas: " + ", ".join(faltando) + ".")
-        print("Rode scripts/instalar.ps1 desta skill e continue o relatório. Não peça para a pessoa procurar um arquivo.")
+        print("Rode a skill $preparar-projeto-armanilux.")
+        print(
+            "Se ela já estiver instalada, o instalador é "
+            "%USERPROFILE%\\.codex\\skills\\preparar-projeto-armanilux\\scripts\\instalar.ps1"
+        )
         return False
     return True
 
@@ -101,29 +106,44 @@ def _preservar(novo: dict, antigo: dict | None) -> dict:
     return novo
 
 
-def _gravar(pasta_obra: Path, analise: dict) -> Path:
+def _gravar(pasta_obra: Path, analise: dict, gerar_pdf: bool = False) -> Path:
     figuras = pasta_obra / "05-relatorios" / "figuras"
     barras = grafico_barras(analise.get("intervalos") or [], figuras / "dias-uteis.png")
     gantt = grafico_gantt(analise.get("eventos") or [], analise.get("intervalos") or [], figuras / "gantt.png")
     destino = proxima_versao(pasta_obra / "05-relatorios", analise["obra"].get("numero") or "sem-numero")
     montar_docx(analise, destino, barras, gantt)
-    pdf = tentar_pdf(destino)
+    pdf = tentar_pdf(destino) if gerar_pdf else None
     print(f"Relatório gravado em:\n{destino}")
     if pdf:
         print(f"PDF gravado em:\n{pdf}")
+    elif gerar_pdf:
+        print("O PDF não saiu. O arquivo para enviar é o Word. O PDF só aparece se o LibreOffice estiver instalado.")
     else:
-        print("O arquivo para enviar é o Word. PDF só sai se o LibreOffice estiver instalado neste computador.")
+        print("O arquivo para enviar é o Word.")
     pendencias = analise.get("pendencias") or []
     if pendencias:
         print(f"Pendências com status Pendente: {len(pendencias)}.")
     return destino
 
 
-def _reconstruir(args, raiz: Path) -> int:
+def _aplicar_preferencias(analise: dict, config: dict | None) -> None:
+    if not config:
+        return
+    obra = analise.setdefault("obra", {})
+    if config.get("nome"):
+        obra["elaborado_por"] = config["nome"]
+        if not (obra.get("responsavel_armanilux") or "").strip():
+            obra["responsavel_armanilux"] = config["nome"]
+    if config.get("funcao"):
+        obra["funcao"] = config["funcao"]
+
+
+def _reconstruir(args, raiz: Path, config: dict | None) -> int:
     if args.obra_dir:
         pasta = Path(args.obra_dir)
     elif args.obra and args.cliente:
-        pasta = garantir_obra(raiz, args.obra, args.cliente)
+        modelo = (config or {}).get("modelo_pasta_obra") or "{numero} - {cliente}"
+        pasta = garantir_obra(raiz, args.obra, args.cliente, modelo)
     else:
         print("Para remontar o Word, informe --obra-dir ou --obra e --cliente.")
         return 2
@@ -135,7 +155,8 @@ def _reconstruir(args, raiz: Path) -> int:
     if args.recalcular:
         analise = completar_relato(analise)
         escrever_json(caminho, analise)
-    _gravar(pasta, analise)
+    _aplicar_preferencias(analise, config)
+    _gravar(pasta, analise, bool(args.pdf or (config or {}).get("gerar_pdf")))
     return 0
 
 
@@ -157,17 +178,30 @@ def executar(argv: list[str] | None = None) -> int:
     parser.add_argument("--pdf", action="store_true", help="Mantido por compatibilidade; o PDF é tentado sempre que o LibreOffice existe")
     args = parser.parse_args(argv)
 
+    config = carregar()
+    if not args.workspace and not args.obra_dir and config is None:
+        print("Não encontrei as preferências da Armanilux (config.json).")
+        print("Abra um chat novo e rode a skill $preparar-projeto-armanilux.")
+        return 2
+
     if not _checar_bibliotecas():
         return 1
 
-    raiz = garantir_raiz(Path(args.workspace) if args.workspace else None)
+    if args.workspace:
+        raiz = garantir_raiz(Path(args.workspace))
+    elif config:
+        raiz = garantir_raiz(pasta_relatorios(config))
+    else:
+        raiz = garantir_raiz(None)
     print(f"Pasta de trabalho: {raiz}")
+    modelo = (config or {}).get("modelo_pasta_obra") or "{numero} - {cliente}"
+    gerar_pdf = bool(args.pdf or (config or {}).get("gerar_pdf"))
     if args.rebuild_only:
-        return _reconstruir(args, raiz)
+        return _reconstruir(args, raiz, config)
 
     pasta_conhecida = Path(args.obra_dir) if args.obra_dir else None
     if pasta_conhecida is None and args.obra and args.cliente:
-        pasta_conhecida = garantir_obra(raiz, args.obra, args.cliente)
+        pasta_conhecida = garantir_obra(raiz, args.obra, args.cliente, modelo)
     downloads = Path(args.downloads) if args.downloads else Path.home() / "Downloads"
     if not downloads.exists():
         downloads = None
@@ -214,7 +248,7 @@ def executar(argv: list[str] | None = None) -> int:
     )
     numero = meta.get("numero") or "sem-numero"
     cliente = meta.get("cliente") or "cliente"
-    pasta_obra = garantir_obra(raiz, numero, cliente)
+    pasta_obra = garantir_obra(raiz, numero, cliente, modelo)
     print(f"Pasta da obra: {pasta_obra}")
 
     if tipo == "zip":
@@ -268,8 +302,9 @@ def executar(argv: list[str] | None = None) -> int:
     caminho_json = pasta_obra / "04-transcricoes" / "analise.json"
     antigo = ler_json(caminho_json) if caminho_json.exists() else None
     analise = _preservar(analise, antigo)
+    _aplicar_preferencias(analise, config)
     escrever_json(caminho_json, analise)
-    _gravar(pasta_obra, analise)
+    _gravar(pasta_obra, analise, gerar_pdf)
     print("Análise gravada em:")
     print(caminho_json)
     return 0

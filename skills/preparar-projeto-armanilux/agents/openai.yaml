@@ -1,0 +1,4 @@
+interface:
+  display_name: "Preparar projeto Armanilux"
+  short_description: "Instala as ferramentas e a pasta das obras"
+  default_prompt: "Use $preparar-projeto-armanilux para preparar o computador e a pasta das obras."

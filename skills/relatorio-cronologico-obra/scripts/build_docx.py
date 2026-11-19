@@ -367,6 +367,16 @@ def montar_docx(analise: dict, destino: Path, grafico_barras: Path | None, grafi
         ["Engenheiro", _valor(obra, "engenheiro")],
         ["Arquitetura", _valor(obra, "arquitetura")],
         ["Responsável Armanilux", _valor(obra, "responsavel_armanilux")],
+        *(
+            [["Elaborado por", obra["elaborado_por"]]]
+            if (obra.get("elaborado_por") or "").strip()
+            else []
+        ),
+        *(
+            [["Função", obra["funcao"]]]
+            if (obra.get("funcao") or "").strip()
+            else []
+        ),
         ["Endereço", _valor(obra, "endereco")],
         ["Período", f"{formatar_data(obra.get('periodo_inicio'))} a {formatar_data(obra.get('periodo_fim'))}"],
         ["Fonte", _valor(obra, "fonte")],

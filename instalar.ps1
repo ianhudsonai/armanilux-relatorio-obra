@@ -1,8 +1,8 @@
-﻿# Atalho da raiz do repositório. A instalação de verdade está na skill.
-$destino = Join-Path $PSScriptRoot "skills\relatorio-cronologico-obra\scripts\instalar.ps1"
+﻿# Atalho da raiz do repositório. A instalação de verdade está na skill de preparação.
+$destino = Join-Path $PSScriptRoot "skills\preparar-projeto-armanilux\scripts\instalar.ps1"
 if (-not (Test-Path $destino)) {
-    Write-Host "Não encontrei o instalador da skill em $destino"
+    Write-Host "Não encontrei o instalador em $destino"
     exit 1
 }
-& $destino
+& $destino @args
 exit $LASTEXITCODE

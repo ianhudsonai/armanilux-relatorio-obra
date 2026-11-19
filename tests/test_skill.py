@@ -21,6 +21,26 @@ _TRECHOS = (
 PROIBIDOS = re.compile("|".join(re.escape(trecho) for trecho in _TRECHOS), re.IGNORECASE)
 
 
+def _frontmatter_valido(pasta: Path, nome_esperado: str) -> bool:
+    texto = (pasta / "SKILL.md").read_text(encoding="utf-8")
+    if not texto.startswith("---\n"):
+        return False
+    fim = texto.find("\n---", 3)
+    frente = texto[4:fim]
+    nome = re.search(r"^name:\s*(\S+)\s*$", frente, re.MULTILINE)
+    descricao = re.search(r"^description:\s*(.+)$", frente, re.MULTILINE)
+    if not nome or not descricao:
+        return False
+    if nome.group(1) != nome_esperado or nome.group(1) != pasta.name:
+        return False
+    texto_descricao = descricao.group(1).strip()
+    if not texto_descricao or len(texto_descricao) > 1024:
+        return False
+    if "<" in texto_descricao or ">" in texto_descricao:
+        return False
+    return True
+
+
 class SkillTeste(unittest.TestCase):
     def test_frontmatter_compativel_com_o_validador_da_openai(self):
         texto = (SKILL / "SKILL.md").read_text(encoding="utf-8")
@@ -52,36 +72,47 @@ class SkillTeste(unittest.TestCase):
         self.assertIn("whatsapp", descricao.lower())
 
     def test_arquivos_que_o_instalador_e_o_windows_esperam(self):
+        preparar = RAIZ / "skills" / "preparar-projeto-armanilux"
         self.assertTrue((SKILL / "scripts" / "run_pipeline.py").is_file())
-        self.assertTrue((SKILL / "scripts" / "requirements.txt").is_file())
-        self.assertTrue((SKILL / "agents" / "openai.yaml").is_file())
+        self.assertTrue((SKILL / "scripts" / "config_io.py").is_file())
+        self.assertFalse((SKILL / "scripts" / "instalar.ps1").exists())
+        self.assertTrue((preparar / "scripts" / "instalar.ps1").is_file())
+        self.assertTrue((preparar / "scripts" / "preparar.py").is_file())
+        self.assertTrue((RAIZ / "AGENTS.md").is_file())
         yaml = (SKILL / "agents" / "openai.yaml").read_text(encoding="utf-8")
         self.assertIn("$relatorio-cronologico-obra", yaml)
         curta = re.search(r'short_description:\s*"(.*)"', yaml).group(1)
         self.assertGreaterEqual(len(curta), 25)
         self.assertLessEqual(len(curta), 64)
-        self.assertTrue((SKILL / "scripts" / "instalar.ps1").is_file())
-        self.assertTrue((SKILL / "scripts" / "instalar.bat").is_file())
-        self.assertTrue((RAIZ / "instalar.bat").is_file())
+        bat = (RAIZ / "instalar.bat").read_text(encoding="utf-8")
+        self.assertIn(r"skills\preparar-projeto-armanilux\scripts\instalar.ps1", bat)
         self.assertTrue((RAIZ / "LICENSE").is_file())
 
-    def test_skill_aponta_o_instalador_que_o_codex_executa(self):
+    def test_as_duas_skills_e_o_instalador_interno(self):
+        preparar = RAIZ / "skills" / "preparar-projeto-armanilux"
+        for pasta, nome in ((SKILL, "relatorio-cronologico-obra"), (preparar, "preparar-projeto-armanilux")):
+            self.assertTrue(_frontmatter_valido(pasta, nome))
         texto = (SKILL / "SKILL.md").read_text(encoding="utf-8")
-        self.assertIn("scripts/instalar.ps1", texto)
-        self.assertIn("powershell -ExecutionPolicy Bypass -File", texto)
-        self.assertIn("--scope user", texto)
-        self.assertIn("Python.Python.3.12", texto)
-        self.assertNotIn("dois cliques em instalar.bat", texto.lower())
-        self.assertIn("não peça", texto.lower())
-        bat = (RAIZ / "instalar.bat").read_text(encoding="utf-8")
-        self.assertIn(r"skills\relatorio-cronologico-obra\scripts\instalar.ps1", bat)
-        instalador = (SKILL / "scripts" / "instalar.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn("$preparar-projeto-armanilux", texto)
+        self.assertIn("config.json", texto)
+        self.assertIn("preparar-projeto-armanilux\\scripts\\instalar.ps1", texto)
+        preparo = (preparar / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("scripts/instalar.ps1", preparo)
+        self.assertIn("powershell -ExecutionPolicy Bypass -File", preparo)
+        self.assertIn("Python.Python.3.12", preparo)
+        self.assertIn("--scope user", preparo)
+        self.assertNotIn("dois cliques em instalar.bat", preparo.lower())
+        instalador = (preparar / "scripts" / "instalar.ps1").read_text(encoding="utf-8-sig")
         self.assertIn("--scope user", instalador)
         self.assertIn("Python.Python.3.12", instalador)
         self.assertIn('Join-Path $PSScriptRoot "requirements.txt"', instalador)
         self.assertIn("GetEnvironmentVariable", instalador)
-        pipeline = (SKILL / "scripts" / "run_pipeline.py").read_text(encoding="utf-8")
-        self.assertNotIn("dois cliques", pipeline.lower())
+        agentes = (RAIZ / "AGENTS.md").read_text(encoding="utf-8")
+        self.assertIn("instale as skills", agentes)
+        self.assertIn("skills/preparar-projeto-armanilux", agentes)
+        self.assertIn("skills/relatorio-cronologico-obra", agentes)
+        self.assertIn(".claude/skills", agentes)
+        self.assertIn("Missing --path", agentes)
 
     def test_acha_programa_instalado_pelo_winget_fora_do_path(self):
         import os

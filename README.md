@@ -1,5 +1,15 @@
 # Relatório Cronológico de Obra — Armanilux
 
+Quem for instalar no Codex cola esta linha, neste computador (não na nuvem):
+
+```
+https://github.com/ianhudsonai/armanilux-relatorio-obra instale as skills
+```
+
+O agente lê o `AGENTS.md` e instala as duas skills. Abra um chat novo e escreva `$preparar-projeto-armanilux`. Ele faz algumas perguntas e instala o que falta. Se pedir permissão, aprove. Se o Windows mostrar **Sim** ou **Não**, clique em **Sim**.
+
+Depois, para cada obra, escreva `$relatorio-cronologico-obra` ou `faz o relatório da obra`.
+
 Esta pasta ensina o computador a ler o grupo de WhatsApp de uma obra e entregar um **Relatório Cronológico de Obra** em Word. O relatório segue as etapas A, B, C, D, E, F, G, H, I, J e L (não existe etapa K), com dias úteis de São Paulo e as fotos, áudios e vídeos citados pelo nome.
 
 Tudo roda **neste computador**. A conversa não vai para um serviço de transcrição na internet.
@@ -8,19 +18,11 @@ O exemplo que vem junto é inventado (Obra 1001, Família Almeida). Não é clie
 
 ## Instalar
 
-1. Abra o aplicativo **ChatGPT** no Windows (o aplicativo novo, não o site e não o "ChatGPT Classic"). Entre na sua conta. No menu, escolha **Codex**. Quando perguntar onde trabalhar, escolha **Este computador** (This computer), não Cloud.
-2. Cole o link abaixo e, na linha seguinte, a frase. Quando o aplicativo pedir para usar a internet, aprove.
+1. Abra o aplicativo **ChatGPT** no Windows (o aplicativo novo, não o site). Entre na sua conta. Escolha **Codex** e **Este computador**.
+2. Cole a linha do começo desta página. Quando pedir para usar a internet ou rodar um comando, aprove.
+3. Abra um chat novo e escreva `$preparar-projeto-armanilux`. Responda as perguntas. A pasta padrão é `Documentos\Armanilux`.
 
-```
-https://github.com/ianhudsonai/armanilux-relatorio-obra/tree/main/skills/relatorio-cronologico-obra
-Instale esta skill com o skill-installer
-```
-
-Não precisa baixar o repositório nem procurar um arquivo para clicar. Na primeira vez que você pedir um relatório, o Codex instala o que falta neste computador. Se ele pedir permissão para rodar um comando, aprove. Se o Windows abrir uma janela **Sim** ou **Não**, clique em **Sim**.
-
-Se a skill não aparecer, feche o Codex e abra de novo. Para instalar a skill outra vez, apague antes a pasta `%USERPROFILE%\.codex\skills\relatorio-cronologico-obra`.
-
-Quem tiver a pasta inteira do repositório no computador pode, se quiser, dar dois cliques em `instalar.bat`. Isso é opcional. O caminho normal é só o link no Codex.
+Não precisa procurar um arquivo para clicar. Quem já tiver esta pasta no computador pode, se quiser, dar dois cliques em `instalar.bat`. Isso só instala as ferramentas. As perguntas ficam no Codex.
 
 ## Usar no dia a dia
 
@@ -74,7 +76,9 @@ This is an [Agent Skills](https://agentskills.io/specification) package aimed at
 
 `https://github.com/ianhudsonai/armanilux-relatorio-obra/tree/main/skills/relatorio-cronologico-obra`
 
-`$skill-installer` copies only `skills/relatorio-cronologico-obra/` into `%USERPROFILE%\.codex\skills\`. The installer lives at `scripts/instalar.ps1` inside that folder (root `instalar.bat` is an optional wrapper). On every run, `SKILL.md` tells Codex to check the venv and ffmpeg and, if anything is missing, run `powershell -ExecutionPolicy Bypass -File <skill>\scripts\instalar.ps1` itself. The user only approves the command and clicks Sim on UAC. Installs prefer `winget --scope user` (`Python.Python.3.12`) and a venv at `%USERPROFILE%\.armanilux-relatorio\venv` (`faster-whisper`, `python-docx`, `matplotlib`, `holidays`, `pdfplumber`, `pypdf`, Pillow, numpy). Afterward Codex re-reads PATH from the registry and continues in the same session. The script also prints `PYTHON=` and `FFMPEG=` and, when it finds ffmpeg outside PATH, adds that directory to the user PATH.
+There are two skills. `preparar-projeto-armanilux` is once per person: questions, per-user winget, venv, ffmpeg, optional Whisper download, and `%USERPROFILE%\.armanilux-relatorio\config.json`. `relatorio-cronologico-obra` only writes the report and reads that config. Each skill folder is self-contained; the small `config_io.py` is duplicated so a copied skill does not need the other folder's code. The report skill may call the setup skill's `instalar.ps1` if both are installed and a library is missing.
+
+The one-line paste is `https://github.com/ianhudsonai/armanilux-relatorio-obra instale as skills`. `AGENTS.md` tells the agent that `$skill-installer`'s `install-skill-from-github.py` rejects a bare repo URL (`Missing --path for GitHub URL`) and that the reliable call is one `--path` with both `skills/preparar-projeto-armanilux` and `skills/relatorio-cronologico-obra`. If `~/.claude` or the `claude` command exists, the same folders also go to `~/.claude/skills`.
 
 `skills/relatorio-cronologico-obra/scripts/run_pipeline.py` creates `Documents\Armanilux\Relatorios-de-Obra\<obra - cliente>\{01-conversas,02-projetos-pdf,03-midias,04-transcricoes,05-relatorios}`, streams the zip (zip-slip is dropped; mojibake filenames are repaired), parses Android and iPhone WhatsApp exports, transcribes speech locally, pulls a few video frames, reads PDF/docx, and writes a versioned docx. Business days are `(start, end]` excluding weekends, Brazilian national holidays, Carnival Monday and Tuesday, SP state 9 July, and São Paulo city 25 January and Corpus Christi (`holidays` subdiv São Paulo Capital, plus Carnival added in code). Ash Wednesday stays a business day. Intervals are not summed into an "Armanilux delay".
 
