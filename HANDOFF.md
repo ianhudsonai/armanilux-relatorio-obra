@@ -3,7 +3,7 @@
 ## Estado atual
 Duas skills na `main` (PRs #5 a #32; 138 testes; CI verde no Ubuntu e no Windows com Python 3.10, 3.12 e 3.13): `preparar-projeto-armanilux` 1.3 e `relatorio-cronologico-obra` 1.11. As duas instaladas em `C:\Users\EuSou\.claude\skills\`, iguais à `main`.
 Os 6 bloqueadores da avaliação (`C:\Users\EuSou\Documents\Armanilux\avaliacao-2026-11-19\0-resumo.md`) foram corrigidos em #24–#27. O "deveria corrigir" e os pequenos que sobraram foram corrigidos em #29 (conferência bloqueia a final), #30 (áudio, Python, privacidade), #31 (avisos da execução) e #32 (obra/cliente, registro, textos).
-Obra de teste (pasta em `Documents\Armanilux\Relatorios-de-Obra\`, FORA do repo): v12 revisado, 123 fatos conferidos. Ainda não remontada com o código novo (o ensaio numa cópia com o código de #32 continua dando `v13` final).
+Obra de teste (pasta em `Documents\Armanilux\Relatorios-de-Obra\`, FORA do repo): remontada com o código novo em 2026-11-19, saiu `v13` final ao lado do `v12` (123 de 123 fatos batem; `versao: 13` gravada; registro atualizado). O PDF não sai neste PC: o config antigo tem `gerar_pdf: true`, mas não há Word nem LibreOffice (o Word `.docx` é a entrega).
 
 ## Decisões desta sessão
 - Nova exportação de obra já revisada volta a ser rascunho (`revisado` não é preservado); `eventos_adicionais`, ajustes e textos da revisão continuam. O script avisa para conferir as mensagens novas e a conclusão.
@@ -31,11 +31,11 @@ Obra de teste (pasta em `Documents\Armanilux\Relatorios-de-Obra\`, FORA do repo)
 - Instalar skills só no app em uso (Codex → `.codex\skills`; Claude Code → `.claude\skills`).
 
 ## Pendências (em ordem)
-1. Remontar a obra de teste de verdade com o código novo (`--rebuild-only --recalcular`). Ensaio feito numa cópia (mídias trocadas por arquivos vazios de mesmo nome): 123 de 123 fatos batem, sai `v13` uma vez e a segunda remontagem regrava o mesmo `v13`. A remontagem não relê a conversa; as 77 coladas só entram numa exportação nova. Na pasta real, só remontar se o Ian quiser o `v13` ao lado do `v12`.
+1. Ian abrir o `v13` e comparar com o PDF aprovado. A remontagem não relê a conversa: as 77 coladas só entram numa exportação nova da obra.
 2. Rodar `$preparar-projeto-armanilux` neste PC para trocar o venv 3.14 pelo 3.12 com as versões fixas (o antigo fica guardado).
 3. Sobras aceitas de #29–#32 (só se incomodarem): "Cliente:" solto no grupo ainda vale mais que o nome do arquivo (a pergunta sim/não pega); remontar não refaz folhas de contato nem lacunas automáticas; instalador cortado na criação do venv pode deixar ambiente sem pip.
-4. Lacunas de qualidade do v12 (conclusão em 14/09 errada, intervalos misturando frentes, "programado" contado como feito, datas finais e total 304/302, etapa J por tipo).
-5. Ian abrir o v12 e comparar com o PDF aprovado. Depois, teste real no PC do Rogério (passos em `3-pronto-para-enviar.md`, "What Rogério must do himself"): é o único jeito de provar a instalação no Codex sem Python e a pasta de skills que o Codex usa.
+4. Lacunas de qualidade do v12/v13 (conclusão em 14/09 errada, intervalos misturando frentes, "programado" contado como feito, datas finais e total 304/302, etapa J por tipo).
+5. Teste real no PC do Rogério (passos em `3-pronto-para-enviar.md`, "What Rogério must do himself"): é o único jeito de provar a instalação no Codex sem Python e a pasta de skills que o Codex usa.
 6. Limpar textos automáticos antigos de `analyze.py` que o Word compacto não usa.
 
 ## Como rodar
