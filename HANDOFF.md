@@ -1,7 +1,7 @@
 # HANDOFF — armanilux-relatorio-obra (2026-11-19)
 
 ## Estado atual
-Duas skills na `main` (PRs #5 a #17; 86 testes; CI verde no Ubuntu e no Windows): `preparar-projeto-armanilux` (perguntas + instalação) e `relatorio-cronologico-obra` (zip do WhatsApp → Word). A skill instalada em `C:\Users\EuSou\.claude\skills\relatorio-cronologico-obra` é a 1.7, igual à `main`.
+Duas skills na `main` (PRs #5 a #19; 97 testes; CI verde no Ubuntu e no Windows): `preparar-projeto-armanilux` (perguntas + instalação) e `relatorio-cronologico-obra` (zip do WhatsApp → Word). A skill instalada em `C:\Users\EuSou\.claude\skills\relatorio-cronologico-obra` é a 1.8, igual à `main`.
 Relatório no formato compacto do PDF aprovado (8665.1 V3): Nota Metodológica, Quadro-Resumo, etapas A–L com cores (salmão = reprocesso, amarelo = ocioso), Análise de Prazos (vermelho = intervalo longo ou prazo estourado), confronto com prazos contratuais, Diagnóstico em 5 blocos, Conclusão.
 Obra de teste (pasta em `Documents\Armanilux\Relatorios-de-Obra\`, FORA do repo): v12 revisado, 122 fatos conferidos com o grupo. Backup da análise antes das mudanças de hoje: `04-transcricoes/analise.antes-v12.json`. Versões descartadas do v12 estão em `D:\_ai-archive\2026-11-19\`.
 
@@ -15,6 +15,8 @@ Obra de teste (pasta em `Documents\Armanilux\Relatorios-de-Obra\`, FORA do repo)
 - Seguir o `prompt.md` do Rogério; só melhorias pequenas. Não apagar dados sensíveis do relatório. Relatório curto: o contexto inteiro é para o agente, não para o Word. Imagem é só contexto, sem descrição no relatório.
 - Cores: marrom `#442819` e dourado `#C3A56D`. `8977.1.v10`: `.vNN` é versão, a obra é `8977.1`.
 - Instalar skills só no app em uso (Codex → `.codex\skills`; Claude Code → `.claude\skills`).
+- Datas de mensagens coladas: conferido no v12 (25 coladas). Nenhum fato usa a data da colagem no lugar da original; não precisou reprocessar. Dois pontos para o Ian decidir: a autorização do arquiteto para medir com a banheira só apoiada foi em 03/11 19:04 (colada), o fato está em 04/11 11:11 (aviso no grupo); o pedido do arquiteto em 21/08 para desocupar cozinha e copa dos materiais da Armani (colado em 28/09) não virou fato.
+- Transcrição com cache: `04-transcricoes/transcricoes-cache.json` guarda SHA-256, modelo e texto de cada áudio/vídeo. Arquivo igual não volta ao Whisper; execução interrompida continua; `--skip-transcribe` mantém o que já existe. `.txt` de antes do cache só vale na primeira execução (sem cache). Na obra de teste, as 61 transcrições entraram no cache sem refazer.
 
 ## Não mexer
 - A ideia central e as etapas A–L (sem K) do `prompt.md`.
@@ -24,10 +26,9 @@ Obra de teste (pasta em `Documents\Armanilux\Relatorios-de-Obra\`, FORA do repo)
 
 ## Pendências (em ordem)
 1. Ian abrir o v12 da obra de teste e comparar com o PDF aprovado (8665.1 V3).
-2. Conferir se os eventos do v12 usam a data original das mensagens coladas (encaminhadas); se não, reprocessar do zip mantendo a revisão.
-3. Transcrição com cache por arquivo (não refazer tudo) e em segundo plano.
-4. Instalação: linha de colagem citando `$skill-installer` e as URLs `/tree/main/skills/<nome>` (README, AGENTS.md).
-5. Limpar textos automáticos antigos de `analyze.py` (`_impacto`, `_produtividade`, `_comentarios_etapa`, gargalos, responsabilidades) que o Word compacto não usa.
+2. Ian decidir os dois pontos das mensagens coladas (ver Decisões).
+3. Instalação: linha de colagem citando `$skill-installer` e as URLs `/tree/main/skills/<nome>` (README, AGENTS.md).
+4. Limpar textos automáticos antigos de `analyze.py` (`_impacto`, `_produtividade`, `_comentarios_etapa`, gargalos, responsabilidades) que o Word compacto não usa.
 
 ## Como rodar
 - Python: `C:\Users\EuSou\.armanilux-relatorio\venv\Scripts\python.exe` (config em `%USERPROFILE%\.armanilux-relatorio\config.json`).
