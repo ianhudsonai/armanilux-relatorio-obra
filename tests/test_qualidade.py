@@ -88,6 +88,64 @@ class EventosATeste(unittest.TestCase):
         self.assertEqual([(e["data"], e["etapa"]) for e in saida], [("2026-01-11", "C")])
 
 
+class RemontagemTeste(unittest.TestCase):
+    def test_ajustes_e_eventos_da_revisao_valem_na_remontagem(self):
+        import json
+        import os
+        import zipfile
+
+        from run_pipeline import executar
+
+        with TemporaryDirectory() as temporario:
+            base = Path(temporario)
+            antigos = {k: os.environ.get(k) for k in ("ARMANILUX_CONFIG", "ARMANILUX_REGISTRO")}
+            os.environ["ARMANILUX_CONFIG"] = str(base / "sem-config.json")
+            os.environ["ARMANILUX_REGISTRO"] = str(base / "registro.json")
+            try:
+                zip_path = base / "Conversa do WhatsApp com 1001 - Cliente Teste.zip"
+                with zipfile.ZipFile(zip_path, "w") as arquivo:
+                    arquivo.writestr("_chat.txt", CHAT.encode("utf-8"))
+                oficina = base / "obras"
+                argv = ["--workspace", str(oficina), "--skip-transcribe", "--skip-keyframes"]
+                self.assertEqual(executar(["--zip", str(zip_path), *argv]), 0)
+                obra = oficina / "1001 - Cliente Teste"
+                caminho = obra / "04-transcricoes" / "analise.json"
+                analise = json.loads(caminho.read_text(encoding="utf-8"))
+                antes = [(e["data"], e["etapa"]) for e in analise["eventos"]]
+                self.assertTrue(antes)
+                primeiro = analise["eventos"][0]
+                analise["ajustes_eventos"] = [{"data": primeiro["data"], "hora": primeiro["hora"], "etapa_original": primeiro["etapa"], "remover": True}]
+                analise["eventos_adicionais"] = [{"data": "2026-01-15", "hora": "09:00", "etapa": "H", "autor": "Ana", "ocorrencia": "Material entregue."}]
+                caminho.write_text(json.dumps(analise, ensure_ascii=False), encoding="utf-8")
+                self.assertEqual(executar(["--rebuild-only", "--recalcular", "--obra-dir", str(obra), *argv]), 0)
+                depois = json.loads(caminho.read_text(encoding="utf-8"))
+                datas = [(e["data"], e["hora"], e["etapa"]) for e in depois["eventos"]]
+                self.assertNotIn((primeiro["data"], primeiro["hora"], primeiro["etapa"]), datas)
+                self.assertIn(("2026-01-15", "09:00", "H"), datas)
+                # Remontar de novo não repete nada.
+                self.assertEqual(executar(["--rebuild-only", "--recalcular", "--obra-dir", str(obra), *argv]), 0)
+                de_novo = json.loads(caminho.read_text(encoding="utf-8"))
+                self.assertEqual(len(de_novo["eventos"]), len(depois["eventos"]))
+                from docx import Document
+
+                def _texto(docx):
+                    return " ".join(p.text for p in Document(str(docx)).paragraphs)
+
+                rascunho = sorted((obra / "05-relatorios").glob("*.docx"))[-1]
+                self.assertIn("RASCUNHO NÃO REVISADO", _texto(rascunho))
+                de_novo["revisado"] = True
+                caminho.write_text(json.dumps(de_novo, ensure_ascii=False), encoding="utf-8")
+                self.assertEqual(executar(["--rebuild-only", "--recalcular", "--obra-dir", str(obra), *argv]), 0)
+                final = sorted((obra / "05-relatorios").glob("*.docx"), key=lambda x: int(x.stem.rsplit("-v", 1)[1]))[-1]
+                self.assertNotIn("RASCUNHO NÃO REVISADO", _texto(final))
+            finally:
+                for chave, valor in antigos.items():
+                    if valor is None:
+                        os.environ.pop(chave, None)
+                    else:
+                        os.environ[chave] = valor
+
+
 class CandidatosTeste(unittest.TestCase):
     def test_candidatos_cobrem_as_etapas_que_a_leitura_automatica_perde(self):
         por_etapa = selecionar(analisar_conversa(CHAT))

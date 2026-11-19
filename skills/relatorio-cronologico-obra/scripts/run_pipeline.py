@@ -32,6 +32,7 @@ CHAVES_PRESERVAR = (
     "conclusao_personalizada",
     "ajustes_eventos",
     "eventos_adicionais",
+    "revisado",
 )
 
 
@@ -154,6 +155,9 @@ def _reconstruir(args, raiz: Path, config: dict | None) -> int:
         print("Não encontrei a análise desta obra. Rode primeiro com o zip do WhatsApp.")
         return 2
     analise = ler_json(caminho)
+    if analise.get("ajustes_eventos"):
+        # Correções feitas pela revisão (trocar etapa, remover) valem também na remontagem.
+        analise["eventos"] = aplicar_ajustes(list(analise.get("eventos") or []), analise["ajustes_eventos"])
     if args.recalcular:
         analise = completar_relato(analise)
         escrever_json(caminho, analise)

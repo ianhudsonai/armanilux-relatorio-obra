@@ -347,6 +347,13 @@ def montar_docx(analise: dict, destino: Path, grafico_barras: Path | None, grafi
     documento.core_properties.language = "pt-BR"
     documento.core_properties.comments = "Gerado localmente. Histórico não enviado a serviço de transcrição em nuvem."
 
+    if not analise.get("revisado"):
+        aviso = documento.add_paragraph()
+        trecho = aviso.add_run(
+            "RASCUNHO NÃO REVISADO. Leitura automática da conversa, sem conferência de quem "
+            "analisou o grupo. Não enviar a ninguém antes da revisão."
+        )
+        _fonte(trecho, 11, negrito=True, cor=RGBColor(0xC6, 0x28, 0x28))
     titulo = documento.add_paragraph()
     titulo.alignment = WD_ALIGN_PARAGRAPH.LEFT
     trecho = titulo.add_run("RELATÓRIO CRONOLÓGICO DE OBRA")
