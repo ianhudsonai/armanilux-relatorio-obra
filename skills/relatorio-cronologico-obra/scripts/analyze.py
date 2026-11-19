@@ -387,32 +387,58 @@ def primeira_programacao(eventos: list[dict], etapa: str) -> str:
     return datas[0] if datas else ""
 
 
-def primeiros_marcos(eventos: list[dict]) -> dict[str, str]:
-    """Primeira data realizada de cada etapa."""
+GERAL = "Geral"  # fatos sem frente numa obra multifrente
+
+
+def frentes_da_obra(eventos: list[dict]) -> list[str]:
+    """Frentes marcadas pela revisão ("frente" no evento), na ordem do primeiro fato de cada uma."""
+    ordem: dict[str, str] = {}
+    for evento in eventos:
+        frente = (evento.get("frente") or "").strip()
+        if frente and data_do_fato(evento) < ordem.get(frente, "9999"):
+            ordem[frente] = data_do_fato(evento)
+    return sorted(ordem, key=lambda nome: (ordem[nome], nome))
+
+
+def _da_frente(evento: dict, frente: str | None) -> bool:
+    if frente is None:
+        return True
+    return ((evento.get("frente") or "").strip() or GERAL) == frente
+
+
+def primeiros_marcos(eventos: list[dict], frente: str | None = None) -> dict[str, str]:
+    """Primeira data realizada de cada etapa; com frente, só dos fatos dessa frente."""
     primeiros: dict[str, str] = {}
     for evento in eventos:
-        if conta_como_marco(evento) and data_do_fato(evento) < primeiros.get(evento["etapa"], "9999"):
+        if not _da_frente(evento, frente) or not conta_como_marco(evento):
+            continue
+        if data_do_fato(evento) < primeiros.get(evento["etapa"], "9999"):
             primeiros[evento["etapa"]] = data_do_fato(evento)
     return primeiros
 
 
-def intervalos_marcos_de(eventos: list[dict]) -> tuple[list[dict], dict]:
-    """Marco = primeiro registro de cada etapa. Intervalos entre marcos em ordem de data,
-    como na tabela do relatório aprovado, e a duração do primeiro ao último registro."""
-    primeiros = primeiros_marcos(eventos)
-    marcos = sorted(primeiros.items(), key=lambda par: (par[1], _posicao(par[0])))
+def _cadeia(primeiros: dict[str, str], frente: str) -> list[dict]:
+    # Interferência (J) não é passo do fluxo: fica fora da cadeia de marcos.
+    marcos = sorted(((etapa, data) for etapa, data in primeiros.items() if etapa != "J"), key=lambda par: (par[1], _posicao(par[0])))
     saida = []
     for (de, inicio), (para, fim) in zip(marcos, marcos[1:]):
+        dias = dias_uteis_entre(date.fromisoformat(inicio), date.fromisoformat(fim))
         saida.append(
-            {
-                "de": de,
-                "para": para,
-                "inicio": inicio,
-                "fim": fim,
-                "dias_uteis": dias_uteis_entre(date.fromisoformat(inicio), date.fromisoformat(fim)),
-            }
+            {"frente": frente, "de": de, "para": para, "inicio": inicio, "fim": fim, "dias_uteis": dias, "longo": dias > LIMITE_INTERVALO_LONGO}
         )
-        saida[-1]["longo"] = saida[-1]["dias_uteis"] > LIMITE_INTERVALO_LONGO
+    return saida
+
+
+def intervalos_marcos_de(eventos: list[dict]) -> tuple[list[dict], dict]:
+    """Marco = primeiro fato realizado de cada etapa. Em obra multifrente, os intervalos são
+    medidos dentro de cada frente, como no relatório aprovado; sem frentes, na obra inteira.
+    Devolve também a duração do primeiro ao último registro."""
+    frentes = frentes_da_obra(eventos)
+    if not frentes:
+        saida = _cadeia(primeiros_marcos(eventos), "")
+    else:
+        cadeias = [_cadeia(primeiros_marcos(eventos, nome), nome) for nome in frentes + [GERAL]]
+        saida = [item for cadeia in sorted((c for c in cadeias if c), key=lambda c: c[0]["inicio"]) for item in cadeia]
     datas = sorted(evento["data"] for evento in eventos)
     duracao = {}
     if datas:
@@ -428,9 +454,9 @@ def confronto_contrato(eventos: list[dict], prazos: list[dict]) -> list[dict]:
     """Cada prazo informado no grupo contra o realizado. Sem as duas datas, realizado é None
     (dado não identificado). O período vem de "inicio"/"fim" escritos na revisão ou do
     primeiro registro das etapas "de" e "para"."""
-    primeiros = primeiros_marcos(eventos)
     saida = []
     for prazo in prazos or []:
+        primeiros = primeiros_marcos(eventos, prazo.get("frente") or None)
         inicio = prazo.get("inicio") or primeiros.get(prazo.get("de", ""))
         fim = prazo.get("fim") or primeiros.get(prazo.get("para", ""))
         # Contrato que diz só "dias" conta dias corridos; a revisão marca "unidade": "dias_corridos".
@@ -1127,6 +1153,8 @@ def _juntar_adicionais(base: dict) -> list[dict]:
             item["programado"] = True
         if extra.get("data_evento"):
             item["data_evento"] = extra["data_evento"]
+        if extra.get("frente"):
+            item["frente"] = extra["frente"]
         chave = (item["data"], item["hora"], item["etapa"], item["ocorrencia"])
         if chave not in vistos:
             vistos.add(chave)
@@ -1293,4 +1321,6 @@ def aplicar_ajustes(eventos: list[dict], ajustes: list[dict]) -> list[dict]:
                     evento[marca] = bool(ajuste[marca])
             if ajuste.get("data_evento"):
                 evento["data_evento"] = ajuste["data_evento"]
+            if ajuste.get("frente"):
+                evento["frente"] = ajuste["frente"]
     return eventos

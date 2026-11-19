@@ -13,6 +13,7 @@ from analyze import (
     confronto_contrato,
     data_da_conclusao,
     diz_programado,
+    frentes_da_obra,
     intervalos_marcos_de,
     marcos_de,
     primeira_programacao,
@@ -455,12 +456,17 @@ def _confronto_contrato(documento: Document, confronto: list[dict]) -> None:
 
 def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path | None, grafico_gantt: Path | None) -> None:
     documento.add_heading("Análise de Prazos — Intervalos em Dias Úteis", level=1)
-    _paragrafo(
-        documento,
-        "Intervalos entre marcos (primeiro registro de cada etapa), em dias úteis. Intervalo de calendário não é "
-        "atraso atribuído a ninguém.",
-        tamanho=10,
-    )
+    frentes = frentes_da_obra(analise.get("eventos") or [])
+    if frentes:
+        nomes = ", ".join(frentes[:-1]) + f" e {frentes[-1]}" if len(frentes) > 1 else frentes[0]
+        abertura = (
+            f"Obra multifrente ({nomes}): cada frente percorre o seu próprio ciclo de medição, projeto, aprovação, "
+            "entrega e instalação. Os intervalos abaixo são medidos dentro de cada frente, entre o primeiro fato "
+            "realizado de cada etapa, em dias úteis."
+        )
+    else:
+        abertura = "Intervalos entre marcos (primeiro fato realizado de cada etapa), em dias úteis."
+    _paragrafo(documento, abertura + " Intervalo de calendário não é atraso atribuído a ninguém.", tamanho=10)
     # Sempre dos eventos: remontar sem --recalcular não deixa número antigo ao lado do Quadro-Resumo.
     marcos, duracao = intervalos_marcos_de(analise.get("eventos") or [])
     if not marcos:
@@ -468,7 +474,8 @@ def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path 
     else:
         linhas = [
             (
-                f"{_titulo_marco(item['de'])} ({formatar_data(item['inicio'])}) → "
+                (f"{item['frente']} — " if item.get("frente") else "")
+                + f"{_titulo_marco(item['de'])} ({formatar_data(item['inicio'])}) → "
                 f"{_titulo_marco(item['para'])} ({formatar_data(item['fim'])})",
                 f"{item['dias_uteis']} d.u.",
                 item.get("longo", item["dias_uteis"] > LIMITE_INTERVALO_LONGO),
