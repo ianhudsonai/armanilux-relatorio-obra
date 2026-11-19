@@ -25,7 +25,7 @@ O script já aplica esse formato. Não improvise outro sumário, não some inter
 
 Esta skill só faz o relatório. A preparação do computador é a skill `$preparar-projeto-armanilux`.
 
-Antes de abrir o zip, leia `%USERPROFILE%\.armanilux-relatorio\config.json`. Se o arquivo não existir, pare e diga, em português, para abrir um chat e rodar `$preparar-projeto-armanilux`. Não invente pasta, nome nem função.
+Antes de listar as conversas, leia `%USERPROFILE%\.armanilux-relatorio\config.json`. Se o arquivo não existir, pare e diga, em português, para abrir um chat e rodar `$preparar-projeto-armanilux`. Não invente pasta, nome nem função.
 
 Se o arquivo existir, use `pasta_raiz`, `modelo_pasta_obra`, `nome`, `funcao` e `gerar_pdf`. O Python do relatório é `%USERPROFILE%\.armanilux-relatorio\venv\Scripts\python.exe`.
 
@@ -48,11 +48,36 @@ Dentro da obra ficam `01-conversas`, `02-projetos-pdf`, `03-midias`, `04-transcr
 
 Se a pessoa informar o número da obra e o cliente, passe `--obra` e `--cliente`. Se não informar, o script tenta ler do próprio grupo. Não chute um nome de cliente.
 
-## 2. Achar o zip
+## 2. Achar as conversas
 
-Procure, nesta ordem: o arquivo que a pessoa indicar, a pasta da obra, a pasta Downloads. Vale zip do WhatsApp ou um `.txt` de conversa já exportado. O zip original não é apagado.
+Nunca peça o caminho do zip. Rode primeiro, em toda execução:
 
-Se não houver exportação, pare e explique, em português simples, como exportar no celular: abrir o grupo, tocar no nome, Exportar conversa, incluir mídia. Se o arquivo passar de uns 500 MB, oriente a exportar sem mídia e, se quiser, copiar só as fotos importantes para `03-midias`. O script ainda assim lê um zip grande em partes, sem carregar o arquivo inteiro na memória.
+```bash
+PYTHON SKILL/scripts/run_pipeline.py --listar
+```
+
+O script procura em Downloads, Área de Trabalho (inclusive a do OneDrive) e na pasta da Armanilux, em subpastas também. Reconhece nome longo, com acento e parênteses, e confere o conteúdo: zip com conversa do WhatsApp, ou `.txt` solto. Conversa igual com outro nome (ou baixada duas vezes) é ignorada. Mostre à pessoa, como está, a lista numerada que o script imprimir, e pergunte por qual começar. Ela pode escolher uma, várias ou todas.
+
+Número da obra e cliente saem sozinhos do nome do arquivo e do grupo. Só pergunte se o script disser que não conseguiu, e então pergunte só isso e rode com `--obra` e `--cliente`.
+
+Gerar o relatório (uma conversa de cada vez, em lote):
+
+```bash
+PYTHON SKILL/scripts/run_pipeline.py --indice 1,3
+PYTHON SKILL/scripts/run_pipeline.py --todas
+```
+
+Conversa nova de uma obra que já tem relatório aparece na lista como "próxima versão". Se a pessoa escolher, o relatório sai como v2 na mesma pasta. Nunca gere sozinho.
+
+O zip fica onde está até a pessoa dizer que o relatório está bom. Só então:
+
+```bash
+PYTHON SKILL/scripts/run_pipeline.py --concluir --indice 1
+```
+
+Isso marca como concluída e move o zip para `01-conversas` da obra (`--copiar` deixa o original). O número vem da lista de relatórios prontos. O registro fica em `%USERPROFILE%\.armanilux-relatorioegistro.json`.
+
+Se a lista vier vazia, explique como exportar no celular: grupo, nome do grupo, Exportar conversa. Se passar de uns 500 MB, pode exportar sem mídia. O script lê um zip grande em partes e não envia nada para a internet.
 
 ## 3. Rodar o pipeline
 
@@ -60,7 +85,7 @@ Se não houver exportação, pare e explique, em português simples, como export
 PYTHON SKILL/scripts/run_pipeline.py --obra "1001" --cliente "Nome do cliente" --zip "CAMINHO-DO-ZIP"
 ```
 
-Omita `--obra`, `--cliente` ou `--zip` quando não souber; o script procura e lê o grupo. Se a pessoa pediu para entender os áudios, a primeira vez pode baixar cerca de 484 MB e ficar só neste computador. Se ela não quiser esperar, rode com `--skip-transcribe` e diga que o que foi falado ficou como dado não identificado.
+Os comandos do passo 2 já rodam o pipeline. Com `--zip CAMINHO` o pipeline roda direto num arquivo que a pessoa indicou. Se a pessoa pediu para entender os áudios, a primeira vez pode baixar cerca de 484 MB e ficar só neste computador. Se ela não quiser esperar, rode com `--skip-transcribe` e diga que o que foi falado ficou como dado não identificado.
 
 Saídas:
 
