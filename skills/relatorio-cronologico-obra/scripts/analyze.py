@@ -89,12 +89,18 @@ LIMITE_INTERVALO_LONGO = 20
 
 def destaque_automatico(etapa: str, texto: str) -> str:
     """Primeira leitura da cor da linha. A revisão pode trocar com "destaque" no evento."""
+    # Etapa E é, por definição, pedido de revisão: sempre reprocesso.
     base = normalizar(texto)
-    if etapa == "E" or any(chave in base for chave in _REPROCESSO):
+    if etapa == "E" or _COMECA_PALAVRA(_REPROCESSO).search(base):
         return "reprocesso"
-    if any(chave in base for chave in _OCIOSO):
+    if _COMECA_PALAVRA(_OCIOSO).search(base):
         return "ocioso"
     return ""
+
+
+def _COMECA_PALAVRA(chaves: tuple[str, ...]) -> re.Pattern:
+    """Chave casa no começo de uma palavra: "parad" pega "parada", não "preparada"."""
+    return re.compile(r"\b(?:" + "|".join(re.escape(chave) for chave in chaves) + ")")
 
 
 def classificar_etapas(texto: str) -> list[str]:
@@ -392,7 +398,10 @@ def confronto_contrato(eventos: list[dict], prazos: list[dict]) -> list[dict]:
         realizado = None
         if inicio and fim and fim >= inicio:
             realizado = dias_uteis_entre(date.fromisoformat(inicio), date.fromisoformat(fim))
-        limite = int(prazo.get("limite_du") or 0)
+        try:
+            limite = int(float(str(prazo.get("limite_du")).replace(",", "."))) or None
+        except ValueError:
+            limite = None  # "a combinar", vazio: sem número, não há o que confrontar
         saida.append(
             {
                 "descricao": prazo.get("descricao", ""),
@@ -400,7 +409,7 @@ def confronto_contrato(eventos: list[dict], prazos: list[dict]) -> list[dict]:
                 "inicio": inicio or "",
                 "fim": fim or "",
                 "realizado": realizado,
-                "excedeu": realizado is not None and limite > 0 and realizado > limite,
+                "excedeu": realizado is not None and limite is not None and realizado > limite,
                 "fonte": prazo.get("fonte", ""),
             }
         )

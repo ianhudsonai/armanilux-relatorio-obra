@@ -54,6 +54,10 @@ class DestaqueTeste(unittest.TestCase):
         # Enviar o projeto revisado é a etapa F andando, não reprocesso; pedir nova revisão é.
         self.assertEqual(destaque_automatico("F", "Envio do projeto revisado R1 dos banhos."), "")
         self.assertEqual(destaque_automatico("J", "Cliente pede nova revisão depois de aprovado."), "reprocesso")
+        # Palavra inteira: "preparada" e "separada" não são "parada".
+        self.assertEqual(destaque_automatico("B", "Chapa preparada para corte."), "")
+        self.assertEqual(destaque_automatico("C", "Medição separada por ambiente."), "")
+        self.assertEqual(destaque_automatico("H", "Obra parada por falta de liberação."), "ocioso")
 
 
 class FormatoTeste(unittest.TestCase):
@@ -76,6 +80,16 @@ class FormatoTeste(unittest.TestCase):
         for proibido in ("Ponto crítico", "Gargalo:", "Avaliação:", "Conclusão da etapa", "Registro fotográfico", "Nota de rastreabilidade"):
             self.assertFalse([t for t in self.textos if t.startswith(proibido)], proibido)
         self.assertTrue([t for t in self.textos if t.startswith("Leitura da Etapa A:")])
+
+    def test_leitura_da_revisao_mantem_o_intervalo_da_etapa(self):
+        # prompt.md: intervalo em dias úteis "dentro de cada fase relevante", mesmo com texto escrito na revisão.
+        eventos = [dict(e) for e in EVENTOS] + [_evento("2026-01-14", "C", "Medição da cozinha realizada.")]
+        relato = completar_relato(
+            {"obra": {}, "eventos": eventos, "comentarios": {"C": {"leitura": "Medição dependeu da liberação da área."}}}
+        )
+        leitura = next(t for t in [p.text for p in _montar(relato).paragraphs] if t.startswith("Leitura da Etapa C:"))
+        self.assertIn("Medição dependeu da liberação da área.", leitura)
+        self.assertIn("07/01/2026 a 14/01/2026 (5 d.u.)", leitura)
 
     def test_linha_do_evento_e_curta_e_colorida(self):
         tabela = next(t for t in self.doc.tables if t.rows[0].cells[1].text == "Evento / Ocorrência" and "Envio o projeto" in t.rows[1].cells[1].text)

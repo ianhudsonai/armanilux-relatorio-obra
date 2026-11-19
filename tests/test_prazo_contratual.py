@@ -54,6 +54,26 @@ class ConfrontoTeste(unittest.TestCase):
         self.assertIn("Projeto executivo até 6 d.u. da medição", nota)
         self.assertIn("Paulo Ribeiro, 02/01/2026", nota)
 
+    def test_prazo_sem_numero_nao_vira_zero(self):
+        relato = completar_relato(
+            {"obra": {}, "eventos": EVENTOS, "prazos_contratuais": [{"descricao": "Entrega conforme cronograma", "de": "G", "para": "H", "limite_du": "a combinar"}]}
+        )
+        [item] = relato["confronto_contrato"]
+        self.assertIsNone(item["limite_du"])
+        self.assertFalse(item["excedeu"])
+
+    def test_impacto_no_prazo_nao_diz_que_nao_ha_contrato_quando_ha(self):
+        from docx import Document
+
+        import build_docx
+
+        relato = completar_relato({"obra": {"numero": "1001", "cliente": "Cliente Teste"}, "eventos": EVENTOS, "prazos_contratuais": PRAZOS})
+        with TemporaryDirectory() as pasta:
+            textos = [p.text for p in Document(str(build_docx.montar_docx(relato, Path(pasta) / "r.docx", None, None))).paragraphs]
+        impacto = textos[textos.index("Impactos no prazo final") + 1]
+        self.assertNotIn("não declarado", impacto)
+        self.assertIn("1 de 3 prazos contratuais com as duas datas passou do limite", impacto)
+
 
 if __name__ == "__main__":
     unittest.main()

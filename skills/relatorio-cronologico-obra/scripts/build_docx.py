@@ -10,7 +10,7 @@ from pathlib import Path
 
 from analyze import LIMITE_INTERVALO_LONGO, ORDEM, TITULOS, intervalos_marcos_de
 from business_days import dias_uteis_entre
-from common import DADO, EXT_IMAGEM, EXT_VIDEO, LARGURA_FIGURA_CM, formatar_data
+from common import DADO, LARGURA_FIGURA_CM, formatar_data
 from docx import Document
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
@@ -25,11 +25,6 @@ GRAFITE = RGBColor(0x22, 0x22, 0x22)
 CINZA = RGBColor(0x5C, 0x6B, 0x73)
 BRANCO = RGBColor(0xFF, 0xFF, 0xFF)
 LARGURA = 17.4
-
-
-def _rgb(hexadecimal: str) -> RGBColor:
-    hexadecimal = hexadecimal.lstrip("#")
-    return RGBColor(int(hexadecimal[0:2], 16), int(hexadecimal[2:4], 16), int(hexadecimal[4:6], 16))
 
 
 def _fonte(run, tamanho: int, negrito: bool = False, cor: RGBColor | None = None, italico: bool = False) -> None:
@@ -320,14 +315,24 @@ def _comentario(analise: dict, codigo: str, chave: str) -> str:
     return ((analise.get("comentarios") or {}).get(codigo) or {}).get(chave, "").strip()
 
 
-def _leitura_padrao(eventos: list[dict]) -> str:
+def _periodo_da_etapa(eventos: list[dict]) -> str:
+    """Intervalo dentro da etapa (prompt.md: dias úteis "dentro de cada fase relevante")."""
     if not eventos:
-        return "dado não identificado."
+        return ""
     datas = sorted(item["data"] for item in eventos)
     if datas[0] == datas[-1]:
-        return f"registro único em {formatar_data(datas[0])}."
+        return f"registro único em {formatar_data(datas[0])}"
     dias = dias_uteis_entre(date.fromisoformat(datas[0]), date.fromisoformat(datas[-1]))
-    return f"registros de {formatar_data(datas[0])} a {formatar_data(datas[-1])} ({dias} d.u.)."
+    return f"registros de {formatar_data(datas[0])} a {formatar_data(datas[-1])} ({dias} d.u.)"
+
+
+def _texto_leitura(revisada: str, eventos: list[dict]) -> str:
+    periodo = _periodo_da_etapa(eventos)
+    if not revisada:
+        return f"{periodo}." if periodo else "dado não identificado."
+    if not periodo:
+        return revisada
+    return f"{revisada.rstrip()} {periodo[0].upper()}{periodo[1:]}."
 
 
 def _escrever_etapa(documento: Document, analise: dict, codigo: str) -> None:
@@ -350,7 +355,7 @@ def _escrever_etapa(documento: Document, analise: dict, codigo: str) -> None:
         pendencias = [item for item in analise.get("pendencias") or [] if (item.get("status") or "Pendente") == "Pendente"]
         if pendencias:
             _tabela_simples(documento, ["Pendência em aberto", "Status"], [[item["item"], "Pendente"] for item in pendencias], [13.4, 4.0])
-    _leitura(documento, f"Leitura da Etapa {codigo}", _comentario(analise, codigo, "leitura") or _leitura_padrao(eventos))
+    _leitura(documento, f"Leitura da Etapa {codigo}", _texto_leitura(_comentario(analise, codigo, "leitura"), eventos))
 
 
 def _nota_metodologica(documento: Document, analise: dict) -> None:
@@ -381,8 +386,8 @@ def _nota_metodologica(documento: Document, analise: dict) -> None:
         documento,
         "Convenção de cores nas tabelas",
         "salmão = reprocesso ou retrabalho • amarelo = tempo ocioso, espera ou pendência • "
-        "na Análise de Prazos, em vermelho o que passou do prazo contratual informado e, onde não há prazo "
-        f"informado, os intervalos entre marcos acima de {LIMITE_INTERVALO_LONGO} dias úteis.",
+        "na Análise de Prazos, em vermelho o que passou do prazo contratual informado (tabela de confronto) e, "
+        f"na tabela de marcos, os intervalos acima de {LIMITE_INTERVALO_LONGO} dias úteis.",
     )
 
 
@@ -398,7 +403,7 @@ def _confronto_contrato(documento: Document, confronto: list[dict]) -> None:
         linha = tabela.rows[indice]
         realizado = f"{item['realizado']} d.u." if item["realizado"] is not None else DADO
         _texto_celula(linha.cells[0], item["descricao"], tamanho=9)
-        _texto_celula(linha.cells[1], f"{item['limite_du']} d.u.", tamanho=9)
+        _texto_celula(linha.cells[1], f"{item['limite_du']} d.u." if item["limite_du"] else DADO, tamanho=9)
         _texto_celula(linha.cells[2], realizado, tamanho=9, negrito=True, cor=VERMELHO if item["excedeu"] else None)
         if item["excedeu"]:
             for celula in linha.cells:
@@ -426,7 +431,7 @@ def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path 
                 f"{_titulo_marco(item['de'])} ({formatar_data(item['inicio'])}) → "
                 f"{_titulo_marco(item['para'])} ({formatar_data(item['fim'])})",
                 f"{item['dias_uteis']} d.u.",
-                item["dias_uteis"] > LIMITE_INTERVALO_LONGO,
+                item.get("longo", item["dias_uteis"] > LIMITE_INTERVALO_LONGO),
             )
             for item in marcos
         ]
@@ -499,9 +504,14 @@ def _impacto_padrao(analise: dict) -> str:
     if not duracao:
         return DADO + "."
     corridos = (date.fromisoformat(duracao["fim"]) - date.fromisoformat(duracao["inicio"])).days
-    return (
-        f"Do primeiro ao último registro classificado: {duracao['dias_uteis']} dias úteis ({corridos} dias corridos). "
-        "Prazo contratual não declarado no grupo: dado não identificado."
+    texto = f"Do primeiro ao último registro classificado: {duracao['dias_uteis']} dias úteis ({corridos} dias corridos). "
+    medidos = [item for item in analise.get("confronto_contrato") or [] if item["realizado"] is not None and item["limite_du"]]
+    if not analise.get("prazos_contratuais"):
+        return texto + "Prazo contratual não declarado no grupo: dado não identificado."
+    excedidos = sum(1 for item in medidos if item["excedeu"])
+    verbo = "passou" if excedidos == 1 else "passaram"
+    return texto + (
+        f"{excedidos} de {len(medidos)} prazos contratuais com as duas datas {verbo} do limite (ver Análise de Prazos)."
     )
 
 
