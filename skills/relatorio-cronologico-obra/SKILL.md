@@ -4,7 +4,7 @@ description: Gera o Relatório Cronológico de Obra da Armanilux (etapas A a L, 
 license: MIT
 metadata:
   author: Armanilux
-  version: "1.3"
+  version: "1.4"
   idioma: pt-BR
 ---
 
@@ -75,7 +75,8 @@ O zip fica onde está até a pessoa dizer que o relatório está bom. Só então
 PYTHON SKILL/scripts/run_pipeline.py --concluir --indice 1
 ```
 
-Isso marca como concluída e move o zip para `01-conversas` da obra (`--copiar` deixa o original). O número vem da lista de relatórios prontos. O registro fica em `%USERPROFILE%\.armanilux-relatorioegistro.json`.
+Isso marca como concluída e move o zip para `01-conversas` da obra (`--copiar` deixa o original). O número vem da lista de relatórios prontos. O registro fica em `%USERPROFILE%\.armanilux-relatorio
+egistro.json`.
 
 Se a lista vier vazia, explique como exportar no celular: grupo, nome do grupo, Exportar conversa. Se passar de uns 500 MB, pode exportar sem mídia. O script lê um zip grande em partes e não envia nada para a internet.
 
@@ -99,7 +100,7 @@ O PDF só aparece se o LibreOffice estiver instalado. O arquivo que vale é o Wo
 
 A leitura automática é só um rascunho: num grupo grande ela deixa etapas vazias (chapas, medição, entrega, conclusão) e pode classificar errado. Esta revisão é obrigatória, não opcional. Não entregue o relatório sem ela.
 
-O objetivo é o relatório mais completo e mais correto que o material permite. Tudo o que entra precisa estar no grupo: numa mensagem, numa transcrição, num documento ou numa imagem. O que você não conseguiu ler ou confirmar não some do relatório: vira lacuna, escrita como lacuna.
+Leia todo o material para entender a obra por completo; escreva um relatório curto e correto. Tudo o que entra precisa estar no grupo: numa mensagem, numa transcrição, num documento ou numa imagem. O que você não conseguiu ler ou confirmar não some: vira lacuna, numa frase curta.
 
 ### 4.1 Ler todo o material
 
@@ -109,39 +110,43 @@ Leia tudo antes de escrever. Não basta a lista de candidatos.
 - **Mensagens coladas.** Linha com "(encaminhada no grupo por …)" é mensagem de outra conversa colada no grupo. A data do fato é a original; quem colou e quando está no fim da linha.
 - **Áudios e vídeos.** Leia todas as transcrições em `analise.json` (`transcricoes`), não só as que parecem relevantes. Vídeo muitas vezes é o registro de uma visita ou de uma medição e traz a data e o fato que faltam no texto.
 - **Documentos.** Leia o texto de cada documento em `documentos_texto` (projetos, folhas de medição, cronogramas, memoriais). Documento sem texto (desenho técnico) aparece nas lacunas: se o seu aplicativo abre PDF, abra o arquivo em `02-projetos-pdf` e olhe; se não abre, deixe como lacuna.
-- **Imagens.** O pipeline monta `04-transcricoes/folhas-de-contato/folha-NN.jpg`: cada folha tem 12 miniaturas numeradas (fotos e um quadro de cada vídeo), com o nome do arquivo e a data. O `indice.json` da mesma pasta liga cada número ao arquivo. Olhe todas as folhas. Se o seu aplicativo permitir subagentes, distribua as folhas entre eles em paralelo, mesmo usando um modelo mais simples: cada um devolve, por número, uma frase objetiva do que a imagem mostra e se ela é relevante para a obra (trinca, base sem acabamento, frente sem liberação, peça instalada, desenho técnico). Sem subagentes, olhe as folhas você mesmo. Se uma miniatura parecer importante e pequena demais, abra o arquivo original em `03-midias`.
+- **Imagens.** O pipeline monta `04-transcricoes/folhas-de-contato/folha-NN.jpg`: cada folha tem 12 miniaturas numeradas (fotos e um quadro de cada vídeo), com o nome do arquivo e a data. O `indice.json` da mesma pasta liga cada número ao arquivo. Olhe todas as folhas. Se o seu aplicativo permitir subagentes, distribua as folhas entre eles em paralelo, mesmo usando um modelo mais simples: cada um devolve só as imagens que mostram um fato da obra (trinca, base sem acabamento, frente sem liberação, peça instalada, desenho técnico), com o número, a data e o fato em uma frase. A descrição é para você, não para o relatório. Sem subagentes, olhe as folhas você mesmo. Se uma miniatura parecer importante e pequena demais, abra o arquivo original em `03-midias`.
 - **Outros formatos.** Arquivo que o computador não lê (desenho `.dwg`, cartão de contato `.vcf`, planilha `.xls` antiga) fica em `01-conversas/outros` ou aparece nas lacunas. Cartão de contato ajuda a saber quem é quem; desenho que você não consegue abrir fica como lacuna.
 - **Arquivos fora da exportação.** O WhatsApp não exporta tudo. Mensagem `<Mídia oculta>` é arquivo que não veio no zip: o nome pode aparecer, o conteúdo não. Não deduza o conteúdo pelo nome.
 
 ### 4.2 Registrar no `analise.json`
 
-1. Para cada fato real que faltou, acrescente em `eventos_adicionais` do `analise.json`:
+O relatório é curto, no formato do relatório aprovado (8665.1 V3): uma tabela de fatos por etapa, uma leitura curta, a análise de prazos, o diagnóstico em tópicos e a conclusão. Todo o material que você leu serve para escrever isso bem, não para entrar inteiro no Word. Não copie mensagem, transcrição ou descrição de imagem para o relatório.
+
+1. **Fatos.** Para cada fato real que faltou, acrescente em `eventos_adicionais`:
 
 ```json
-{"data": "2026-01-13", "hora": "10:30", "etapa": "C", "autor": "Nome", "ocorrencia": "Medição in loco realizada na cozinha.", "impacto": ""}
+{"data": "2026-01-13", "hora": "10:30", "etapa": "C", "autor": "Nome", "ocorrencia": "Medição in loco realizada na cozinha.", "impacto": "", "destaque": ""}
 ```
 
-`data`, `hora` e `autor` são os da mensagem, copiados do `.txt`: a conferência do passo 4.4 compara com a conversa. `impacto` só vale na etapa J. Etapa é uma letra de A a J ou L. Se a mensagem trouxer arquivo, ponha o nome em `midias` ou `documentos`. Fato que veio de mídia leva `midias` com o arquivo e a marca da fonte na ocorrência: "[fonte: áudio transcrito, conferir]", "[fonte: vídeo transcrito, conferir]" ou "[fonte: foto, conferir]".
-2. Para tirar um fato que a leitura automática classificou errado, use `ajustes_eventos` com `{"data": "2026-01-13", "hora": "10:30", "etapa_original": "J", "remover": true}`. Para só trocar a etapa, use `"etapa": "C"` no lugar de `remover`.
-3. Para cada imagem que esclareça a obra, acrescente em `observacoes_visuais` `{"arquivo": "nome-do-arquivo.jpg", "observacao": "uma frase objetiva do que a imagem mostra"}`. Só imagem com observação entra no Registro fotográfico do Word. Se a imagem mostra um fato datado da obra (trinca, base sem acabamento, frente sem liberação, peça instalada), o fato também entra em `eventos_adicionais` na etapa certa, com a data da foto e "[fonte: foto, conferir]". Se a imagem não mostrar nada útil, não invente: deixe sem observação.
-4. Confira também a lista de pendências (`pendencias`) e o endereço e demais campos de `obra`. Apague o que não for pendência de verdade.
-5. Não invente data nem fato. O que o grupo não diz fica `dado não identificado`. Não crie etapa K.
-6. Seja honesto sobre o que faltou. `lacunas_automaticas` já traz o que o computador sabe que não leu. Acrescente em `lacunas_adicionais` o que você percebeu: etapa sem nenhum registro, documento citado e nunca enviado, decisão tomada fora do grupo ("conforme conversamos por telefone"), imagem ilegível, fala que a transcrição não pegou. Uma frase por lacuna, sem suposição.
-7. O diagnóstico automático é genérico e não pode ficar como está num relatório revisado. Escreva, com fatos do grupo e datas, em `analise.json`:
-   - `diagnostico_prompt`: `{"reprocessos": "...", "tempos_ociosos": "...", "atrasos_internos": "...", "dependencias_externas": "..."}`, os quatro blocos que o prompt padrão exige. O que o grupo não sustenta fica `dado não identificado`.
-   - `gargalos_personalizados`: lista de `{"titulo": "...", "texto": "..."}`.
-   - `responsabilidades_personalizadas`: lista de `{"natureza": "...", "diagnostico": "..."}`.
-   - `produtividade_personalizada`: um texto sobre o impacto da etapa J na produtividade.
-   - `obra_ajustes`: campos de `obra` que o grupo não traz em formato fixo (`construtora`, `engenheiro`, `arquitetura`, `responsavel_armanilux`, `endereco`, `prazo_contratual`).
-   - `pendencias_revisadas`: lista `{"item": "...", "status": "Pendente"}` com só as pendências reais.
+`ocorrencia` é uma frase objetiva, de até 25 palavras, como nas tabelas do relatório aprovado ("Medição da piscina não realizada: área sem liberação."). `data`, `hora` e `autor` são os da mensagem, copiados do `.txt`: a conferência do passo 4.3 compara com a conversa. `impacto` só vale na etapa J. Etapa é uma letra de A a J ou L. Fato que veio de mídia leva `midias` com o arquivo e a marca da fonte na ocorrência: "[fonte: áudio transcrito, conferir]", "[fonte: vídeo transcrito, conferir]" ou "[fonte: foto, conferir]" (a marca não aparece no Word).
+2. **Corrigir ou tirar.** Use `ajustes_eventos` com `{"data": "2026-01-13", "hora": "10:30", "etapa_original": "J", "remover": true}`. Para trocar a etapa, use `"etapa": "C"`; para encurtar o texto, `"ocorrencia": "..."`.
+3. **Cor da linha.** `destaque` pinta a linha como no relatório aprovado: `"reprocesso"` (salmão: revisão, refação, peça quebrada, mudança após aprovação) ou `"ocioso"` (amarelo: espera, medição não realizada, frente não liberada, pendência que se arrasta). O script já sugere uma cor (`destaque_auto`); confira e troque com `destaque` no evento adicional ou em `ajustes_eventos`. `"nenhum"` tira a cor. Destaque só o que a pessoa precisa ver.
+4. **Imagens.** Olhe as imagens só para entender a obra. Se uma imagem mostra um fato datado (trinca, base sem acabamento, frente sem liberação, peça instalada), registre o fato em `eventos_adicionais` com a data da foto e "[fonte: foto, conferir]". Não escreva descrição de imagem para o relatório.
+5. **Prazo contratual.** Procure no grupo e nos documentos (orçamento, proposta, contrato, cronograma, mensagem de regras do grupo) prazos declarados, como "medição até 6 dias úteis após a solicitação". Só o que estiver escrito: não deduza. Para cada prazo, acrescente em `prazos_contratuais`:
 
-Textos que você reescrever vão nestes campos, para o script não apagar na remontagem:
+```json
+{"descricao": "Projeto executivo até 6 d.u. da medição", "de": "C", "para": "D", "limite_du": 6, "fonte": "Orçamento 1001.2, impresso em 17/06/2026"}
+```
 
-- `comentarios.<etapa>.ponto_critico` (e `gargalo`, `avaliacao`, `conclusao`, `intervalos_relevantes`, `situacao`)
-- `recomendacoes_personalizadas` — lista de frases, sem o número na frente
-- `conclusao_personalizada` — um texto só
+`de` e `para` são as etapas cujo primeiro registro marca o início e o fim do prazo. Quando a obra tem várias frentes e você mediu um ciclo específico (por exemplo, a aprovação e a entrega da piscina), use `"inicio"` e `"fim"` (AAAA-MM-DD) no lugar de `de` e `para`, e diga a frente na descrição. Prazo em faixa ("20 a 25 d.u.") usa o limite maior. O script calcula o realizado e pinta de vermelho o que passou do prazo. Sem prazo declarado, deixe a lista vazia: o relatório diz que o prazo contratual não foi informado.
+6. **Pendências e obra.** Confira `pendencias` e os campos de `obra`. `pendencias_revisadas` traz só as pendências reais (`{"item": "...", "status": "Pendente"}`); `obra_ajustes` traz `construtora`, `engenheiro`, `arquitetura`, `responsavel_armanilux` e `endereco` quando o grupo não traz em formato fixo.
+7. **Lacunas.** `lacunas_automaticas` já traz o que o computador sabe que não leu. Acrescente em `lacunas_adicionais` o que você percebeu (etapa sem registro, documento citado e nunca enviado, decisão tomada fora do grupo), uma frase curta por lacuna. Elas entram na Nota Metodológica. Não deduza o conteúdo de arquivo que não veio na exportação (`arquivos_fora_da_exportacao`).
+8. **Textos do relatório.** Escreva, com fatos do grupo e datas, e curto:
+   - `comentarios.<etapa>.introducao`: uma ou duas linhas antes da tabela, só quando ajudam ("A aprovação de chapas ocorreu de forma fracionada.").
+   - `comentarios.<etapa>.leitura`: a "Leitura da Etapa", até três frases, com o intervalo que importa em dias úteis. Sem leitura, o Word mostra só o período da etapa.
+   - `diagnostico_prompt`: `{"reprocessos": [...], "tempos_ociosos": [...], "atrasos_internos": [...], "dependencias_externas": [...], "interferencias": [...]}`, cada um uma lista de tópicos curtos com data. `interferencias` é o impacto da etapa J no cronograma e na produtividade.
+   - `pontos_criticos`: lista numerada dos principais pontos críticos de atraso.
+   - `impactos_prazo`: um parágrafo sobre o impacto no prazo final (duração em dias úteis e corridos; confronto com o prazo contratual, se houver).
+   - `conclusao_personalizada`: o diagnóstico da eficiência do fluxo operacional, um ou dois parágrafos.
+   - `recomendacoes_personalizadas`: lista de recomendações práticas, sem o número na frente.
 
-Postura do texto: formal, neutra, a favor do registro da Armanilux, sem acusar pessoa. Intervalo em dias úteis não é atraso atribuído. Reprocesso, espera e dependência de obra (marcenaria, contrapiso, ponto hidráulico, medição pendente) precisam aparecer separados.
+O que o grupo não sustenta fica `dado não identificado`. Não crie etapa K. Postura do texto: formal, neutra, a favor do registro da Armanilux, sem acusar pessoa. Intervalo em dias úteis não é atraso atribuído. Reprocesso, espera e dependência de obra (marcenaria, contrapiso, ponto hidráulico, medição pendente) aparecem separados.
 
 ### 4.3 Remontar
 
@@ -151,7 +156,7 @@ Remonte o Word com o comando do passo 5. Toda remontagem grava `04-transcricoes/
 
 A conferência do script só vê data, hora e autor. Ela não vê se o texto diz o que a mensagem diz. Antes de dar o relatório por revisado, faça uma conferência de conteúdo por alguém que não escreveu o texto:
 
-- Se o seu aplicativo permitir subagentes, abra um subagente novo, sem o contexto desta conversa. Entregue a ele só os caminhos de `analise.json`, do `.txt` da conversa, de `02-projetos-pdf`, de `03-midias` e de `04-transcricoes` (com as folhas de contato), com esta tarefa: "Para cada fato em `eventos` e cada frase de `observacoes_visuais`, `diagnostico_prompt`, `gargalos_personalizados`, `responsabilidades_personalizadas`, `produtividade_personalizada`, `comentarios`, `recomendacoes_personalizadas`, `conclusao_personalizada`, `obra_ajustes`, `pendencias_revisadas` e `lacunas_adicionais`, ache no material a mensagem, transcrição, documento ou imagem que sustenta o que está escrito. Responda, item por item: sustentado (com data, hora e autor da fonte), não sustentado, ou diferente do que a fonte diz (com o que a fonte diz). Não corrija nada."
+- Se o seu aplicativo permitir subagentes, abra um subagente novo, sem o contexto desta conversa. Entregue a ele só os caminhos de `analise.json`, do `.txt` da conversa, de `02-projetos-pdf`, de `03-midias` e de `04-transcricoes` (com as folhas de contato), com esta tarefa: "Para cada fato em `eventos` e cada frase de `comentarios`, `diagnostico_prompt`, `pontos_criticos`, `impactos_prazo`, `conclusao_personalizada`, `recomendacoes_personalizadas`, `prazos_contratuais`, `obra_ajustes`, `pendencias_revisadas` e `lacunas_adicionais`, ache no material a mensagem, transcrição, documento ou imagem que sustenta o que está escrito. Responda, item por item: sustentado (com data, hora e autor da fonte), não sustentado, ou diferente do que a fonte diz (com o que a fonte diz). Não corrija nada."
 - Sem subagentes, faça você mesmo uma segunda passada, item por item, procurando cada fato no `.txt`.
 
 Corrija ou tire tudo o que voltar como não sustentado ou diferente. O que não der para confirmar vira lacuna em `lacunas_adicionais`, não afirmação.
@@ -168,13 +173,13 @@ Depois de editar o JSON:
 PYTHON SKILL/scripts/run_pipeline.py --rebuild-only --recalcular --obra-dir "PASTA-DA-OBRA"
 ```
 
-`--recalcular` refaz dias úteis, indicadores e os parágrafos gerados a partir dos eventos corrigidos. Comentários, recomendações personalizadas, conclusão personalizada e observações visuais são mantidos.
+`--recalcular` refaz dias úteis, marcos, cores sugeridas e o confronto com o prazo contratual a partir dos eventos corrigidos. Os textos escritos na revisão são mantidos.
 
 Não entregue um Word escrito à mão por fora do script. O arquivo versionado (`v1`, `v2`, …) é o que a pessoa abre.
 
 ## 6. O que dizer à pessoa
 
-Responda em português, curto, sem emoji. Informe o caminho completo do `.docx`, o número da versão, quantas pendências ficaram com status Pendente, se a transcrição rodou, quantos fatos a conferência confirmou e quantas lacunas de contexto o relatório registra. Avise que o prazo contratual, quando for `dado não identificado`, não foi declarado no grupo, então o relatório não fala em atraso contratual.
+Responda em português, curto, sem emoji. Informe o caminho completo do `.docx`, o número da versão, quantas pendências ficaram com status Pendente, se a transcrição rodou, quantos fatos a conferência confirmou e quantas lacunas o relatório registra. Diga se havia prazo contratual declarado no grupo ou nos documentos; sem ele, o relatório não fala em atraso contratual.
 
 Não copie a pasta da obra para o repositório público desta skill. Não publique o relatório em link aberto.
 

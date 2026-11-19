@@ -376,6 +376,36 @@ def intervalos_marcos_de(eventos: list[dict]) -> tuple[list[dict], dict]:
     return saida, duracao
 
 
+def confronto_contrato(eventos: list[dict], prazos: list[dict]) -> list[dict]:
+    """Cada prazo informado no grupo contra o realizado. Sem as duas datas, realizado é None
+    (dado não identificado). O período vem de "inicio"/"fim" escritos na revisão ou do
+    primeiro registro das etapas "de" e "para"."""
+    primeiros: dict[str, str] = {}
+    for evento in eventos:
+        if evento["data"] < primeiros.get(evento["etapa"], "9999"):
+            primeiros[evento["etapa"]] = evento["data"]
+    saida = []
+    for prazo in prazos or []:
+        inicio = prazo.get("inicio") or primeiros.get(prazo.get("de", ""))
+        fim = prazo.get("fim") or primeiros.get(prazo.get("para", ""))
+        realizado = None
+        if inicio and fim and fim >= inicio:
+            realizado = dias_uteis_entre(date.fromisoformat(inicio), date.fromisoformat(fim))
+        limite = int(prazo.get("limite_du") or 0)
+        saida.append(
+            {
+                "descricao": prazo.get("descricao", ""),
+                "limite_du": limite,
+                "inicio": inicio or "",
+                "fim": fim or "",
+                "realizado": realizado,
+                "excedeu": realizado is not None and limite > 0 and realizado > limite,
+                "fonte": prazo.get("fonte", ""),
+            }
+        )
+    return saida
+
+
 def _desde_etapa_anterior(eventos: list[dict]) -> dict[str, dict]:
     resultado: dict[str, dict] = {}
     anterior: tuple[str, date] | None = None
@@ -1024,6 +1054,7 @@ def completar_relato(base: dict) -> dict:
     relato["convencao_dias_uteis"] = CONVENCAO_DIAS_UTEIS
     relato["intervalos"] = intervalos
     relato["intervalos_marcos"], relato["duracao_marcos"] = intervalos_marcos_de(eventos)
+    relato["confronto_contrato"] = confronto_contrato(eventos, base.get("prazos_contratuais") or [])
     if "lacunas_automaticas" in base:
         relato["lacunas"] = juntar_lacunas(base)
     relato["kpis"] = {

@@ -239,7 +239,10 @@ def _quadro_resumo(documento: Document, analise: dict) -> None:
         ["Duração decorrida (corridos)", corridos],
         ["Duração decorrida (dias úteis)", f"{analise['kpis']['dias_uteis_periodo']} dias úteis"],
         ["Conclusão e validação final", conclusao if conclusao != DADO else "DADO NÃO IDENTIFICADO (ver etapa L)"],
-        ["Prazo contratual", _valor(obra, "prazo_contratual")],
+        [
+            "Prazo contratual",
+            "informado no grupo (ver Nota Metodológica)" if analise.get("prazos_contratuais") else _valor(obra, "prazo_contratual"),
+        ],
     ]
     _tabela_simples(documento, ["Indicador", "Valor"], linhas, [10.4, 7.0])
 
@@ -365,12 +368,42 @@ def _nota_metodologica(documento: Document, analise: dict) -> None:
         limites = " ".join(analise["lacunas"]) or "nenhuma limitação registrada."
     _leitura(documento, "Limites do material", limites)
     _leitura(documento, "Dias úteis", analise.get("convencao_dias_uteis") or DADO)
+    prazos = analise.get("prazos_contratuais") or []
+    if prazos:
+        fontes = sorted({p.get("fonte", "") for p in prazos if p.get("fonte")})
+        _leitura(
+            documento,
+            "Prazos contratuais de referência",
+            "; ".join(p.get("descricao", "") for p in prazos) + "."
+            + (f" Fonte: {'; '.join(fontes)}." if fontes else ""),
+        )
     _leitura(
         documento,
         "Convenção de cores nas tabelas",
-        f"salmão = reprocesso ou retrabalho • amarelo = tempo ocioso, espera ou pendência • "
-        f"na Análise de Prazos, em vermelho os intervalos entre marcos acima de {LIMITE_INTERVALO_LONGO} dias úteis.",
+        "salmão = reprocesso ou retrabalho • amarelo = tempo ocioso, espera ou pendência • "
+        "na Análise de Prazos, em vermelho o que passou do prazo contratual informado e, onde não há prazo "
+        f"informado, os intervalos entre marcos acima de {LIMITE_INTERVALO_LONGO} dias úteis.",
     )
+
+
+def _confronto_contrato(documento: Document, confronto: list[dict]) -> None:
+    """Só aparece quando o grupo informou prazo contratual. Vermelho = passou do prazo."""
+    if not confronto:
+        return
+    tabela = documento.add_table(rows=1 + len(confronto), cols=3)
+    tabela.style = "Table Grid"
+    _larguras(tabela, [11.0, 3.2, 3.2])
+    _cabecalho_tabela(tabela, ["Prazo contratual de referência", "Contrato", "Realizado"])
+    for indice, item in enumerate(confronto, start=1):
+        linha = tabela.rows[indice]
+        realizado = f"{item['realizado']} d.u." if item["realizado"] is not None else DADO
+        _texto_celula(linha.cells[0], item["descricao"], tamanho=9)
+        _texto_celula(linha.cells[1], f"{item['limite_du']} d.u.", tamanho=9)
+        _texto_celula(linha.cells[2], realizado, tamanho=9, negrito=True, cor=VERMELHO if item["excedeu"] else None)
+        if item["excedeu"]:
+            for celula in linha.cells:
+                _sombrear(celula, AMARELO)
+    documento.add_paragraph()
 
 
 def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path | None, grafico_gantt: Path | None) -> None:
@@ -418,6 +451,7 @@ def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path 
                 for celula in linha.cells:
                     _sombrear(celula, AMARELO)
         documento.add_paragraph()
+    _confronto_contrato(documento, analise.get("confronto_contrato") or [])
     _inserir_figura(documento, grafico_barras, "Figura 1. Dias úteis entre marcos.")
     _inserir_figura(documento, grafico_gantt, "Figura 2. Linha do tempo das etapas, do primeiro ao último registro.")
 
