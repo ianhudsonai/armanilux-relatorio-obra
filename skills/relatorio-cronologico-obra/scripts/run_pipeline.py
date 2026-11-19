@@ -33,6 +33,12 @@ CHAVES_PRESERVAR = (
     "ajustes_eventos",
     "eventos_adicionais",
     "revisado",
+    "obra_ajustes",
+    "pendencias_revisadas",
+    "diagnostico_prompt",
+    "gargalos_personalizados",
+    "responsabilidades_personalizadas",
+    "produtividade_personalizada",
 )
 
 

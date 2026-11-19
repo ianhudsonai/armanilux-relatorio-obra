@@ -462,6 +462,15 @@ def montar_docx(analise: dict, destino: Path, grafico_barras: Path | None, grafi
     )
 
     documento.add_heading("5. Diagnóstico", level=1)
+    diagnostico = analise.get("diagnostico_prompt") or {}
+    for chave, rotulo in (
+        ("reprocessos", "Reprocessos"),
+        ("tempos_ociosos", "Tempos ociosos"),
+        ("atrasos_internos", "Atrasos operacionais internos"),
+        ("dependencias_externas", "Dependências externas"),
+    ):
+        if diagnostico:
+            _rotulo(documento, rotulo, (diagnostico.get(chave) or "").strip() or DADO + ".")
     gargalos = analise.get("gargalos") or []
     if not gargalos:
         _paragrafo(documento, "Gargalo: dado não identificado.")

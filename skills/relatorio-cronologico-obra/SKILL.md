@@ -110,7 +110,14 @@ A leitura automática é só um rascunho: num grupo grande ela deixa etapas vazi
 3. Para tirar um fato que a leitura automática classificou errado, use `ajustes_eventos` com `{"data": "2026-01-13", "hora": "10:30", "etapa_original": "J", "remover": true}`. Para só trocar a etapa, use `"etapa": "C"` no lugar de `remover`.
 4. Confira também a lista de pendências (`pendencias`) e o endereço e demais campos de `obra`. Apague o que não for pendência de verdade.
 5. Não invente data nem fato. O que o grupo não diz fica `dado não identificado`. Não crie etapa K.
-6. Só depois de revisar tudo isso, grave `"revisado": true` no `analise.json`. Sem isso o Word sai com a faixa vermelha "RASCUNHO NÃO REVISADO" no topo, de propósito, para ninguém enviar um relatório sem conferência.
+6. O diagnóstico automático é genérico e não pode ficar como está num relatório revisado. Escreva, com fatos do grupo e datas, em `analise.json`:
+   - `diagnostico_prompt`: `{"reprocessos": "...", "tempos_ociosos": "...", "atrasos_internos": "...", "dependencias_externas": "..."}`, os quatro blocos que o prompt padrão exige. O que o grupo não sustenta fica `dado não identificado`.
+   - `gargalos_personalizados`: lista de `{"titulo": "...", "texto": "..."}`.
+   - `responsabilidades_personalizadas`: lista de `{"natureza": "...", "diagnostico": "..."}`.
+   - `produtividade_personalizada`: um texto sobre o impacto da etapa J na produtividade.
+   - `obra_ajustes`: campos de `obra` que o grupo não traz em formato fixo (`construtora`, `engenheiro`, `arquitetura`, `responsavel_armanilux`, `endereco`, `prazo_contratual`).
+   - `pendencias_revisadas`: lista `{"item": "...", "status": "Pendente"}` com só as pendências reais.
+7. Só depois de revisar tudo isso, grave `"revisado": true` no `analise.json`. Sem isso o Word sai com a faixa vermelha "RASCUNHO NÃO REVISADO" no topo, de propósito, para ninguém enviar um relatório sem conferência.
 
 Abra as fotos e os quadros em `03-midias` (até três quadros por vídeo, não um filme inteiro). Para cada imagem que esclareça a obra, acrescente em `observacoes_visuais`:
 
