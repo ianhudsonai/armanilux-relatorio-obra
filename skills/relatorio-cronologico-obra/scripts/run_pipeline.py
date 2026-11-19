@@ -218,18 +218,26 @@ def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_
     pasta = pasta_obra / "05-relatorios"
     numero = analise["obra"].get("numero") or "sem-numero"
     rascunho = not analise.get("revisado")
+    versao = analise.get("versao")
     copia = 1
     while True:
-        destino = proxima_versao(pasta, numero, rascunho=rascunho, copia=copia)
+        destino = proxima_versao(pasta, numero, rascunho=rascunho, copia=copia, versao=versao)
         try:
             montar_docx(analise, destino, barras, gantt)
             break
         except PermissionError:
+            if not rascunho:
+                print(f"O arquivo {destino.name} está aberto (provavelmente no Word). Feche o arquivo e remonte.")
+                raise
             # Rascunho aberto no Word: o Windows não deixa regravar. Grava uma cópia ao lado.
-            if not rascunho or copia >= 20:
+            if copia >= 20:
                 raise
             print(f"O arquivo {destino.name} está aberto (provavelmente no Word). Gravei outra cópia.")
             copia += 1
+    if versao is None:
+        _guardar_versao(pasta_obra, analise, _numero_da_versao(destino))
+    if not rascunho:
+        _guardar_rascunhos(pasta, destino)
     formato = formato_entrega(config)
     quer_pdf = forcar_pdf or formato in ("pdf", "link")
     pdf = None
@@ -262,6 +270,41 @@ def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_
         except Exception as erro:  # abrir a pasta ajuda, mas não pode derrubar o relatório
             print(f"Aviso: não consegui abrir a pasta: {erro}")
     return destino
+
+
+def _numero_da_versao(arquivo: Path) -> int:
+    import re
+
+    achado = re.search(r"-v(\d+)(?:-rascunho(?:-\d+)?)?\.docx$", arquivo.name, re.IGNORECASE)
+    return int(achado.group(1)) if achado else 1
+
+
+def _guardar_versao(pasta_obra: Path, analise: dict, versao: int) -> None:
+    """Fixa o número da versão em analise.json: remontar depois de "revisado": true regrava o
+    mesmo vN (corrigir um erro não gasta versão). Só uma conversa nova abre a versão seguinte."""
+    analise["versao"] = versao
+    caminho = pasta_obra / "04-transcricoes" / "analise.json"
+    if caminho.exists():
+        salvo = ler_json(caminho)
+        salvo["versao"] = versao
+        escrever_json(caminho, salvo)
+
+
+def _guardar_rascunhos(pasta: Path, final: Path) -> None:
+    """Com a versão final gravada, os rascunhos dela saem de perto para ninguém enviar o errado."""
+    import os
+
+    prefixo = final.stem + "-rascunho"
+    destino = pasta / "rascunhos"
+    for antigo in pasta.glob(prefixo + "*"):
+        if not antigo.is_file():
+            continue
+        destino.mkdir(exist_ok=True)
+        alvo = destino / antigo.name
+        try:
+            os.replace(antigo, alvo)  # rascunho antigo da mesma versão é substituído pelo último
+        except OSError:
+            print(f"Aviso: não consegui mover o rascunho {antigo.name} para a pasta rascunhos (está aberto?).")
 
 
 def _copiar_para_nuvem(pasta_obra: Path, arquivo: Path, pasta_link: str | None, rascunho: bool) -> None:
@@ -651,13 +694,10 @@ def _marcar_andamento(origem: Path, sha: str | None, identidade: dict) -> None:
 
 
 def _anotar_relatorio(origem: Path, sha: str | None, destino: Path, pasta_obra: Path) -> None:
-    import re
-
     import registro
 
     sha = sha or registro.sha256_arquivo(origem)
-    achado = re.search(r"-v(\d+)(?:-rascunho(?:-\d+)?)?\.docx$", destino.name, re.IGNORECASE)
-    registro.registrar_relatorio(sha, str(destino), int(achado.group(1)) if achado else 1, str(pasta_obra))
+    registro.registrar_relatorio(sha, str(destino), _numero_da_versao(destino), str(pasta_obra))
 
 
 def main(argv: list[str] | None = None) -> int:

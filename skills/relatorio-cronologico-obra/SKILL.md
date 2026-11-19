@@ -93,7 +93,7 @@ Saídas:
 
 - `04-transcricoes/analise.json` — fatos, dias úteis e textos
 - `05-relatorios/figuras/dias-uteis.png` e `gantt.png`
-- `05-relatorios/Relatorio-Cronologico-Obra-<numero>-vN-rascunho.docx` enquanto `revisado` não for `true`: cada remontagem regrava o mesmo rascunho. Com `"revisado": true` sai `...-vN.docx`, a versão que vale.
+- `05-relatorios/Relatorio-Cronologico-Obra-<numero>-vN-rascunho.docx` enquanto `revisado` não for `true`: cada remontagem regrava o mesmo rascunho. Com `"revisado": true` sai `...-vN.docx`, a versão que vale, com o mesmo número do rascunho; o rascunho vai para `05-relatorios/rascunhos/`. Remontar depois disso regrava o mesmo `vN` (corrigir um erro não gasta versão). A versão seguinte só começa com uma conversa nova da obra, e volta a ser rascunho.
 
 Com entrega em PDF ou link, o script faz também o PDF, pelo Microsoft Word ou pelo LibreOffice deste computador. Se nenhum dos dois existir, sai só o Word e o script avisa. Com link, a versão revisada (nunca o rascunho) é copiada para a pasta do OneDrive ou do Google Drive gravada no preparo.
 
