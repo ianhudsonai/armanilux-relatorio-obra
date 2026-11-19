@@ -142,7 +142,8 @@ def grafico_gantt(eventos: list[dict], destino: Path) -> Path:
 
     linhas = []
     for codigo in ORDEM:
-        datas = [item["data"] for item in eventos if item["etapa"] == codigo]
+        # Programação não é registro do que aconteceu; o fato conta na data em que ocorreu.
+        datas = [item.get("data_evento") or item["data"] for item in eventos if item["etapa"] == codigo and not item.get("programado")]
         if not datas:
             continue
         linhas.append({"codigo": codigo, "inicio": min(datas), "fim": max(datas)})

@@ -83,6 +83,17 @@ _OCIOSO = (
     "nao realizad", "nao foi realizad", "aguardand", "pendente", "sem frente", "nao liber",
     "parad", "adiad", "remarc", "sem retorno", "cancelad",
 )
+# Mensagem que só programa o fato ("programado para amanhã"): não é data realizada.
+_PROGRAMADO = (
+    "programad", "programando", "agendad", "agendando", "agendament", "agendar",
+    "previst", "previsao", "para amanha", "para a proxima",
+)
+_ETAPAS_COM_PROGRAMACAO = {"A", "C", "H", "I", "L"}
+
+
+def diz_programado(texto: str) -> bool:
+    """O texto fala em programação ("programado para amanhã", "agendamento da visita")."""
+    return bool(_COMECA_PALAVRA(_PROGRAMADO).search(normalizar(texto or "")))
 # Intervalo entre marcos acima disto sai em vermelho na Análise de Prazos.
 LIMITE_INTERVALO_LONGO = 20
 
@@ -321,6 +332,8 @@ def extrair_eventos(
                     "documentos": [nome for nome in nomes if Path(nome).suffix.lower() in EXT_DOCUMENTO],
                 }
             )
+            if etapa in _ETAPAS_COM_PROGRAMACAO and diz_programado(mensagem.texto):
+                eventos[-1]["programado"] = True
     eventos.sort(key=lambda item: (item["data"], item["hora"], _posicao(item["etapa"])))
     return eventos
 
@@ -352,15 +365,41 @@ def _intervalos(eventos: list[dict]) -> list[dict]:
     return saida
 
 
+def data_do_fato(evento: dict) -> str:
+    """Data em que o fato aconteceu: "data_evento" quando a mensagem conta um fato de outro dia,
+    senão a data da mensagem. A tabela da etapa mostra a data da mensagem (rastreável no grupo)."""
+    return evento.get("data_evento") or evento["data"]
+
+
+def conta_como_marco(evento: dict) -> bool:
+    """Fato realizado que pode marcar a etapa: não é só programação nem interferência,
+    e na etapa L só a conclusão marcada."""
+    if evento.get("programado"):
+        return False
+    if evento["etapa"] == "L":
+        return fecha_a_obra(evento)
+    return True
+
+
+def primeira_programacao(eventos: list[dict], etapa: str) -> str:
+    """Data da primeira mensagem que só programou a etapa, ou ""."""
+    datas = sorted(e["data"] for e in eventos if e["etapa"] == etapa and e.get("programado"))
+    return datas[0] if datas else ""
+
+
+def primeiros_marcos(eventos: list[dict]) -> dict[str, str]:
+    """Primeira data realizada de cada etapa."""
+    primeiros: dict[str, str] = {}
+    for evento in eventos:
+        if conta_como_marco(evento) and data_do_fato(evento) < primeiros.get(evento["etapa"], "9999"):
+            primeiros[evento["etapa"]] = data_do_fato(evento)
+    return primeiros
+
+
 def intervalos_marcos_de(eventos: list[dict]) -> tuple[list[dict], dict]:
     """Marco = primeiro registro de cada etapa. Intervalos entre marcos em ordem de data,
     como na tabela do relatório aprovado, e a duração do primeiro ao último registro."""
-    primeiros: dict[str, str] = {}
-    for evento in eventos:
-        if evento["etapa"] == "L" and not fecha_a_obra(evento):
-            continue  # reclamação ou reparo na etapa L não é o marco de conclusão
-        if evento["data"] < primeiros.get(evento["etapa"], "9999"):
-            primeiros[evento["etapa"]] = evento["data"]
+    primeiros = primeiros_marcos(eventos)
     marcos = sorted(primeiros.items(), key=lambda par: (par[1], _posicao(par[0])))
     saida = []
     for (de, inicio), (para, fim) in zip(marcos, marcos[1:]):
@@ -389,10 +428,7 @@ def confronto_contrato(eventos: list[dict], prazos: list[dict]) -> list[dict]:
     """Cada prazo informado no grupo contra o realizado. Sem as duas datas, realizado é None
     (dado não identificado). O período vem de "inicio"/"fim" escritos na revisão ou do
     primeiro registro das etapas "de" e "para"."""
-    primeiros: dict[str, str] = {}
-    for evento in eventos:
-        if evento["data"] < primeiros.get(evento["etapa"], "9999"):
-            primeiros[evento["etapa"]] = evento["data"]
+    primeiros = primeiros_marcos(eventos)
     saida = []
     for prazo in prazos or []:
         inicio = prazo.get("inicio") or primeiros.get(prazo.get("de", ""))
@@ -400,7 +436,8 @@ def confronto_contrato(eventos: list[dict], prazos: list[dict]) -> list[dict]:
         # Contrato que diz só "dias" conta dias corridos; a revisão marca "unidade": "dias_corridos".
         unidade = "dias_corridos" if prazo.get("unidade") == "dias_corridos" else "dias_uteis"
         realizado = None
-        if inicio and fim and fim >= inicio:
+        programado = bool(prazo.get("programado"))  # o fim só foi programado: sem realizado
+        if inicio and fim and fim >= inicio and not programado:
             de, ate = date.fromisoformat(inicio), date.fromisoformat(fim)
             realizado = (ate - de).days if unidade == "dias_corridos" else dias_uteis_entre(de, ate)
         try:
@@ -415,6 +452,7 @@ def confronto_contrato(eventos: list[dict], prazos: list[dict]) -> list[dict]:
                 "inicio": inicio or "",
                 "fim": fim or "",
                 "realizado": realizado,
+                "programado": programado,
                 "excedeu": realizado is not None and limite is not None and realizado > limite,
                 "fonte": prazo.get("fonte", ""),
                 # Regra escrita depois do início do período não prova que valia na época.
@@ -1085,6 +1123,10 @@ def _juntar_adicionais(base: dict) -> list[dict]:
             item["destaque"] = extra["destaque"]
         if extra.get("conclusao") and item["etapa"] == "L":
             item["conclusao"] = True
+        if extra.get("programado"):
+            item["programado"] = True
+        if extra.get("data_evento"):
+            item["data_evento"] = extra["data_evento"]
         chave = (item["data"], item["hora"], item["etapa"], item["ocorrencia"])
         if chave not in vistos:
             vistos.add(chave)
@@ -1201,8 +1243,10 @@ def data_da_conclusao(eventos: list[dict]) -> str:
 def _situacao_marco(eventos: list[dict], codigo: str) -> str:
     if codigo == "L":
         return "Concluído" if data_da_conclusao(eventos) else "dado não identificado (pendente)"
-    if any(item["etapa"] == codigo for item in eventos):
+    if any(item["etapa"] == codigo and conta_como_marco(item) for item in eventos):
         return "Concluído"
+    if any(item["etapa"] == codigo for item in eventos):
+        return "Programado, sem confirmação"
     return "dado não identificado"
 
 
@@ -1244,6 +1288,9 @@ def aplicar_ajustes(eventos: list[dict], ajustes: list[dict]) -> list[dict]:
                 evento["impacto"] = ajuste["impacto"]
             if ajuste.get("destaque"):
                 evento["destaque"] = ajuste["destaque"]
-            if "conclusao" in ajuste:  # aceita false, para desmarcar
-                evento["conclusao"] = bool(ajuste["conclusao"])
+            for marca in ("conclusao", "programado"):
+                if marca in ajuste:  # aceita false, para desmarcar
+                    evento[marca] = bool(ajuste[marca])
+            if ajuste.get("data_evento"):
+                evento["data_evento"] = ajuste["data_evento"]
     return eventos

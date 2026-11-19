@@ -17,21 +17,21 @@ Um parágrafo sobre a fonte (grupo, documentos, transcrições locais) e a regra
 
 ## Quadro-Resumo da Obra
 
-Tabela Indicador | Valor: início do grupo, primeiros marcos (chapas, medição, aprovação, entrega, instalação), último registro, duração em dias corridos e úteis, conclusão (só com fato da etapa L marcado `conclusao`; sem ele, "DADO NÃO IDENTIFICADO (pendente — ver Etapa L)"), prazo contratual.
+Tabela Indicador | Valor: início do grupo, primeiros marcos realizados (chapas, medição, aprovação, entrega, instalação; programação não conta, vale a data do fato), último registro, duração em dias corridos e úteis, conclusão (só com fato da etapa L marcado `conclusao`; sem ele, "DADO NÃO IDENTIFICADO (pendente — ver Etapa L)"), prazo contratual.
 
 ## Etapas A a L
 
 Cada etapa:
 
 1. Uma ou duas linhas de introdução, só quando a revisão escreveu (`comentarios.<etapa>.introducao`).
-2. Tabela Data | Evento / Ocorrência. Data sem hora. Uma frase objetiva por linha, sem nome de arquivo nem trecho de transcrição. Linha salmão = reprocesso; amarela = ocioso. Na etapa J, a tabela é Data | Interferência | Impacto.
+2. Tabela Data | Evento / Ocorrência. Data sem hora; fato só programado leva "(programado)" na data, se o texto não disser. Uma frase objetiva por linha, sem nome de arquivo nem trecho de transcrição. Linha salmão = reprocesso; amarela = ocioso. Na etapa J, a tabela é Data | Interferência | Impacto.
 3. "Leitura da Etapa X:" em até três frases (`comentarios.<etapa>.leitura`); sem leitura revisada, o período da etapa em dias úteis.
 
 Na etapa L, também a tabela Marco | Situação e, se houver, Pendência em aberto | Status. Não existe etapa K.
 
 ## Análise de Prazos — Intervalos em Dias Úteis
 
-Marco é o primeiro registro de cada etapa. Tabela Intervalo entre marcos | Dias úteis, em ordem de data, com a última linha "DURAÇÃO TOTAL REGISTRADA" em amarelo. Intervalo acima de 20 dias úteis: linha amarela e número em vermelho, negrito. Quando há prazo contratual informado, tabela Prazo contratual de referência | Contrato | Realizado, com o realizado em vermelho quando passou do prazo. Figura 1: barras deitadas, uma por intervalo entre marcos. Figura 2: linha do tempo (Gantt) das etapas. As figuras são desenhadas na largura da página (16,2 cm) para a letra não encolher.
+Marco é o primeiro registro realizado de cada etapa (programação não conta; na etapa L, só a conclusão marcada). Tabela Intervalo entre marcos | Dias úteis, em ordem de data, com a última linha "DURAÇÃO TOTAL REGISTRADA" em amarelo. Intervalo acima de 20 dias úteis: linha amarela e número em vermelho, negrito. Quando há prazo contratual informado, tabela Prazo contratual de referência | Contrato | Realizado, com o realizado em vermelho quando passou do prazo. Figura 1: barras deitadas, uma por intervalo entre marcos. Figura 2: linha do tempo (Gantt) das etapas. As figuras são desenhadas na largura da página (16,2 cm) para a letra não encolher.
 
 ## Análise Técnica — Diagnóstico
 
