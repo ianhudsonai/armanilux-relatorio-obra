@@ -57,7 +57,7 @@ class TabelaWordTeste(unittest.TestCase):
         self.assertEqual(linhas[0][1], "2 d.u.")
         self.assertIn("(05/01/2026)", linhas[0][0])
         self.assertIn("(07/01/2026)", linhas[0][0])
-        self.assertEqual(linhas[-1], ["Duração total registrada (05/01/2026 → 02/02/2026)", "20 d.u."])
+        self.assertEqual(linhas[-1], ["DURAÇÃO TOTAL REGISTRADA (05/01/2026 → 02/02/2026)", "20 d.u."])
 
 
 class GraficosTeste(unittest.TestCase):

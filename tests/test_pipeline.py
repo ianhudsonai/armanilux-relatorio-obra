@@ -104,20 +104,25 @@ class PipelineTeste(unittest.TestCase):
                 "Marco",
                 "Situação",
                 "dado não identificado",
-                "Mídia: chapa-lote-3.jpg",
                 "Carnaval",
                 "9 de julho",
                 "25 de janeiro",
                 "Corpus Christi",
-                "Natureza",
-                "Diagnóstico",
+                "Nota Metodológica",
+                "Limites do material",
+                "Convenção de cores",
+                "Quadro-Resumo da Obra",
+                "Leitura da Etapa C",
+                "Análise de Prazos",
+                "Análise Técnica — Diagnóstico",
+                "Conclusão Estratégica",
                 "Pendente",
-                "Intervalos relevantes",
-                "Lacunas de contexto",
-                "Nota de rastreabilidade",
+                "— Fim do relatório —",
             ):
                 self.assertIn(trecho, texto, trecho)
             self.assertNotIn("Etapa K", texto)
+            for fora in ("Registro fotográfico", "Ponto crítico", "Mídia: chapa-lote-3.jpg"):
+                self.assertNotIn(fora, texto)
             with zipfile.ZipFile(relatorios[0]) as arquivo:
                 midias = [nome for nome in arquivo.namelist() if nome.startswith("word/media/")]
             self.assertGreaterEqual(len(midias), 2)

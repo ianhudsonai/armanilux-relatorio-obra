@@ -41,17 +41,18 @@ def _analise(**extra):
 
 class LacunasTeste(unittest.TestCase):
     def test_lacunas_automaticas(self):
-        lacunas = _analise()["lacunas"]
+        analise = _analise()
         self.assertEqual(
-            lacunas,
+            analise["lacunas"],
             [
-                "2 arquivos enviados no grupo não vieram na exportação do WhatsApp (Projeto R00.pdf, Planta.dwg); "
-                "o conteúdo deles é dado não identificado.",
-                "1 mídia sem nome (foto, áudio ou vídeo) não veio na exportação; o conteúdo é dado não identificado.",
-                "1 documento sem texto legível pelo computador (Corte.pdf); conferir o arquivo original.",
-                "1 áudio ou vídeo sem transcrição (PTT-2.opus); o que foi falado é dado não identificado.",
+                "2 arquivos enviados no grupo não vieram na exportação do WhatsApp.",
+                "1 foto, áudio ou vídeo não veio na exportação.",
+                "1 documento sem texto legível pelo computador.",
+                "1 áudio ou vídeo sem transcrição; o conteúdo desses itens é dado não identificado.",
             ],
         )
+        # Os nomes ficam no analise.json para o agente, não no Word.
+        self.assertEqual(analise["arquivos_fora_da_exportacao"], ["Projeto R00.pdf", "Planta.dwg"])
 
     def test_lacuna_escrita_na_revisao_entra_e_nao_repete(self):
         analise = _analise()
@@ -60,7 +61,7 @@ class LacunasTeste(unittest.TestCase):
         self.assertEqual(refeita["lacunas"][-1], "O prazo contratual não foi declarado no grupo.")
         self.assertEqual(len(refeita["lacunas"]), 5)
 
-    def test_word_tem_secao_de_lacunas(self):
+    def test_lacunas_aparecem_na_nota_metodologica(self):
         from docx import Document
 
         import build_docx
@@ -68,8 +69,9 @@ class LacunasTeste(unittest.TestCase):
         with TemporaryDirectory() as pasta:
             destino = build_docx.montar_docx(_analise(), Path(pasta) / "r.docx", None, None)
             textos = [p.text for p in Document(str(destino)).paragraphs]
-        indice = textos.index("Lacunas de contexto")
-        self.assertTrue(textos[indice + 2].startswith("• 2 arquivos enviados no grupo"))
+        limites = next(t for t in textos if t.startswith("Limites do material:"))
+        self.assertIn("2 arquivos enviados no grupo", limites)
+        self.assertNotIn("Lacunas de contexto", textos)
 
     def test_analise_antiga_sem_lacunas_nao_afirma_que_nao_ha_lacuna(self):
         from docx import Document
@@ -81,8 +83,8 @@ class LacunasTeste(unittest.TestCase):
         with TemporaryDirectory() as pasta:
             destino = build_docx.montar_docx(analise, Path(pasta) / "r.docx", None, None)
             textos = [p.text for p in Document(str(destino)).paragraphs]
-        indice = textos.index("Lacunas de contexto")
-        self.assertIn("dado não identificado", textos[indice + 2])
+        limites = next(t for t in textos if t.startswith("Limites do material:"))
+        self.assertIn("dado não identificado", limites)
 
 
 class PlanilhaTeste(unittest.TestCase):
