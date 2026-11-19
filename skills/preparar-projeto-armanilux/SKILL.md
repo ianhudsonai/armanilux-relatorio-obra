@@ -4,7 +4,7 @@ description: Prepara o computador de alguém da Armanilux para os relatórios de
 license: MIT
 metadata:
   author: Armanilux
-  version: "1.2"
+  version: "1.3"
   idioma: pt-BR
 ---
 
