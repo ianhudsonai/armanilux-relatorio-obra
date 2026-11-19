@@ -53,6 +53,10 @@ _NOME_APOS_MIDIA_OCULTA = re.compile(
 _LINHA_ENCAMINHADA = re.compile(
     r"^\[(\d{1,2})/(\d{1,2}),?\s+(\d{1,2}):(\d{2})\]\s*([^:\]\n]{1,80}?):(?:\s(.*))?$"
 )
+# O outro formato de colagem: "[12:25, 03/07/2026] Nome: texto" (hora antes, data com ano).
+_LINHA_ENCAMINHADA_HORA_ANTES = re.compile(
+    r"^\[(\d{1,2}):(\d{2}),?\s+(\d{1,2})/(\d{1,2})/(\d{2,4})\]\s*([^:\]\n]{1,80}?):(?:\s(.*))?$"
+)
 
 
 @dataclass
@@ -153,6 +157,26 @@ def _data_encaminhada(achado: re.Match, postada: datetime) -> datetime | None:
     return None
 
 
+def _linha_colada(linha: str, postada: datetime) -> tuple[datetime, str, str] | None:
+    """(quando, autor, texto) da linha colada, nos dois formatos do WhatsApp.
+    Data depois do envio não é colagem: a linha fica no texto de quem postou."""
+    achado = _LINHA_ENCAMINHADA.match(linha)
+    if achado:
+        quando = _data_encaminhada(achado, postada)
+        return (quando, achado.group(5).strip(), achado.group(6) or "") if quando else None
+    achado = _LINHA_ENCAMINHADA_HORA_ANTES.match(linha)
+    if not achado:
+        return None
+    hora, minuto, dia, mes, ano = (int(achado.group(i)) for i in range(1, 6))
+    try:
+        quando = datetime(ano + 2000 if ano < 100 else ano, mes, dia, hora, minuto)
+    except ValueError:
+        return None
+    if quando > postada:
+        return None
+    return quando, achado.group(6).strip(), achado.group(7) or ""
+
+
 def _desmembrar(mensagem: Mensagem) -> list[Mensagem]:
     """Separa as mensagens coladas, cada uma com a data e o autor originais."""
     if mensagem.sistema or not mensagem.autor:
@@ -160,14 +184,14 @@ def _desmembrar(mensagem: Mensagem) -> list[Mensagem]:
     propria: list[str] = []
     coladas: list[Mensagem] = []
     for linha in mensagem.texto.split("\n"):
-        achado = _LINHA_ENCAMINHADA.match(linha)
-        quando = _data_encaminhada(achado, mensagem.quando) if achado else None
-        if quando is not None:
+        colada = _linha_colada(linha, mensagem.quando)
+        if colada is not None:
+            quando, autor, texto = colada
             coladas.append(
                 Mensagem(
                     quando=quando,
-                    autor=achado.group(5).strip(),
-                    texto=achado.group(6) or "",
+                    autor=autor,
+                    texto=texto,
                     encaminhada_por=mensagem.autor,
                     encaminhada_em=mensagem.quando,
                 )
