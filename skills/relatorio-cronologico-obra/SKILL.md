@@ -171,7 +171,7 @@ Corrija ou tire tudo o que voltar como não sustentado ou diferente. O que não 
 
 ### 4.5 Marcar como revisado
 
-Só depois de 4.1 a 4.4, grave `"revisado": true` no `analise.json` e remonte. Sem isso o Word sai com a faixa vermelha "RASCUNHO NÃO REVISADO" no topo, de propósito, para ninguém enviar um relatório sem conferência.
+Só depois de 4.1 a 4.4, grave `"revisado": true` no `analise.json` e remonte. Sem isso o Word sai com a faixa vermelha "RASCUNHO NÃO REVISADO" no topo, de propósito, para ninguém enviar um relatório sem conferência. Se `verificacao.md` ainda listar fatos que não batem, ou se a conferência não rodou, o script grava rascunho mesmo com `"revisado": true` e diz por quê: volte ao 4.3.
 
 A versão final tem o mesmo número do rascunho: na primeira vez, `v1`. Remontar depois disso (inclusive com `--mostrar`, ou para corrigir um erro) regrava o mesmo `vN`, sem criar `v2`. Se o Word estiver aberto, o script pede para fechar o arquivo: feche e remonte.
 

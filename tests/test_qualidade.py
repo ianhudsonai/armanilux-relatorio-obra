@@ -130,13 +130,13 @@ class RemontagemTeste(unittest.TestCase):
                 self.assertTrue(antes)
                 primeiro = analise["eventos"][0]
                 analise["ajustes_eventos"] = [{"data": primeiro["data"], "hora": primeiro["hora"], "etapa_original": primeiro["etapa"], "remover": True}]
-                analise["eventos_adicionais"] = [{"data": "2026-01-15", "hora": "09:00", "etapa": "H", "autor": "Ana", "ocorrencia": "Material entregue."}]
+                analise["eventos_adicionais"] = [{"data": "2026-01-20", "hora": "11:00", "etapa": "H", "autor": "Beto", "ocorrencia": "Material entregue."}]
                 caminho.write_text(json.dumps(analise, ensure_ascii=False), encoding="utf-8")
                 self.assertEqual(executar(["--rebuild-only", "--recalcular", "--obra-dir", str(obra), *argv]), 0)
                 depois = json.loads(caminho.read_text(encoding="utf-8"))
                 datas = [(e["data"], e["hora"], e["etapa"]) for e in depois["eventos"]]
                 self.assertNotIn((primeiro["data"], primeiro["hora"], primeiro["etapa"]), datas)
-                self.assertIn(("2026-01-15", "09:00", "H"), datas)
+                self.assertIn(("2026-01-20", "11:00", "H"), datas)
                 # Remontar de novo não repete nada.
                 self.assertEqual(executar(["--rebuild-only", "--recalcular", "--obra-dir", str(obra), *argv]), 0)
                 de_novo = json.loads(caminho.read_text(encoding="utf-8"))

@@ -146,14 +146,15 @@ def _preservar(novo: dict, antigo: dict | None) -> dict:
     return completar_relato(novo)
 
 
-def _conferir(pasta_obra: Path, analise: dict) -> None:
-    """Confere cada fato contra a conversa e grava 04-transcricoes/verificacao.md."""
+def _conferir(pasta_obra: Path, analise: dict) -> int | None:
+    """Confere cada fato contra a conversa e grava 04-transcricoes/verificacao.md.
+    Devolve quantos fatos não bateram, ou None se a conferência não rodou."""
     from verificacao import confirmado, escrever_verificacao, verificar_eventos
 
     conversa = _conversa_extraida(pasta_obra, analise)
     if conversa is None:
         print("Aviso: sem a conversa em 01-conversas, a conferência dos fatos não rodou.")
-        return
+        return None
     try:
         itens = verificar_eventos(
             analise.get("eventos") or [],
@@ -164,9 +165,10 @@ def _conferir(pasta_obra: Path, analise: dict) -> None:
         destino = escrever_verificacao(itens, pasta_obra / "04-transcricoes" / "verificacao.md")
     except Exception as erro:  # a conferência ajuda, mas não pode impedir o Word
         print(f"Aviso: não consegui conferir os fatos: {erro}")
-        return
+        return None
     problemas = sum(1 for item in itens if not confirmado(item))
     print(f"Conferência dos fatos: {len(itens) - problemas} de {len(itens)} batem com o grupo. Detalhes: {destino}")
+    return problemas
 
 
 def _lacunas_se_faltar(pasta_obra: Path, analise: dict) -> None:
@@ -210,7 +212,7 @@ def _avisar_prazos(analise: dict) -> None:
 
 
 def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_pdf: bool = False, mostrar: bool = False) -> Path:
-    _conferir(pasta_obra, analise)
+    problemas = _conferir(pasta_obra, analise)
     _avisar_prazos(analise)
     figuras = pasta_obra / "05-relatorios" / "figuras"
     if "intervalos_marcos" in analise:
@@ -221,6 +223,8 @@ def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_
     gantt = grafico_gantt(analise.get("eventos") or [], figuras / "gantt.png")
     pasta = pasta_obra / "05-relatorios"
     numero = analise["obra"].get("numero") or "sem-numero"
+    if analise.get("revisado") and not _final_liberada(problemas):
+        analise = {**analise, "revisado": False}  # só para este Word: a faixa RASCUNHO vem de "revisado"
     rascunho = not analise.get("revisado")
     versao = analise.get("versao")
     copia = 1
@@ -276,6 +280,21 @@ def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_
         except Exception as erro:  # abrir a pasta ajuda, mas não pode derrubar o relatório
             print(f"Aviso: não consegui abrir a pasta: {erro}")
     return destino
+
+
+def _final_liberada(problemas: int | None) -> bool:
+    """Com "revisado": true, a versão final só sai se a conferência rodou e não achou pendência."""
+    if problemas == 0:
+        return True
+    if problemas is None:
+        motivo = "a conferência dos fatos não rodou"
+        pedido = "Confira se a conversa está em 01-conversas e remonte."
+    else:
+        fatos = "1 fato não bate" if problemas == 1 else f"{problemas} fatos não batem"
+        motivo = f"{fatos} com o grupo (lista em 04-transcricoes/verificacao.md)"
+        pedido = "Corrija ou tire cada item da lista e remonte."
+    print(f"O analise.json está com \"revisado\": true, mas {motivo}. Gravei rascunho, não a versão final. {pedido}")
+    return False
 
 
 def _numero_da_versao(arquivo: Path) -> int:

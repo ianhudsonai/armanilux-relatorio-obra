@@ -20,7 +20,7 @@ Campos que a revisão preenche e o script preserva:
 - `lacunas_adicionais`: lista de frases curtas com o que faltou e não está em `lacunas_automaticas`
 - `obra_ajustes`, `pendencias_revisadas`
 
-`revisado` não é preservado: uma exportação nova da mesma obra traz mensagens novas, então o relatório volta a ser rascunho até a revisão gravar `"revisado": true` de novo.
+`revisado` não é preservado: uma exportação nova da mesma obra traz mensagens novas, então o relatório volta a ser rascunho até a revisão gravar `"revisado": true` de novo. `"revisado": true` só vira versão final quando a conferência (`04-transcricoes/verificacao.md`) roda e não lista nenhum fato; senão sai rascunho.
 
 `eventos` é a lista cronológica. `etapa` é uma letra de A, B, C, D, E, F, G, H, I, J ou L. `pendencias` usa `status` igual a `Pendente` só para item que o grupo deixou aberto.
 
