@@ -112,6 +112,26 @@ class ParserTeste(unittest.TestCase):
         self.assertEqual(bissexto.quando, datetime(2024, 2, 29, 10, 0))
         self.assertEqual((vazia.autor, vazia.texto), ("Carla Nunes", ""))
 
+    def test_colada_com_hora_antes_e_data_completa(self):
+        texto = (
+            "16/11/2026 18:02 - Paulo Ribeiro: Conversa com a arquiteta\n"
+            "[12:25, 03/07/2026] Carla Nunes: Pode instalar a bancada amanhã\n"
+            "segunda linha\n"
+            "[12:31, 03/07/26] Paulo Ribeiro: Combinado\n"
+        )
+        propria, primeira, segunda = analisar_conversa(texto)
+        self.assertEqual((propria.autor, propria.texto), ("Paulo Ribeiro", "Conversa com a arquiteta"))
+        self.assertEqual(primeira.quando, datetime(2026, 7, 3, 12, 25))
+        self.assertEqual(primeira.autor, "Carla Nunes")
+        self.assertEqual(primeira.texto, "Pode instalar a bancada amanhã\nsegunda linha")
+        self.assertEqual(primeira.encaminhada_por, "Paulo Ribeiro")
+        self.assertEqual(primeira.encaminhada_em, datetime(2026, 11, 16, 18, 2))
+        self.assertEqual(segunda.quando, datetime(2026, 7, 3, 12, 31))
+
+    def test_colada_com_data_depois_do_envio_fica_no_texto(self):
+        [mensagem] = analisar_conversa("03/07/2026 09:00 - Ana Lima: Lembrete\n[10:00, 05/07/2026] Bruno Reis: x\n")
+        self.assertIn("[10:00, 05/07/2026] Bruno Reis: x", mensagem.texto)
+
     def test_nome_de_arquivo_com_extensao_fora_da_lista(self):
         [mensagem] = analisar_conversa("05/09/2025 09:50 - Ana Lima: <Mídia oculta>\nPlanilha medicao.xlsm\n")
         self.assertEqual(mensagem.anexos, ["Planilha medicao.xlsm"])

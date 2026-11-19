@@ -38,6 +38,14 @@ class VerificacaoTeste(unittest.TestCase):
             ["confirmado", "confirmado", "hora diferente", "sem mensagem correspondente", "confirmado pela mídia", "mídia não encontrada"],
         )
 
+    def test_fato_de_mensagem_colada_confere_pelo_autor_e_hora_originais(self):
+        conversa = analisar_conversa(
+            "16/11/2026 18:02 - Paulo Ribeiro: Conversa com a arquiteta\n"
+            "[12:25, 03/07/2026] Carla Nunes: Pode instalar a bancada amanhã\n"
+        )
+        [item] = verificar_eventos([_evento("2026-07-03", "12:25", "Carla Nunes")], conversa, [])
+        self.assertEqual(item["situacao"], "confirmado")
+
     def test_nome_escrito_de_outro_jeito_ainda_e_o_mesmo_autor(self):
         chat = "15/06/2026 10:11 - Carla Nunes, Pedras ACME: O elevador de serviço parou.\n"
         eventos = [
