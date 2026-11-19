@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import io
 import os
 import sys
 import unittest
 import zipfile
+from contextlib import redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from xml.etree import ElementTree
@@ -20,11 +22,18 @@ from run_pipeline import executar  # noqa: E402
 
 FATO_NOVO = "[16/03/2026, 10:00:00] Helena Duarte: O cliente devolveu o termo assinado hoje. Obra encerrada.\n"
 FATO_DA_REVISAO = {
+    "data": "2026-03-12",
+    "hora": "17:45",
+    "etapa": "L",
+    "autor": "Helena Duarte",
+    "ocorrencia": "Vistoria final com o engenheiro, registrada na revisão.",
+}
+FATO_SEM_FONTE = {
     "data": "2026-03-13",
     "hora": "09:00",
     "etapa": "L",
     "autor": "Helena Duarte",
-    "ocorrencia": "Vistoria final combinada por telefone, registrada na revisão.",
+    "ocorrencia": "Vistoria combinada por telefone, sem mensagem no grupo.",
 }
 
 
@@ -86,12 +95,32 @@ class ReexportacaoTeste(unittest.TestCase):
     def _remontar(self) -> None:
         self.assertEqual(executar(["--workspace", str(self.workspace), "--rebuild-only", "--recalcular", "--obra-dir", str(self.obra)]), 0)
 
-    def _revisar(self) -> None:
+    def _revisar(self, fatos: list[dict] | None = None) -> None:
         caminho = self.obra / "04-transcricoes" / "analise.json"
         analise = ler_json(caminho)
         analise["revisado"] = True
-        analise["eventos_adicionais"] = [FATO_DA_REVISAO]
+        analise["eventos_adicionais"] = fatos if fatos is not None else [FATO_DA_REVISAO]
         escrever_json(caminho, analise)
+
+    def test_revisado_com_conferencia_listando_problema_grava_rascunho_e_diz_por_que(self):
+        self._rodar(_zip(self.base / "export1" / "WhatsApp Chat - Obra 1001.zip", CHAT))
+        self._revisar([FATO_DA_REVISAO, FATO_SEM_FONTE])
+
+        saida = io.StringIO()
+        with redirect_stdout(saida):
+            self._remontar()
+
+        self.assertFalse((self.relatorios / "Relatorio-Cronologico-Obra-1001-v1.docx").exists())
+        rascunho = self.relatorios / "Relatorio-Cronologico-Obra-1001-v1-rascunho.docx"
+        self.assertTrue(rascunho.exists())
+        self.assertIn("RASCUNHO NÃO REVISADO", _texto_docx(rascunho))
+        self.assertIn("verificacao.md", saida.getvalue())
+        self.assertIn("1 fato", saida.getvalue())
+
+        # Tirado o fato sem fonte, a mesma remontagem grava a versão final.
+        self._revisar([FATO_DA_REVISAO])
+        self._remontar()
+        self.assertTrue((self.relatorios / "Relatorio-Cronologico-Obra-1001-v1.docx").exists())
 
     def test_conversa_nova_de_obra_revisada_volta_a_ser_rascunho_com_os_fatos_da_revisao(self):
         self._rodar(_zip(self.base / "export1" / "WhatsApp Chat - Obra 1001.zip", CHAT))
@@ -110,7 +139,7 @@ class ReexportacaoTeste(unittest.TestCase):
         self.assertIn(FATO_DA_REVISAO["ocorrencia"], ocorrencias)
         texto = _texto_docx(rascunho)
         self.assertIn("RASCUNHO NÃO REVISADO", texto)
-        self.assertIn("Vistoria final combinada por telefone", texto)
+        self.assertIn("Vistoria final com o engenheiro", texto)
 
     def test_remontagens_depois_de_revisado_regravam_a_mesma_versao(self):
         self._rodar(_zip(self.base / "export1" / "WhatsApp Chat - Obra 1001.zip", CHAT))

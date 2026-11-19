@@ -146,14 +146,15 @@ def _preservar(novo: dict, antigo: dict | None) -> dict:
     return completar_relato(novo)
 
 
-def _conferir(pasta_obra: Path, analise: dict) -> None:
-    """Confere cada fato contra a conversa e grava 04-transcricoes/verificacao.md."""
+def _conferir(pasta_obra: Path, analise: dict) -> int | None:
+    """Confere cada fato contra a conversa e grava 04-transcricoes/verificacao.md.
+    Devolve quantos fatos não bateram, ou None se a conferência não rodou."""
     from verificacao import confirmado, escrever_verificacao, verificar_eventos
 
     conversa = _conversa_extraida(pasta_obra, analise)
     if conversa is None:
         print("Aviso: sem a conversa em 01-conversas, a conferência dos fatos não rodou.")
-        return
+        return None
     try:
         itens = verificar_eventos(
             analise.get("eventos") or [],
@@ -164,9 +165,10 @@ def _conferir(pasta_obra: Path, analise: dict) -> None:
         destino = escrever_verificacao(itens, pasta_obra / "04-transcricoes" / "verificacao.md")
     except Exception as erro:  # a conferência ajuda, mas não pode impedir o Word
         print(f"Aviso: não consegui conferir os fatos: {erro}")
-        return
+        return None
     problemas = sum(1 for item in itens if not confirmado(item))
     print(f"Conferência dos fatos: {len(itens) - problemas} de {len(itens)} batem com o grupo. Detalhes: {destino}")
+    return problemas
 
 
 def _lacunas_se_faltar(pasta_obra: Path, analise: dict) -> None:
@@ -210,7 +212,7 @@ def _avisar_prazos(analise: dict) -> None:
 
 
 def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_pdf: bool = False, mostrar: bool = False) -> Path:
-    _conferir(pasta_obra, analise)
+    problemas = _conferir(pasta_obra, analise)
     _avisar_prazos(analise)
     figuras = pasta_obra / "05-relatorios" / "figuras"
     if "intervalos_marcos" in analise:
@@ -222,6 +224,16 @@ def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_
     pasta = pasta_obra / "05-relatorios"
     numero = analise["obra"].get("numero") or "sem-numero"
     rascunho = not analise.get("revisado")
+    if not rascunho and problemas:
+        # "revisado": true não basta: a versão final só sai com a conferência sem pendência.
+        fatos = "1 fato não bate" if problemas == 1 else f"{problemas} fatos não batem"
+        print(
+            f"O analise.json está com \"revisado\": true, mas {fatos} com o grupo "
+            "(lista em 04-transcricoes/verificacao.md). Gravei rascunho, não a versão final. "
+            "Corrija ou tire cada item da lista e remonte."
+        )
+        rascunho = True
+        analise = {**analise, "revisado": False}  # a faixa RASCUNHO vem de "revisado"
     versao = analise.get("versao")
     copia = 1
     while True:
