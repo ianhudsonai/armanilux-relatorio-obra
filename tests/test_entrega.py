@@ -15,6 +15,23 @@ import run_pipeline  # noqa: E402
 
 
 class EntregaTeste(unittest.TestCase):
+    def setUp(self):
+        # O teste não pode escrever no registro de verdade do computador.
+        import os
+
+        self._temp = TemporaryDirectory()
+        self._antigo = os.environ.get("ARMANILUX_REGISTRO")
+        os.environ["ARMANILUX_REGISTRO"] = str(Path(self._temp.name) / "registro.json")
+
+    def tearDown(self):
+        import os
+
+        if self._antigo is None:
+            os.environ.pop("ARMANILUX_REGISTRO", None)
+        else:
+            os.environ["ARMANILUX_REGISTRO"] = self._antigo
+        self._temp.cleanup()
+
     def _obra(self, base: Path) -> Path:
         from gerar_exemplo import criar_exemplo
 
@@ -74,6 +91,27 @@ class EntregaTeste(unittest.TestCase):
             with mock.patch.object(run_pipeline, "montar_docx", side_effect=montar):
                 self.assertEqual(run_pipeline.executar(["--rebuild-only", "--obra-dir", str(obra)]), 0)
             self.assertTrue((relatorios / "Relatorio-Cronologico-Obra-1001-v1-rascunho-2.docx").exists())
+
+    def test_versao_final_aberta_no_word_pede_para_fechar(self):
+        import contextlib
+        import io
+        import json
+
+        with TemporaryDirectory() as temporario:
+            obra = self._obra(Path(temporario))
+            [caminho] = list(obra.rglob("analise.json"))
+            analise = json.loads(caminho.read_text(encoding="utf-8"))
+            analise["revisado"] = True
+            caminho.write_text(json.dumps(analise, ensure_ascii=False), encoding="utf-8")
+            saida = io.StringIO()
+            with mock.patch.object(run_pipeline, "montar_docx", side_effect=PermissionError(13, "Permission denied")):
+                with contextlib.redirect_stdout(saida):
+                    codigo = run_pipeline.main(["--rebuild-only", "--obra-dir", str(obra)])
+            self.assertEqual(codigo, 1)
+            texto = saida.getvalue()
+            self.assertIn("Relatorio-Cronologico-Obra-1001-v1.docx está aberto", texto)
+            self.assertIn("Feche", texto)
+            self.assertNotIn("Errno", texto)
 
     def test_avisa_prazo_com_fonte_posterior_ou_sem_data(self):
         import contextlib

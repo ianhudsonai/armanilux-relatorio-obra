@@ -227,8 +227,10 @@ def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_
             break
         except PermissionError:
             if not rascunho:
-                print(f"O arquivo {destino.name} está aberto (provavelmente no Word). Feche o arquivo e remonte.")
-                raise
+                # A versão final é sempre o mesmo vN: não grava cópia ao lado, pede para fechar.
+                raise RuntimeError(
+                    f"o arquivo {destino.name} está aberto (provavelmente no Word). Feche o arquivo e remonte."
+                ) from None
             # Rascunho aberto no Word: o Windows não deixa regravar. Grava uma cópia ao lado.
             if copia >= 20:
                 raise
@@ -237,7 +239,7 @@ def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_
     if versao is None:
         _guardar_versao(pasta_obra, analise, _numero_da_versao(destino))
     if not rascunho:
-        _guardar_rascunhos(pasta, destino)
+        _arquivar_rascunhos(pasta, destino)
     formato = formato_entrega(config)
     quer_pdf = forcar_pdf or formato in ("pdf", "link")
     pdf = None
@@ -290,7 +292,7 @@ def _guardar_versao(pasta_obra: Path, analise: dict, versao: int) -> None:
         escrever_json(caminho, salvo)
 
 
-def _guardar_rascunhos(pasta: Path, final: Path) -> None:
+def _arquivar_rascunhos(pasta: Path, final: Path) -> None:
     """Com a versão final gravada, os rascunhos dela saem de perto para ninguém enviar o errado."""
     import os
 
@@ -301,8 +303,12 @@ def _guardar_rascunhos(pasta: Path, final: Path) -> None:
             continue
         destino.mkdir(exist_ok=True)
         alvo = destino / antigo.name
+        indice = 2
+        while alvo.exists():  # nada é apagado: rascunho com o mesmo nome ganha -2, -3...
+            alvo = destino / f"{antigo.stem}-{indice}{antigo.suffix}"
+            indice += 1
         try:
-            os.replace(antigo, alvo)  # rascunho antigo da mesma versão é substituído pelo último
+            os.rename(antigo, alvo)
         except OSError:
             print(f"Aviso: não consegui mover o rascunho {antigo.name} para a pasta rascunhos (está aberto?).")
 

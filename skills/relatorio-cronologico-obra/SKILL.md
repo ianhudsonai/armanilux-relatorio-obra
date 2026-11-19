@@ -173,6 +173,8 @@ Corrija ou tire tudo o que voltar como não sustentado ou diferente. O que não 
 
 Só depois de 4.1 a 4.4, grave `"revisado": true` no `analise.json` e remonte. Sem isso o Word sai com a faixa vermelha "RASCUNHO NÃO REVISADO" no topo, de propósito, para ninguém enviar um relatório sem conferência.
 
+A versão final tem o mesmo número do rascunho: na primeira vez, `v1`. Remontar depois disso (inclusive com `--mostrar`, ou para corrigir um erro) regrava o mesmo `vN`, sem criar `v2`. Se o Word estiver aberto, o script pede para fechar o arquivo: feche e remonte.
+
 ## 5. Remontar o Word
 
 Depois de editar o JSON:
@@ -185,7 +187,7 @@ PYTHON SKILL/scripts/run_pipeline.py --rebuild-only --recalcular --obra-dir "PAS
 
 Na última remontagem, a que vai para a pessoa, acrescente `--mostrar`: o script abre a pasta da obra com o Word já selecionado. Todo comando que grava o Word imprime uma linha `RELATORIO_WORD: <caminho>`; é por ela que você acha o arquivo. Quando sai PDF, vem também `RELATORIO_PDF: <caminho>`. Com entrega por link, a versão revisada imprime `RELATORIO_LINK: <caminho>`, a cópia na pasta da nuvem.
 
-Não entregue um Word escrito à mão por fora do script. O arquivo versionado (`v1`, `v2`, …) é o que a pessoa abre.
+Não entregue um Word escrito à mão por fora do script. O arquivo versionado (`v1`, `v2`, …) é o que a pessoa abre. `v2` só existe quando chegou uma conversa nova da obra.
 
 ## 6. O que dizer à pessoa
 
