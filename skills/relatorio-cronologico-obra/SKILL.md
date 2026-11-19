@@ -33,10 +33,10 @@ Confira também se esse Python importa docx, faster_whisper, matplotlib, holiday
 
 ```powershell
 $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User') + ';' + "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
-powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.codex\skills\preparar-projeto-armanilux\scripts\instalar.ps1"
+powershell -ExecutionPolicy Bypass -File "SKILL\..\preparar-projeto-armanilux\scripts\instalar.ps1"
 ```
 
-Diga só isto: vai instalar o que falta; aprove o comando; se o Windows mostrar Sim ou Não, clique em Sim. Quando terminar, releia o PATH e continue o relatório. Se a outra skill não estiver instalada, mande rodar `$preparar-projeto-armanilux` num chat novo.
+`SKILL` é a pasta desta skill: a skill de preparo fica ao lado dela, na mesma pasta de skills do aplicativo. Troque `SKILL` pelo caminho completo. Diga só isto: vai instalar o que falta; aprove o comando; se o Windows mostrar Sim ou Não, clique em Sim. Quando terminar, releia o PATH e continue o relatório. Se a outra skill não estiver instalada, mande rodar `$preparar-projeto-armanilux` num chat novo.
 
 No Linux ou no teste, use `python3`. Nos comandos abaixo, `PYTHON` é o Python do ambiente e `SKILL` é a pasta desta skill.
 

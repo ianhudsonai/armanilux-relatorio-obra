@@ -41,6 +41,36 @@ def _frontmatter_valido(pasta: Path, nome_esperado: str) -> bool:
     return True
 
 
+class InstalacaoTeste(unittest.TestCase):
+    def test_linha_de_colagem_tem_saida_sem_python(self):
+        # O $skill-installer é um script Python; PC novo não tem Python antes do preparo.
+        for arquivo in ("README.md", "AGENTS.md"):
+            texto = (RAIZ / arquivo).read_text(encoding="utf-8")
+            bloco = texto.split("$skill-installer instale estas skills:", 1)[1].split("```", 1)[0]
+            self.assertIn("Python", bloco, arquivo)
+            self.assertIn("zip", bloco, arquivo)
+        agentes = (RAIZ / "AGENTS.md").read_text(encoding="utf-8")
+        self.assertIn("Invoke-WebRequest", agentes)
+        self.assertIn("archive/refs/heads/main.zip", agentes)
+        self.assertIn("Expand-Archive", agentes)
+
+    def test_instalador_do_preparo_e_achado_pela_pasta_da_skill(self):
+        import sys
+
+        sys.path.insert(0, str(SKILL / "scripts"))
+        from run_pipeline import instalador_do_preparo
+
+        self.assertEqual(
+            instalador_do_preparo(),
+            (RAIZ / "skills" / "preparar-projeto-armanilux" / "scripts" / "instalar.ps1").resolve(),
+        )
+        self.assertTrue(instalador_do_preparo().is_file())
+        for arquivo in (SKILL / "SKILL.md", SKILL / "scripts" / "run_pipeline.py"):
+            texto = arquivo.read_text(encoding="utf-8")
+            self.assertNotIn(".codex\\skills\\preparar", texto, arquivo.name)
+            self.assertNotIn(".codex\\\\skills\\\\preparar", texto, arquivo.name)
+
+
 class SkillTeste(unittest.TestCase):
     def test_frontmatter_compativel_com_o_validador_da_openai(self):
         texto = (SKILL / "SKILL.md").read_text(encoding="utf-8")

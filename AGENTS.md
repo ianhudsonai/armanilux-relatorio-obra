@@ -6,6 +6,7 @@ A pessoa cola isto:
 $skill-installer instale estas skills:
 https://github.com/ianhudsonai/armanilux-relatorio-obra/tree/main/skills/preparar-projeto-armanilux
 https://github.com/ianhudsonai/armanilux-relatorio-obra/tree/main/skills/relatorio-cronologico-obra
+Se este computador não tiver Python, não instale Python: baixe o zip do repositório com PowerShell e copie as duas pastas para a pasta de skills deste aplicativo.
 ```
 
 Versões antigas do README mandavam colar só `https://github.com/ianhudsonai/armanilux-relatorio-obra instale as skills`. Se vier assim, faça o mesmo.
@@ -49,7 +50,24 @@ Não copie para os dois.
 
 ## Se o instalador do seu aplicativo não estiver disponível
 
-Baixe o zip do repositório e copie as duas pastas somente para a pasta de skills do aplicativo em que você está, como na lista acima.
+Num computador novo isso é o normal: o `$skill-installer` é um script Python, e o Python só é instalado depois, pelo `$preparar-projeto-armanilux`. Não instale Python para isso. Baixe o zip do repositório com PowerShell e copie as duas pastas somente para a pasta de skills do aplicativo em que você está, como na lista acima.
+
+No Codex, no Windows:
+
+```powershell
+$zip = Join-Path $env:TEMP "armanilux-relatorio-obra.zip"
+$tmp = Join-Path $env:TEMP "armanilux-relatorio-obra"
+Invoke-WebRequest "https://github.com/ianhudsonai/armanilux-relatorio-obra/archive/refs/heads/main.zip" -OutFile $zip
+Expand-Archive $zip -DestinationPath $tmp -Force
+$destino = Join-Path $env:USERPROFILE ".codex\skills"
+New-Item -ItemType Directory -Force $destino | Out-Null
+foreach ($nome in "preparar-projeto-armanilux", "relatorio-cronologico-obra") {
+  if (Test-Path (Join-Path $destino $nome)) { Write-Output "$nome já está instalada"; continue }
+  Copy-Item (Join-Path $tmp "armanilux-relatorio-obra-main\skills\$nome") $destino -Recurse
+}
+```
+
+No Claude Code, troque `.codex\skills` por `.claude\skills`. Se a pasta da skill já existir, ela não é trocada; só apague ou substitua se a pessoa pedir para reinstalar.
 
 ## Depois de instalar
 

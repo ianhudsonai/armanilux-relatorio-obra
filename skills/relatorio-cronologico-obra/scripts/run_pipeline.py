@@ -55,6 +55,12 @@ CHAVES_PRESERVAR = (
 )
 
 
+def instalador_do_preparo() -> Path:
+    """O instalador da skill de preparo, que fica ao lado desta skill na mesma pasta de skills
+    (Codex, Claude Code ou outra). Não depende de onde o aplicativo guarda as skills."""
+    return Path(__file__).resolve().parents[2] / "preparar-projeto-armanilux" / "scripts" / "instalar.ps1"
+
+
 def _checar_bibliotecas() -> bool:
     faltando = []
     for nome, modulo in (
@@ -80,10 +86,7 @@ def _checar_bibliotecas() -> bool:
     if faltando:
         print("Faltam bibliotecas: " + ", ".join(faltando) + ".")
         print("Rode a skill $preparar-projeto-armanilux.")
-        print(
-            "Se ela já estiver instalada, o instalador é "
-            "%USERPROFILE%\\.codex\\skills\\preparar-projeto-armanilux\\scripts\\instalar.ps1"
-        )
+        print(f"Se ela já estiver instalada, o instalador é {instalador_do_preparo()}")
         return False
     return True
 
