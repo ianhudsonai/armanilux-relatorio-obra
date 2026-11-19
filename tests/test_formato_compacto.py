@@ -51,6 +51,9 @@ class DestaqueTeste(unittest.TestCase):
         self.assertEqual(destaque_automatico("C", "Medição da piscina não realizada."), "ocioso")
         self.assertEqual(destaque_automatico("H", "Ainda aguardando liberação da obra."), "ocioso")
         self.assertEqual(destaque_automatico("A", "Aprovo as chapas do lote 3."), "")
+        # Enviar o projeto revisado é a etapa F andando, não reprocesso; pedir nova revisão é.
+        self.assertEqual(destaque_automatico("F", "Envio do projeto revisado R1 dos banhos."), "")
+        self.assertEqual(destaque_automatico("J", "Cliente pede nova revisão depois de aprovado."), "reprocesso")
 
 
 class FormatoTeste(unittest.TestCase):

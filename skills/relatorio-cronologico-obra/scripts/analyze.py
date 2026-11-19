@@ -75,7 +75,8 @@ _INTERFERENCIA = (
 
 # Cor de fundo da linha, como no relatório aprovado: salmão = reprocesso, amarelo = ocioso.
 _REPROCESSO = (
-    "revis", "refaz", "refeit", "refacao", "retrabalho", "quebr", "trinc", "danific",
+    # "revis" sozinho pegaria "projeto revisado" (etapa F andando); só o pedido de nova revisão é reprocesso.
+    "nova revis", "outra revis", "revisao apos", "solicito revis", "refaz", "refeit", "refacao", "retrabalho", "quebr", "trinc", "danific",
     "retirad", "substitui", "corrig", "mudanca apos", "alteracao apos",
 )
 _OCIOSO = (
