@@ -6,7 +6,7 @@ import re
 from datetime import date
 from pathlib import Path
 
-from analyze import LIMITE_INTERVALO_LONGO, ORDEM, TITULOS, intervalos_marcos_de
+from analyze import LIMITE_INTERVALO_LONGO, ORDEM, TITULOS, data_da_conclusao, intervalos_marcos_de
 from business_days import dias_uteis_entre
 from common import DADO, LARGURA_FIGURA_CM, formatar_data
 from docx import Document
@@ -220,7 +220,7 @@ def _quadro_resumo(documento: Document, analise: dict) -> None:
     corridos = DADO
     if inicio and fim:
         corridos = f"{(date.fromisoformat(fim) - date.fromisoformat(inicio)).days} dias corridos"
-    conclusao = _primeira(analise, "L")
+    conclusao = data_da_conclusao(analise.get("eventos") or [])
     linhas = [
         ["Início do grupo / das tratativas", formatar_data(inicio)],
         ["Primeira aprovação de chapas", _primeira(analise, "A")],
@@ -231,7 +231,7 @@ def _quadro_resumo(documento: Document, analise: dict) -> None:
         ["Último registro do grupo", formatar_data(fim)],
         ["Duração decorrida (corridos)", corridos],
         ["Duração decorrida (dias úteis)", f"{analise['kpis']['dias_uteis_periodo']} dias úteis"],
-        ["Conclusão e validação final", conclusao if conclusao != DADO else "DADO NÃO IDENTIFICADO (ver etapa L)"],
+        ["Conclusão e validação final", formatar_data(conclusao) if conclusao else "DADO NÃO IDENTIFICADO (pendente — ver Etapa L)"],
         [
             "Prazo contratual",
             "informado no grupo (ver Nota Metodológica)" if analise.get("prazos_contratuais") else _valor(obra, "prazo_contratual"),

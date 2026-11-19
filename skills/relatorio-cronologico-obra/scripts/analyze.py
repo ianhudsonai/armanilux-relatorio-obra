@@ -357,6 +357,8 @@ def intervalos_marcos_de(eventos: list[dict]) -> tuple[list[dict], dict]:
     como na tabela do relatório aprovado, e a duração do primeiro ao último registro."""
     primeiros: dict[str, str] = {}
     for evento in eventos:
+        if evento["etapa"] == "L" and not evento.get("conclusao"):
+            continue  # reclamação ou reparo na etapa L não é o marco de conclusão
         if evento["data"] < primeiros.get(evento["etapa"], "9999"):
             primeiros[evento["etapa"]] = evento["data"]
     marcos = sorted(primeiros.items(), key=lambda par: (par[1], _posicao(par[0])))
@@ -1072,6 +1074,8 @@ def _juntar_adicionais(base: dict) -> list[dict]:
         }
         if extra.get("destaque"):
             item["destaque"] = extra["destaque"]
+        if extra.get("conclusao"):
+            item["conclusao"] = True
         chave = (item["data"], item["hora"], item["etapa"], item["ocorrencia"])
         if chave not in vistos:
             vistos.add(chave)
@@ -1173,7 +1177,16 @@ def montar_analise(
     return completar_relato(base)
 
 
+def data_da_conclusao(eventos: list[dict]) -> str:
+    """Data do fato que a revisão marcou como conclusão ("conclusao": true na etapa L), ou "".
+    Outro fato da etapa L (reclamação, reparo, entrega parcial) não fecha a obra."""
+    datas = sorted(item["data"] for item in eventos if item["etapa"] == "L" and item.get("conclusao"))
+    return datas[0] if datas else ""
+
+
 def _situacao_marco(eventos: list[dict], codigo: str) -> str:
+    if codigo == "L":
+        return "Concluído" if data_da_conclusao(eventos) else "dado não identificado (pendente)"
     if any(item["etapa"] == codigo for item in eventos):
         return "Concluído"
     return "dado não identificado"
@@ -1217,4 +1230,6 @@ def aplicar_ajustes(eventos: list[dict], ajustes: list[dict]) -> list[dict]:
                 evento["impacto"] = ajuste["impacto"]
             if ajuste.get("destaque"):
                 evento["destaque"] = ajuste["destaque"]
+            if "conclusao" in ajuste:
+                evento["conclusao"] = bool(ajuste["conclusao"])
     return eventos
