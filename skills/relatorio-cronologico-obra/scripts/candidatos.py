@@ -55,9 +55,10 @@ def selecionar(mensagens: list[Mensagem]) -> dict[str, list[Mensagem]]:
                 saida[codigo].append(msg)
     for codigo, itens in saida.items():
         if len(itens) > LIMITE_POR_ETAPA:
-            # Mantém a ordem do tempo, mas só as mais ricas em informação.
-            ricas = sorted(itens, key=lambda m: len(m.texto), reverse=True)[:LIMITE_POR_ETAPA]
-            saida[codigo] = sorted(ricas, key=lambda m: m.quando)
+            # Só as mais ricas em informação.
+            itens = sorted(itens, key=lambda m: len(m.texto), reverse=True)[:LIMITE_POR_ETAPA]
+        # Ordem do tempo sempre: mensagem colada entra na data original, fora da ordem do arquivo.
+        saida[codigo] = sorted(itens, key=lambda m: m.quando)
     return saida
 
 

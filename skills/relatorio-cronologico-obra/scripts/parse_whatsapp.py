@@ -42,15 +42,16 @@ _MIDIA_OCULTA = re.compile(
     re.IGNORECASE,
 )
 # Documento exportado "sem mídia": o nome do arquivo vem na linha logo abaixo
-# de "<Mídia oculta>". Legenda de foto não tem extensão e fica de fora.
+# de "<Mídia oculta>". Legenda de foto não termina em extensão e fica de fora.
+# Qualquer extensão que comece por letra (pdf, dwg, xlsm, skp…); "R$ 1.500" não casa.
+MARCADOR_MIDIA_OCULTA = re.compile(r"<m[ií]dia oculta>", re.IGNORECASE)
 _NOME_APOS_MIDIA_OCULTA = re.compile(
-    r"^<m[ií]dia oculta>\s*\n\s*([^<>\n/\\]+\.(?:pdf|docx?|xlsx?|pptx?|dwg|dxf|zip|rar|txt|csv|"
-    r"jpe?g|png|webp|heic|gif|opus|ogg|mp3|m4a|wav|aac|mp4|mov|3gp|avi|mkv))\s*(?:\n|$)",
+    r"^<m[ií]dia oculta>\s*\n\s*([^<>\n/\\]+\.[A-Za-z][A-Za-z0-9]{1,4})\s*(?:\n|$)",
     re.IGNORECASE,
 )
 # Linha de mensagem colada de outra conversa: "[21/08, 08:54] Nome: texto" (sem ano).
 _LINHA_ENCAMINHADA = re.compile(
-    r"^\[(\d{1,2})/(\d{1,2}),?\s+(\d{1,2}):(\d{2})\]\s*([^:\]\n]{1,80}?):\s(.*)$"
+    r"^\[(\d{1,2})/(\d{1,2}),?\s+(\d{1,2}):(\d{2})\]\s*([^:\]\n]{1,80}?):(?:\s(.*))?$"
 )
 
 
@@ -140,14 +141,16 @@ def _anexos_do_texto(texto: str) -> list[str]:
 
 
 def _data_encaminhada(achado: re.Match, postada: datetime) -> datetime | None:
+    """Sem ano no colchete: é a data mais recente, até a de envio (29/02 volta ao último ano bissexto)."""
     dia, mes, hora, minuto = (int(achado.group(i)) for i in range(1, 5))
-    try:
-        original = datetime(postada.year, mes, dia, hora, minuto)
-        if original > postada:
-            original = original.replace(year=postada.year - 1)
-    except ValueError:
-        return None
-    return original
+    for ano in range(postada.year, postada.year - 5, -1):
+        try:
+            original = datetime(ano, mes, dia, hora, minuto)
+        except ValueError:
+            continue
+        if original <= postada:
+            return original
+    return None
 
 
 def _desmembrar(mensagem: Mensagem) -> list[Mensagem]:
@@ -163,8 +166,8 @@ def _desmembrar(mensagem: Mensagem) -> list[Mensagem]:
             coladas.append(
                 Mensagem(
                     quando=quando,
-                    autor=corrigir_mojibake(achado.group(5).strip()),
-                    texto=achado.group(6),
+                    autor=achado.group(5).strip(),
+                    texto=achado.group(6) or "",
                     encaminhada_por=mensagem.autor,
                     encaminhada_em=mensagem.quando,
                 )

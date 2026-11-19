@@ -118,7 +118,7 @@ def _datas(texto: str) -> tuple[str, str]:
     mensagens = [item for item in analisar_conversa(texto) if not item.sistema] or analisar_conversa(texto)
     if not mensagens:
         return "", ""
-    datas = [item.data.isoformat() for item in mensagens]
+    datas = [item.data.isoformat() for item in mensagens if not item.encaminhada_por] or [item.data.isoformat() for item in mensagens]
     return min(datas), max(datas)
 
 

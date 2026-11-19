@@ -79,19 +79,19 @@ class ParserTeste(unittest.TestCase):
 
     def test_reencaminhada_usa_data_e_autor_originais(self):
         texto = (
-            "28/09/2026 15:55 - Rogerio Lima: [21/08, 08:54] Sergio Katz: Preciso da cozinha liberada\n"
+            "28/09/2026 15:55 - Paulo Ribeiro: [21/08, 08:54] Carla Nunes: Preciso da cozinha liberada\n"
             "para a civil\n"
-            "[21/08, 08:55] Rogerio Lima: Registro de obra\n"
+            "[21/08, 08:55] Paulo Ribeiro: Registro de obra\n"
             "28/09/2026 16:00 - Ana Lima: Ok\n"
         )
         primeira, segunda, depois = analisar_conversa(texto)
         self.assertEqual(primeira.quando, datetime(2026, 8, 21, 8, 54))
-        self.assertEqual(primeira.autor, "Sergio Katz")
+        self.assertEqual(primeira.autor, "Carla Nunes")
         self.assertEqual(primeira.texto, "Preciso da cozinha liberada\npara a civil")
-        self.assertEqual(primeira.encaminhada_por, "Rogerio Lima")
+        self.assertEqual(primeira.encaminhada_por, "Paulo Ribeiro")
         self.assertEqual(primeira.encaminhada_em, datetime(2026, 9, 28, 15, 55))
         self.assertEqual(segunda.quando, datetime(2026, 8, 21, 8, 55))
-        self.assertEqual(segunda.autor, "Rogerio Lima")
+        self.assertEqual(segunda.autor, "Paulo Ribeiro")
         self.assertEqual(depois.autor, "Ana Lima")
         self.assertIsNone(depois.encaminhada_por)
 
@@ -102,6 +102,19 @@ class ParserTeste(unittest.TestCase):
         self.assertEqual(propria.autor, "Ana Lima")
         self.assertEqual(original.quando, datetime(2025, 12, 30, 17, 10))
         self.assertEqual(original.autor, "Bruno Reis")
+
+    def test_reencaminhada_de_29_de_fevereiro_e_linha_sem_texto(self):
+        texto = (
+            "03/03/2025 09:00 - Ana Lima: [29/02, 10:00] Bruno Reis: Medimos a sala\n"
+            "[01/03, 11:00] Carla Nunes:\n"
+        )
+        bissexto, vazia = analisar_conversa(texto)
+        self.assertEqual(bissexto.quando, datetime(2024, 2, 29, 10, 0))
+        self.assertEqual((vazia.autor, vazia.texto), ("Carla Nunes", ""))
+
+    def test_nome_de_arquivo_com_extensao_fora_da_lista(self):
+        [mensagem] = analisar_conversa("05/09/2025 09:50 - Ana Lima: <Mídia oculta>\nPlanilha medicao.xlsm\n")
+        self.assertEqual(mensagem.anexos, ["Planilha medicao.xlsm"])
 
     def test_mojibake_simples_duplo_e_cp437_nao_estraga_texto_certo(self):
         uma = "medição".encode("utf-8").decode("latin-1")
