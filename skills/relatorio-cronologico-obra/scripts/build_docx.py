@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from datetime import date
 from pathlib import Path
 
 from analyze import ORDEM
 from business_days import cor_leitura
-from common import DADO, EXT_IMAGEM, formatar_data
+from common import DADO, EXT_IMAGEM, EXT_VIDEO, formatar_data, tipo_midia
 from docx import Document
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
@@ -16,7 +17,9 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
-NAVY = RGBColor(0x1F, 0x3A, 0x5F)
+NAVY = RGBColor(0x44, 0x28, 0x19)  # marrom da marca Armanilux
+DOURADO = RGBColor(0xC3, 0xA5, 0x6D)
+DOURADO_HEX = "C3A56D"
 GRAFITE = RGBColor(0x22, 0x22, 0x22)
 CINZA = RGBColor(0x5C, 0x6B, 0x73)
 BRANCO = RGBColor(0xFF, 0xFF, 0xFF)
@@ -90,7 +93,7 @@ def _texto_celula(celula, texto: str, *, negrito: bool = False, tamanho: int = 1
 def _cabecalho_tabela(tabela, titulos: list[str]) -> None:
     for indice, titulo in enumerate(titulos):
         _texto_celula(tabela.rows[0].cells[indice], titulo, negrito=True, tamanho=10, cor=BRANCO, centro=True)
-        _sombrear(tabela.rows[0].cells[indice], "1F3A5F")
+        _sombrear(tabela.rows[0].cells[indice], "442819")
     linha = tabela.rows[0]._tr
     propriedades = linha.get_or_add_trPr()
     repetir = OxmlElement("w:tblHeader")
@@ -124,7 +127,7 @@ def _configurar_documento(documento: Document) -> None:
     secao.bottom_margin = Cm(1.6)
     cabecalho = secao.header.paragraphs[0]
     cabecalho.text = ""
-    trecho = cabecalho.add_run("Armanilux  ·  Relatório cronológico de obra  ·  uso interno")
+    trecho = cabecalho.add_run("ARMANILUX  ·  Relatório cronológico de obra")
     _fonte(trecho, 9, cor=CINZA)
     rodape = secao.footer.paragraphs[0]
     rodape.alignment = WD_ALIGN_PARAGRAPH.RIGHT
@@ -175,6 +178,109 @@ def _valor(obra: dict, chave: str) -> str:
     return valor if valor else DADO
 
 
+def _transcricao(analise: dict, arquivo: str, limite: int = 240) -> str:
+    for item in analise.get("transcricoes") or []:
+        if (item.get("arquivo") or "").lower() == arquivo.lower() and item.get("status") == "ok" and item.get("texto"):
+            texto = " ".join(item["texto"].split())
+            return texto if len(texto) <= limite else texto[:limite].rstrip() + "…"
+    return ""
+
+
+def _tem_observacao(analise: dict, arquivo: str) -> bool:
+    return any(
+        (item.get("observacao") or "").strip() and Path(item.get("arquivo") or "").name == Path(arquivo).name
+        for item in analise.get("observacoes_visuais") or []
+    )
+
+
+def _midias_citadas(analise: dict) -> list[dict]:
+    """Só os arquivos citados em algum fato do relatório, na ordem do tempo."""
+    vistos: set[str] = set()
+    linhas: list[dict] = []
+    for evento in sorted(analise.get("eventos") or [], key=lambda e: (e["data"], e.get("hora") or "")):
+        for nome in list(evento.get("midias") or []) + list(evento.get("documentos") or []):
+            if nome in vistos:
+                continue
+            vistos.add(nome)
+            linhas.append({"arquivo": nome, "tipo": tipo_midia(nome), "data": evento["data"], "etapa": evento["etapa"]})
+    return linhas
+
+
+def _capa(documento: Document, analise: dict) -> None:
+    obra = analise["obra"]
+    for _ in range(5):
+        documento.add_paragraph()
+    titulo = documento.add_paragraph()
+    titulo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _fonte(titulo.add_run("RELATÓRIO CRONOLÓGICO DE OBRA"), 24, negrito=True, cor=NAVY)
+    sub = documento.add_paragraph()
+    sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    _fonte(sub.add_run("Análise de Fluxo Operacional, Prazos e Interferências"), 13, cor=DOURADO)
+    _linha_dourada(documento)
+    nome = documento.add_paragraph()
+    nome.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    nome.paragraph_format.space_before = Pt(18)
+    _fonte(nome.add_run(f"Obra {_valor(obra, 'numero')} — {_valor(obra, 'cliente')}"), 15, negrito=True)
+    partes = [
+        "Fornecedor: Armanilux",
+        f"Construtora: {_valor(obra, 'construtora')}",
+        f"Arquitetura: {_valor(obra, 'arquitetura')}",
+    ]
+    linhas = [
+        "  |  ".join(partes),
+        f"Endereço: {_valor(obra, 'endereco')}",
+        f"Período coberto: {formatar_data(obra.get('periodo_inicio'))} a {formatar_data(obra.get('periodo_fim'))}",
+        "Base documental: histórico do grupo de WhatsApp da obra, documentos anexos e transcrições locais",
+        f"Emitido em: {date.today().strftime('%d/%m/%Y')}",
+    ]
+    for indice, texto in enumerate(linhas):
+        paragrafo = documento.add_paragraph()
+        paragrafo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        paragrafo.paragraph_format.space_after = Pt(2)
+        _fonte(paragrafo.add_run(texto), 11 if indice < 3 else 10, negrito=indice == 2, cor=CINZA if indice > 2 else GRAFITE, italico=indice > 2)
+    documento.add_page_break()
+
+
+def _linha_dourada(documento: Document) -> None:
+    paragrafo = documento.add_paragraph()
+    propriedades = paragrafo._p.get_or_add_pPr()
+    borda = OxmlElement("w:pBdr")
+    inferior = OxmlElement("w:bottom")
+    for chave, valor in (("w:val", "single"), ("w:sz", "12"), ("w:space", "1"), ("w:color", DOURADO_HEX)):
+        inferior.set(qn(chave), valor)
+    borda.append(inferior)
+    propriedades.append(borda)
+
+
+def _primeira(analise: dict, etapa: str) -> str:
+    datas = sorted(e["data"] for e in analise.get("eventos") or [] if e["etapa"] == etapa)
+    return formatar_data(datas[0]) if datas else DADO
+
+
+def _quadro_resumo(documento: Document, analise: dict) -> None:
+    obra = analise["obra"]
+    documento.add_heading("Quadro-resumo da obra", level=2)
+    inicio, fim = obra.get("periodo_inicio"), obra.get("periodo_fim")
+    corridos = DADO
+    if inicio and fim:
+        corridos = f"{(date.fromisoformat(fim) - date.fromisoformat(inicio)).days} dias corridos"
+    conclusao = _primeira(analise, "L")
+    linhas = [
+        ["Início do grupo / das tratativas", formatar_data(inicio)],
+        ["Primeira aprovação de chapas", _primeira(analise, "A")],
+        ["Primeira medição in loco", _primeira(analise, "C")],
+        ["Primeira aprovação de projeto", _primeira(analise, "G")],
+        ["Primeira entrega na obra", _primeira(analise, "H")],
+        ["Entrada da equipe de instalação", _primeira(analise, "I")],
+        ["Último registro do grupo", formatar_data(fim)],
+        ["Duração decorrida (corridos)", corridos],
+        ["Duração decorrida (dias úteis)", f"{analise['kpis']['dias_uteis_periodo']} dias úteis"],
+        ["Conclusão e validação final", conclusao if conclusao != DADO else "DADO NÃO IDENTIFICADO (ver etapa L)"],
+        ["Prazo contratual", _valor(obra, "prazo_contratual")],
+    ]
+    _tabela_simples(documento, ["Indicador", "Valor"], linhas, [10.4, 7.0])
+
+
 def _observacao(analise: dict, arquivo: str) -> str:
     for item in analise.get("observacoes_visuais") or []:
         nome = item.get("arquivo") or ""
@@ -182,7 +288,10 @@ def _observacao(analise: dict, arquivo: str) -> str:
             texto = (item.get("observacao") or "").strip()
             if texto:
                 return texto
-    pasta = "02-projetos-pdf" if Path(arquivo).suffix.lower() in {".pdf", ".docx", ".doc", ".odt"} else "03-midias"
+    transcrito = _transcricao(analise, arquivo)
+    if transcrito:
+        return f"Transcrição automática, conferir: “{transcrito}”"
+    pasta ="02-projetos-pdf" if Path(arquivo).suffix.lower() in {".pdf", ".docx", ".doc", ".odt"} else "03-midias"
     return f"dado não identificado (conferir o arquivo na pasta {pasta})."
 
 
@@ -303,22 +412,50 @@ def _inserir_figura(documento: Document, caminho: Path | None, legenda: str) -> 
     _paragrafo(documento, legenda, tamanho=9, italico=True)
 
 
-def _anexar_imagens(documento: Document, analise: dict) -> None:
+def _imagens_citadas(analise: dict, pasta_obra: Path | None) -> list[tuple[str, Path]]:
+    """Fotos citadas nos fatos, e um quadro de cada vídeo citado. As que têm observação vêm primeiro."""
+    if pasta_obra is None:
+        return []
+    midias = pasta_obra / "03-midias"
+    candidatos: list[tuple[str, Path]] = []
+    for item in _midias_citadas(analise):
+        nome = item["arquivo"]
+        sufixo = Path(nome).suffix.lower()
+        if sufixo in EXT_IMAGEM and (midias / nome).is_file():
+            candidatos.append((nome, midias / nome))
+        elif sufixo in EXT_VIDEO:
+            pasta_quadros = midias / "quadros" / Path(nome).stem
+            quadro = next((q for q in (pasta_quadros / "quadro-02.jpg", pasta_quadros / "quadro-01.jpg") if q.is_file()), None)
+            if quadro:
+                candidatos.append((nome, quadro))
+    primeiro = [c for c in candidatos if _tem_observacao(analise, c[0])]
+    return (primeiro + [c for c in candidatos if c not in primeiro])[:12]
+
+
+def _anexar_imagens(documento: Document, analise: dict, pasta_obra: Path | None = None) -> None:
     inseridas = 0
-    for item in analise.get("anexo") or []:
-        if inseridas >= 12:
-            break
-        caminho = Path(item.get("caminho") or "")
-        if item["tipo"] not in {"foto", "quadro de vídeo"}:
-            continue
-        if caminho.suffix.lower() not in EXT_IMAGEM or not caminho.exists():
-            continue
+    for nome, caminho in _imagens_citadas(analise, pasta_obra):
         try:
             documento.add_picture(str(caminho), width=Cm(12.5))
         except Exception:
-            continue
+            # Quadros tirados pelo FFmpeg às vezes não têm o cabeçalho que o Word reconhece.
+            # Regrava a imagem com o Pillow, só na memória.
+            try:
+                import io
+
+                from PIL import Image
+
+                fluxo = io.BytesIO()
+                Image.open(caminho).convert("RGB").save(fluxo, format="JPEG", quality=85)
+                fluxo.seek(0)
+                documento.add_picture(fluxo, width=Cm(12.5))
+            except Exception:
+                continue
         documento.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
-        _paragrafo(documento, f"Mídia: {item['arquivo']}", tamanho=9, italico=True)
+        legenda = f"Mídia: {nome}" + (" (quadro do vídeo)" if Path(nome).suffix.lower() in EXT_VIDEO else "")
+        if _tem_observacao(analise, nome):
+            legenda += f" — {_observacao(analise, nome)}"
+        _paragrafo(documento, legenda, tamanho=9, italico=True)
         inseridas += 1
     if inseridas == 0:
         _paragrafo(documento, "Imagem incorporada: dado não identificado. Os nomes seguem na tabela do anexo.")
@@ -354,18 +491,7 @@ def montar_docx(analise: dict, destino: Path, grafico_barras: Path | None, grafi
             "analisou o grupo. Não enviar a ninguém antes da revisão."
         )
         _fonte(trecho, 11, negrito=True, cor=RGBColor(0xC6, 0x28, 0x28))
-    titulo = documento.add_paragraph()
-    titulo.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    trecho = titulo.add_run("RELATÓRIO CRONOLÓGICO DE OBRA")
-    _fonte(trecho, 20, negrito=True, cor=NAVY)
-    subtitulo = documento.add_paragraph()
-    trecho = subtitulo.add_run("Armanilux")
-    _fonte(trecho, 12, cor=RGBColor(0x8C, 0x73, 0x4B))
-    _paragrafo(
-        documento,
-        f"Obra {_valor(obra, 'numero')}  ·  {_valor(obra, 'cliente')}",
-        tamanho=12,
-    )
+    _capa(documento, analise)
 
     identificacao = [
         ["Obra", _valor(obra, "numero")],
@@ -413,6 +539,7 @@ def montar_docx(analise: dict, destino: Path, grafico_barras: Path | None, grafi
         "O quarto cartão é o maior intervalo sem registro, não um atraso atribuído.",
     )
     _kpis(documento, analise)
+    _quadro_resumo(documento, analise)
 
     documento.add_heading("3. Etapas do processo", level=1)
     _paragrafo(
@@ -499,10 +626,11 @@ def montar_docx(analise: dict, destino: Path, grafico_barras: Path | None, grafi
     documento.add_heading("Anexo de mídias", level=1)
     _paragrafo(
         documento,
-        "Cada arquivo ligado a um registro, e cada quadro extraído de vídeo, aparece abaixo. "
-        "A observação visual fica como dado não identificado até que seja conferida na imagem.",
+        "Aparecem aqui só os arquivos citados nos fatos do relatório, na ordem do tempo. "
+        "Para áudio e vídeo, a observação traz um trecho da transcrição feita neste computador; confira no arquivo original. "
+        "Os demais arquivos do grupo continuam na pasta da obra.",
     )
-    anexo = analise.get("anexo") or []
+    anexo = _midias_citadas(analise)
     if anexo:
         _tabela_simples(
             documento,
@@ -521,7 +649,7 @@ def montar_docx(analise: dict, destino: Path, grafico_barras: Path | None, grafi
         )
     else:
         _paragrafo(documento, "Anexo: dado não identificado.")
-    _anexar_imagens(documento, analise)
+    _anexar_imagens(documento, analise, destino.parent.parent)
 
     documento.add_heading("Nota de rastreabilidade", level=1)
     _paragrafo(documento, analise.get("rastreabilidade") or DADO)

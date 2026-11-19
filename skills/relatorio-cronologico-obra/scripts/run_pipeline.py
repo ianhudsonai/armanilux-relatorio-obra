@@ -338,6 +338,14 @@ def executar(argv: list[str] | None = None) -> int:
         elif resultado_quadros.get("videos"):
             print(f"Quadros de vídeo: {len(quadros)}.")
 
+    try:
+        from folhas_de_contato import gerar as gerar_folhas
+
+        folhas = gerar_folhas(pasta_obra)
+        if folhas:
+            print(f"Folhas de contato para revisar as imagens: {len(folhas)} (em 04-transcricoes/folhas-de-contato).")
+    except Exception as erro:
+        print(f"Aviso: não consegui montar as folhas de contato: {erro}")
     relogio.marca("vídeos vistos")
     transcricoes = transcrever_pasta(
         pasta_obra / "03-midias",
