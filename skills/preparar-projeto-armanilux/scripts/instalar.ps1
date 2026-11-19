@@ -180,8 +180,9 @@ if ($Pdf) {
     $temWord = $false
     try {
         $word = New-Object -ComObject Word.Application -ErrorAction Stop
-        $word.Quit()
         $temWord = $true
+        # Se a pessoa estava com o Word aberto, o COM usa esse mesmo Word: não fechar.
+        if ($word.Documents.Count -eq 0) { $word.Quit(0) }
     } catch {}
     $soffice = @(
         (Join-Path $env:ProgramFiles "LibreOffice\program\soffice.exe"),

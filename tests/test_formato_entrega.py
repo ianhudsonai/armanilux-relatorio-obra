@@ -54,6 +54,16 @@ class ConverterPdfTeste(unittest.TestCase):
             docx.with_suffix(".pdf").unlink()
             self.assertIsNone(entrega.converter_pdf(docx, [sem_word, lambda _d: None]))
 
+    def test_pdf_velho_do_rascunho_anterior_nao_passa_por_novo(self):
+        with TemporaryDirectory() as temporario:
+            docx = Path(temporario) / "r.docx"
+            pdf = docx.with_suffix(".pdf")
+            pdf.write_bytes(b"%PDF velho")
+            docx.write_bytes(b"docx novo")
+            os.utime(pdf, (docx.stat().st_mtime - 60, docx.stat().st_mtime - 60))
+            # O conversor falhou em silêncio e só devolveu o caminho do arquivo que já estava lá.
+            self.assertIsNone(entrega.converter_pdf(docx, [lambda arquivo: arquivo.with_suffix(".pdf")]))
+
     def test_libreoffice_instalado_pelo_winget_fora_do_path_e_achado(self):
         with TemporaryDirectory() as temporario:
             programa = Path(temporario) / "LibreOffice" / "program"

@@ -219,14 +219,18 @@ def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_
             copia += 1
     formato = formato_entrega(config)
     quer_pdf = forcar_pdf or formato in ("pdf", "link")
-    pdf = converter_pdf(destino) if quer_pdf else None
+    pdf = None
+    if quer_pdf:
+        print("Fazendo o PDF (pode levar até 1 minuto)...", flush=True)
+        pdf = converter_pdf(destino)
     print(f"Relatório gravado em:\n{destino}")
     if pdf:
         print(f"PDF gravado em:\n{pdf}")
     elif quer_pdf:
         print(
-            "O PDF não saiu: este computador não tem o Microsoft Word nem o LibreOffice. "
-            "O arquivo para enviar é o Word. Para ter PDF, rode de novo $preparar-projeto-armanilux e escolha PDF."
+            "O PDF não saiu. O arquivo para enviar é o Word. Se o PDF estiver aberto, feche e remonte. "
+            "Se o computador não tem o Microsoft Word nem o LibreOffice, rode de novo $preparar-projeto-armanilux "
+            "e escolha PDF: ele instala o LibreOffice."
         )
     else:
         print("O arquivo para enviar é o Word.")
@@ -256,8 +260,11 @@ def _copiar_para_nuvem(pasta_obra: Path, arquivo: Path, pasta_link: str | None, 
         return
     try:
         copia = copiar_para_link(arquivo, Path(pasta_link), pasta_obra.name)
-    except OSError as erro:
-        print(f"Aviso: não consegui copiar para a pasta da nuvem ({pasta_link}): {erro}")
+    except OSError:
+        print(
+            f"Aviso: não consegui copiar o relatório para a pasta da nuvem ({pasta_link}). "
+            "Se o arquivo estiver aberto lá, feche e remonte. Se a pasta não existe mais, rode de novo $preparar-projeto-armanilux."
+        )
         return
     print(
         "Cópia na pasta da nuvem. Para mandar por link: no OneDrive ou no Google Drive, "

@@ -55,7 +55,7 @@ Com o Python do ambiente:
 & "$env:USERPROFILE\.armanilux-relatorio\venv\Scripts\python.exe" "<pasta-desta-skill>\scripts\preparar.py" --pasta-raiz "CAMINHO" --nome "NOME" --funcao "FUNCAO" --entrega pdf --modelo "{numero} - {cliente}" --baixar-modelo nao
 ```
 
-`--entrega` é `word`, `pdf` ou `link`. Com `link`, o script acha sozinho a pasta do OneDrive ou do Google Drive (`--pasta-link auto`, o padrão) e grava os relatórios em `Armanilux\Relatorios` dentro dela; se a pessoa disser outra pasta, passe `--pasta-link "CAMINHO"`. Se o script disser que não achou a pasta da nuvem, ele grava PDF: conte isso para a pessoa. `--baixar-modelo` é `sim` ou `nao`.
+`--entrega` é `word`, `pdf` ou `link`. Com `link`, antes rode o mesmo `preparar.py` só com `--listar-nuvens`: cada linha `NUVEM:` é uma pasta do OneDrive ou do Google Drive deste computador, já com `Armanilux\Relatorios` no fim. Se vier mais de uma, pergunte em qual a pessoa quer ("OneDrive ou Google Drive?"). Passe a escolhida em `--pasta-link "CAMINHO"`. Com uma só, pode usar `--pasta-link auto`, o padrão. Se a pessoa disser outra pasta, passe essa. Se o script disser que não achou a pasta da nuvem, ele grava PDF: conte isso para a pessoa. `--baixar-modelo` é `sim` ou `nao`.
 
 Isso grava `config.json`, cria a pasta escolhida, `Relatorios-de-Obra\_modelo` com as cinco subpastas, e um `LEIA-ME.txt` na pasta raiz. Rodar de novo só atualiza as preferências. Não apaga obras já existentes.
 

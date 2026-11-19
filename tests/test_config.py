@@ -72,6 +72,31 @@ class ConfigTeste(unittest.TestCase):
             finally:
                 os.environ.pop("ARMANILUX_CONFIG", None)
 
+    def test_onedrive_e_google_drive_aparecem_os_dois_para_a_pessoa_escolher(self):
+        from preparar import pastas_da_nuvem
+
+        with TemporaryDirectory() as temporario:
+            base = Path(temporario)
+            onedrive, google = base / "OneDrive", base / "Meu Drive"
+            onedrive.mkdir()
+            google.mkdir()
+            self.assertEqual(
+                pastas_da_nuvem([onedrive, base / "nao-existe", google]),
+                [onedrive / "Armanilux" / "Relatorios", google / "Armanilux" / "Relatorios"],
+            )
+
+    def test_pasta_link_digitada_que_nao_existe_nao_vira_pasta_fantasma(self):
+        from preparar import main as preparar_main
+
+        with TemporaryDirectory() as temporario:
+            base = Path(temporario)
+            with mock.patch.dict(os.environ, {"ARMANILUX_CONFIG": str(base / "config.json")}):
+                saida = io.StringIO()
+                with contextlib.redirect_stdout(saida):
+                    preparar_main(["--pasta-raiz", str(base / "A"), "--entrega", "link", "--pasta-link", str(base / "OneDriv" / "x" / "y")])
+                self.assertEqual(carregar()["formato_entrega"], "pdf")
+                self.assertIn("Não achei a pasta", saida.getvalue())
+
     def test_relatorio_sem_config_pede_a_preparacao(self):
         with TemporaryDirectory() as temporario:
             os.environ["ARMANILUX_CONFIG"] = str(Path(temporario) / "ausente.json")

@@ -16,20 +16,39 @@ _TEXTO_ENTREGA = {
 }
 
 
-def pasta_da_nuvem(candidatos: list[Path] | None = None) -> Path | None:
-    """Pasta do OneDrive ou do Google Drive deste computador, onde ficam os relatórios para link."""
-    if candidatos is None:
-        candidatos = [Path(os.environ[v]) for v in ("OneDriveCommercial", "OneDrive") if os.environ.get(v)]
-        candidatos += [Path(f"{letra}:/{nome}") for letra in "GHIJ" for nome in ("My Drive", "Meu Drive")]
-        casa = Path.home()
-        candidatos += [casa / "My Drive", casa / "Meu Drive", casa / "Google Drive" / "My Drive", casa / "Google Drive"]
-    for candidato in candidatos:
+def _candidatos_de_nuvem() -> list[Path]:
+    candidatos = [Path(os.environ[v]) for v in ("OneDriveCommercial", "OneDrive") if os.environ.get(v)]
+    if os.name == "nt":
+        # O Google Drive usa a primeira letra livre (G: é a mais comum).
+        letras = "GHIJKLMNOPQRSTUVWXYZDEF"
+        candidatos += [Path(f"{letra}:/{nome}") for letra in letras for nome in ("My Drive", "Meu Drive")]
+    casa = Path.home()
+    candidatos += [casa / "My Drive", casa / "Meu Drive", casa / "Google Drive" / "My Drive", casa / "Google Drive"]
+    return candidatos
+
+
+def pastas_da_nuvem(candidatos: list[Path] | None = None) -> list[Path]:
+    """Pastas do OneDrive e do Google Drive deste computador onde os relatórios para link ficariam."""
+    achadas: list[Path] = []
+    for candidato in _candidatos_de_nuvem() if candidatos is None else candidatos:
         try:
             if candidato.is_dir():
-                return candidato / "Armanilux" / "Relatorios"
+                destino = candidato / "Armanilux" / "Relatorios"
+                if destino not in achadas:
+                    achadas.append(destino)
         except OSError:
             continue
-    return None
+    return achadas
+
+
+def pasta_da_nuvem() -> Path | None:
+    achadas = pastas_da_nuvem()
+    return achadas[0] if achadas else None
+
+
+def _pasta_digitada_serve(pasta: Path) -> bool:
+    """A pasta escolhida existe, ou é `<pasta da nuvem>/Armanilux/Relatorios` ainda por criar."""
+    return pasta.is_dir() or pasta.parent.parent.is_dir() and pasta.parent.parent != pasta.parent.parent.parent
 
 
 def texto_leia_me(config: dict) -> str:
@@ -101,7 +120,8 @@ def _sim(valor: str) -> bool:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Grava as preferências da Armanilux e cria as pastas.")
-    parser.add_argument("--pasta-raiz", required=True)
+    parser.add_argument("--pasta-raiz")
+    parser.add_argument("--listar-nuvens", action="store_true", help="Mostra as pastas do OneDrive e do Google Drive achadas")
     parser.add_argument("--nome", default="")
     parser.add_argument("--funcao", default="")
     parser.add_argument("--pdf", default="nao", help="Antigo: sim é o mesmo que --entrega pdf")
@@ -110,10 +130,25 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--modelo", default="{numero} - {cliente}")
     parser.add_argument("--baixar-modelo", default="nao")
     args = parser.parse_args(argv)
+    if args.listar_nuvens:
+        achadas = pastas_da_nuvem()
+        for pasta in achadas:
+            print(f"NUVEM: {pasta}")
+        if not achadas:
+            print("Nenhuma pasta do OneDrive ou do Google Drive neste computador.")
+        return 0
+    if not args.pasta_raiz:
+        parser.error("informe --pasta-raiz")
     formato = args.entrega or ("pdf" if _sim(args.pdf) else "word")
     pasta_link = ""
     if formato == "link":
-        achada = pasta_da_nuvem() if args.pasta_link.strip().lower() == "auto" else Path(args.pasta_link)
+        if args.pasta_link.strip().lower() == "auto":
+            achada = pasta_da_nuvem()
+        else:
+            achada = Path(args.pasta_link)
+            if not _pasta_digitada_serve(achada):
+                print(f"Não achei a pasta {achada}.")
+                achada = None
         if achada is None:
             print(
                 "Não achei a pasta do OneDrive nem do Google Drive neste computador. "
