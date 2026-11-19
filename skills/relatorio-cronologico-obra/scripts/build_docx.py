@@ -7,8 +7,7 @@ import subprocess
 from datetime import date
 from pathlib import Path
 
-from analyze import ORDEM
-from business_days import cor_leitura
+from analyze import ORDEM, TITULOS, _intervalos_marcos
 from common import DADO, EXT_IMAGEM, EXT_VIDEO, formatar_data, tipo_midia
 from docx import Document
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
@@ -24,11 +23,6 @@ GRAFITE = RGBColor(0x22, 0x22, 0x22)
 CINZA = RGBColor(0x5C, 0x6B, 0x73)
 BRANCO = RGBColor(0xFF, 0xFF, 0xFF)
 LARGURA = 17.4
-_PREENCHIMENTO = {
-    "Fluxo contínuo": "CDE9D6",
-    "Atenção": "FFE8A3",
-    "Intervalo longo": "F6C9C6",
-}
 
 
 def _rgb(hexadecimal: str) -> RGBColor:
@@ -301,6 +295,10 @@ def _campo_etapa(analise: dict, codigo: str, chave: str, padrao: str) -> str:
     return texto or padrao
 
 
+def _titulo_marco(codigo: str) -> str:
+    return TITULOS.get(codigo, codigo).replace("“", "").replace("”", "")
+
+
 def _tabela_simples(documento: Document, cabecalhos: list[str], linhas: list[list[str]], larguras: list[float], cores: list[str | None] | None = None) -> None:
     tabela = documento.add_table(rows=1 + len(linhas), cols=len(cabecalhos))
     tabela.style = "Table Grid"
@@ -552,40 +550,44 @@ def montar_docx(analise: dict, destino: Path, grafico_barras: Path | None, grafi
     documento.add_heading("4. Dias úteis entre marcos", level=1)
     _paragrafo(
         documento,
-        "A tabela destaca, em cor, o intervalo entre datas em que houve registro classificado. "
-        "Verde é fluxo contínuo, amarelo é atenção, vermelho é intervalo longo.",
+        "Marco é o primeiro registro de cada etapa no grupo. Os intervalos abaixo vão de um marco ao seguinte, "
+        "em dias úteis (excluídos sábados, domingos e feriados de São Paulo). "
+        "Intervalo de calendário não é atraso atribuído a ninguém.",
     )
-    intervalos = analise.get("intervalos") or []
-    if intervalos:
+    if "intervalos_marcos" in analise:
+        marcos, duracao = analise["intervalos_marcos"], analise.get("duracao_marcos") or {}
+    else:  # analise.json antigo, remontado sem --recalcular
+        marcos, duracao = _intervalos_marcos(analise.get("eventos") or [])
+    if marcos:
         linhas = [
             [
-                formatar_data(item["inicio"]),
-                formatar_data(item["fim"]),
-                item["rotulo"],
-                str(item["dias_uteis"]),
-                item["leitura"],
+                f"{_titulo_marco(item['de'])} ({formatar_data(item['inicio'])}) → "
+                f"{_titulo_marco(item['para'])} ({formatar_data(item['fim'])})",
+                f"{item['dias_uteis']} d.u.",
             ]
-            for item in intervalos
+            for item in marcos
         ]
-        cores = [_PREENCHIMENTO.get(item["leitura"], "F4F6F8") for item in intervalos]
-        _tabela_simples(
-            documento,
-            ["De", "Até", "Marcos", "Dias úteis", "Leitura"],
-            linhas,
-            [2.6, 2.6, 5.4, 2.6, 4.2],
-            cores,
-        )
+        cores: list[str | None] = [None] * len(linhas)
+        if duracao:
+            linhas.append(
+                [
+                    f"Duração total registrada ({formatar_data(duracao['inicio'])} → {formatar_data(duracao['fim'])})",
+                    f"{duracao['dias_uteis']} d.u.",
+                ]
+            )
+            cores.append("F3EBDD")
+        _tabela_simples(documento, ["Intervalo entre marcos", "Dias úteis"], linhas, [13.6, 2.6], cores)
     else:
         _paragrafo(documento, "Intervalo entre marcos: dado não identificado.")
     _inserir_figura(
         documento,
         grafico_barras,
-        "Figura 1. Dias úteis entre registros. A cor é a leitura do intervalo, não um veredito de culpa.",
+        "Figura 1. Dias úteis entre marcos. Intervalo de calendário, não veredito de culpa.",
     )
     _inserir_figura(
         documento,
         grafico_gantt,
-        "Figura 2. Linha do tempo das etapas. A borda vermelha marca etapa precedida por intervalo longo.",
+        "Figura 2. Linha do tempo das etapas, do primeiro ao último registro de cada uma.",
     )
 
     documento.add_heading("5. Diagnóstico", level=1)

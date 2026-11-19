@@ -117,7 +117,7 @@ def _preservar(novo: dict, antigo: dict | None) -> dict:
 
 def _gravar(pasta_obra: Path, analise: dict, gerar_pdf: bool = False) -> Path:
     figuras = pasta_obra / "05-relatorios" / "figuras"
-    barras = grafico_barras(analise.get("intervalos") or [], figuras / "dias-uteis.png")
+    barras = grafico_barras(analise.get("intervalos_marcos") or [], figuras / "dias-uteis.png")
     gantt = grafico_gantt(analise.get("eventos") or [], analise.get("intervalos") or [], figuras / "gantt.png")
     destino = proxima_versao(pasta_obra / "05-relatorios", analise["obra"].get("numero") or "sem-numero")
     montar_docx(analise, destino, barras, gantt)

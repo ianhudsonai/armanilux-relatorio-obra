@@ -322,6 +322,36 @@ def _intervalos(eventos: list[dict]) -> list[dict]:
     return saida
 
 
+def _intervalos_marcos(eventos: list[dict]) -> tuple[list[dict], dict]:
+    """Marco = primeiro registro de cada etapa. Intervalos entre marcos em ordem de data,
+    como na tabela do relatório aprovado, e a duração do primeiro ao último registro."""
+    primeiros: dict[str, str] = {}
+    for evento in eventos:
+        if evento["data"] < primeiros.get(evento["etapa"], "9999"):
+            primeiros[evento["etapa"]] = evento["data"]
+    marcos = sorted(primeiros.items(), key=lambda par: (par[1], _posicao(par[0])))
+    saida = []
+    for (de, inicio), (para, fim) in zip(marcos, marcos[1:]):
+        saida.append(
+            {
+                "de": de,
+                "para": para,
+                "inicio": inicio,
+                "fim": fim,
+                "dias_uteis": dias_uteis_entre(date.fromisoformat(inicio), date.fromisoformat(fim)),
+            }
+        )
+    datas = sorted(evento["data"] for evento in eventos)
+    duracao = {}
+    if datas:
+        duracao = {
+            "inicio": datas[0],
+            "fim": datas[-1],
+            "dias_uteis": dias_uteis_entre(date.fromisoformat(datas[0]), date.fromisoformat(datas[-1])),
+        }
+    return saida, duracao
+
+
 def _desde_etapa_anterior(eventos: list[dict]) -> dict[str, dict]:
     resultado: dict[str, dict] = {}
     anterior: tuple[str, date] | None = None
@@ -924,6 +954,7 @@ def completar_relato(base: dict) -> dict:
     relato["eventos"] = eventos
     relato["convencao_dias_uteis"] = CONVENCAO_DIAS_UTEIS
     relato["intervalos"] = intervalos
+    relato["intervalos_marcos"], relato["duracao_marcos"] = _intervalos_marcos(eventos)
     relato["kpis"] = {
         "dias_uteis_periodo": dias_periodo,
         "revisoes": sum(1 for item in eventos if item["etapa"] == "E"),
