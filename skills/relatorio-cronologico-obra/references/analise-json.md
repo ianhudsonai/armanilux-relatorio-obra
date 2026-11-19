@@ -2,19 +2,23 @@
 
 O arquivo fica em `04-transcricoes/analise.json`. O Word é montado a partir dele.
 
-Campos que o script recalcula com `--recalcular`: `intervalos`, `intervalos_marcos`, `duracao_marcos`, `lacunas`, `kpis`, `etapas`, `gargalos`, `responsabilidades`, `recomendacoes`, `conclusao`, `produtividade`.
+Campos que o script recalcula com `--recalcular`: `intervalos`, `intervalos_marcos`, `duracao_marcos`, `confronto_contrato`, `lacunas`, `kpis`, `etapas`, `marcos` e, em cada evento, `destaque_auto` (cor sugerida).
 
-`lacunas_automaticas` vem da leitura do zip (arquivos fora da exportação, documentos sem texto, áudios sem transcrição). Não edite.
+Campos que vêm da leitura do zip, para o agente consultar. Não edite: `lacunas_automaticas`, `arquivos_fora_da_exportacao` (nomes dos arquivos que o WhatsApp não exportou), `documentos_texto`, `transcricoes`.
 
-Campos que a revisão humana preenche e o script preserva:
+Campos que a revisão preenche e o script preserva:
 
-- `observacoes_visuais`: lista de `{ "arquivo", "observacao" }`. Só imagem com observação entra no Registro fotográfico do Word
-- `lacunas_adicionais`: lista de frases com o que faltou de contexto e não está em `lacunas_automaticas`
-- `comentarios`: por letra de etapa, textos que substituem Intervalos relevantes, Situação, Ponto crítico, Gargalo, Avaliação e Conclusão da etapa
+- `eventos_adicionais`: fatos que a leitura automática não achou. Cada item tem `data` (AAAA-MM-DD), `hora`, `etapa` (A a J ou L), `autor`, `ocorrencia` (uma frase, até 25 palavras), na etapa J `impacto`, e opcionalmente `destaque` (`reprocesso`, `ocioso` ou `nenhum`). Repetidos são ignorados
+- `ajustes_eventos`: correções aplicadas também numa nova leitura do zip. Cada item escolhe o evento por `data`, `hora`, `autor`, `etapa_original` e traz `etapa`, `ocorrencia`, `impacto`, `destaque`, ou `"remover": true`
+- `prazos_contratuais`: prazos declarados no grupo ou em documento. Cada item tem `descricao`, `limite_du`, `fonte` e o período: `de` e `para` (etapas) ou `inicio` e `fim` (datas)
+- `comentarios`: por letra de etapa, `introducao` (antes da tabela) e `leitura` (Leitura da Etapa)
+- `diagnostico_prompt`: listas de tópicos em `reprocessos`, `tempos_ociosos`, `atrasos_internos`, `dependencias_externas`, `interferencias`
+- `pontos_criticos`: lista de frases
+- `impactos_prazo`: texto único
+- `conclusao_personalizada`: texto único (diagnóstico da eficiência do fluxo)
 - `recomendacoes_personalizadas`: lista de frases
-- `conclusao_personalizada`: texto único
-- `ajustes_eventos`: lista opcional aplicada numa nova leitura do zip. Cada item pode trazer `data`, `hora`, `autor`, `etapa_original`, `etapa`, `ocorrencia`, `impacto`, ou `"remover": true` para tirar o evento
-- `eventos_adicionais`: fatos que a leitura automática não achou. Cada item tem `data` (AAAA-MM-DD), `hora`, `etapa` (A a J ou L), `autor`, `ocorrencia` e, na etapa J, `impacto`. Repetidos são ignorados
+- `lacunas_adicionais`: lista de frases curtas com o que faltou e não está em `lacunas_automaticas`
+- `obra_ajustes`, `pendencias_revisadas`, `revisado`
 
 `eventos` é a lista cronológica. `etapa` é uma letra de A, B, C, D, E, F, G, H, I, J ou L. `pendencias` usa `status` igual a `Pendente` só para item que o grupo deixou aberto.
 

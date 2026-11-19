@@ -1,69 +1,45 @@
 # Formato do relatório
 
-Português do Brasil, formal, técnico, neutro, sem emoji. O script `build_docx.py` já monta esta ordem. Ao corrigir texto, manter a ordem e os rótulos.
+Português do Brasil, formal, técnico, neutro, sem emoji. Modelo: o relatório aprovado da obra 8665.1 V3 — curto, uma tabela de fatos por etapa, cores de destaque, análise de prazos, diagnóstico em tópicos e conclusão. O script `build_docx.py` já monta esta ordem. O relatório não é o lugar do contexto inteiro: o agente lê tudo para escrever pouco e certo.
 
-## Cabeçalho
+## Capa
 
-Obra, cliente, construtora, engenheiro, arquitetura, responsável Armanilux, endereço, período, fonte, prazo contratual. Campo vazio vira `dado não identificado`.
+Título, obra e cliente, fornecedor, construtora, arquitetura, endereço, período, base documental, data de emissão e quem elaborou. Campo vazio vira `dado não identificado`.
 
-## 1. Objetivo e critérios
+## Nota Metodológica
 
-Nomear as três categorias: Atividade realizada, Pendência identificada, Dado não identificado. Reproduzir a regra de dias úteis e a leitura das cores (até 2 fluxo contínuo, 3 a 5 atenção, 6 ou mais intervalo longo).
+Um parágrafo sobre a fonte (grupo, documentos, transcrições locais) e a regra do `dado não identificado`. Depois, em linhas com rótulo:
 
-## 2. Resumo executivo
+- Limites do material: as lacunas, em frases curtas (arquivos que não vieram na exportação, documentos sem texto, áudios sem transcrição, o que a revisão anotou).
+- Dias úteis: a convenção de contagem.
+- Prazos contratuais de referência: só quando o grupo ou um documento informa, com a fonte.
+- Convenção de cores: salmão = reprocesso ou retrabalho; amarelo = tempo ocioso, espera ou pendência; vermelho na Análise de Prazos = passou do prazo contratual informado ou, sem prazo informado, intervalo entre marcos acima de 20 dias úteis.
 
-Quatro cartões, número grande e legenda:
+## Quadro-Resumo da Obra
 
-1. Dias úteis no período
-2. Revisões de projeto
-3. Interferências registradas
-4. Maior intervalo sem registro (dias úteis)
+Tabela Indicador | Valor: início do grupo, primeiros marcos (chapas, medição, aprovação, entrega, instalação), último registro, duração em dias corridos e úteis, conclusão, prazo contratual.
 
-O quarto cartão não se chama atraso.
+## Etapas A a L
 
-## 3. Etapas A a L
+Cada etapa:
 
-Tabela Data | Ocorrência. Na etapa J, a tabela é Data | Interferência | Impacto.
+1. Uma ou duas linhas de introdução, só quando a revisão escreveu (`comentarios.<etapa>.introducao`).
+2. Tabela Data | Evento / Ocorrência. Data sem hora. Uma frase objetiva por linha, sem nome de arquivo nem trecho de transcrição. Linha salmão = reprocesso; amarela = ocioso. Na etapa J, a tabela é Data | Interferência | Impacto.
+3. "Leitura da Etapa X:" em até três frases (`comentarios.<etapa>.leitura`); sem leitura revisada, o período da etapa em dias úteis.
 
-Em seguida, rótulos em negrito:
+Na etapa L, também a tabela Marco | Situação e, se houver, Pendência em aberto | Status. Não existe etapa K.
 
-- Intervalos relevantes
-- Situação
-- Ponto crítico
-- Gargalo
-- Avaliação
-- Conclusão da etapa
+## Análise de Prazos — Intervalos em Dias Úteis
 
-Na etapa J, ainda:
+Marco é o primeiro registro de cada etapa. Tabela Intervalo entre marcos | Dias úteis, em ordem de data, com a última linha "DURAÇÃO TOTAL REGISTRADA" em amarelo. Intervalo acima de 20 dias úteis: linha amarela e número em vermelho, negrito. Quando há prazo contratual informado, tabela Prazo contratual de referência | Contrato | Realizado, com o realizado em vermelho quando passou do prazo. Figura 1: barras deitadas, uma por intervalo entre marcos. Figura 2: linha do tempo (Gantt) das etapas. As figuras são desenhadas na largura da página (16,2 cm) para a letra não encolher.
 
-- J.1 pendências por item, com status Pendente quando o item segue aberto
-- J.2 impacto na produtividade
+## Análise Técnica — Diagnóstico
 
-Na etapa L, além da tabela Data | Ocorrência, incluir a tabela Marco | Situação (Concluído, Pendente ou dado não identificado). O script não cria uma etapa K no meio.
+Cinco blocos numerados, cada um com tópicos curtos e datados: 1. Reprocessos identificados; 2. Tempos ociosos; 3. Atrasos operacionais internos; 4. Dependências externas; 5. Interferências de obra (Etapa J): impacto no cronograma e na produtividade. Sem revisão, cada bloco diz `dado não identificado (preencher na revisão)`.
 
-Evidência de arquivo na ocorrência: `Mídia: nome-do-arquivo` para foto, áudio e vídeo; `Documento: nome` para PDF e Word.
+## Conclusão Estratégica
 
-## 4. Dias úteis entre marcos
-
-Marco é o primeiro registro de cada etapa, como na tabela do relatório aprovado (8665.1 V3). Tabela Intervalo entre marcos | Dias úteis: uma linha por par de marcos em ordem de data, com o nome da etapa e a data entre parênteses, e a última linha "Duração total registrada". Sem cor de semáforo: intervalo de calendário não é veredito. Figura 1: barras deitadas, uma por intervalo entre marcos. Figura 2: linha do tempo (Gantt) das etapas, do primeiro ao último registro. As figuras são desenhadas na largura da página (16,2 cm) para a letra não encolher.
-
-Os intervalos entre todas as datas com registro continuam no `analise.json` (`intervalos`) e servem aos textos das etapas e dos gargalos.
-
-## 5. Diagnóstico
-
-Gargalos numerados e tabela Natureza | Diagnóstico.
-
-## 6. Recomendações
-
-Lista numerada.
-
-## 7. Conclusão
-
-Diagnóstico do fluxo, ponto crítico, impacto e uma recomendação final. Em seguida:
-
-- Registro fotográfico: só as fotos e quadros de vídeo que a revisão descreveu, em ordem de data, com legenda "data · Etapa X — o que a imagem mostra (arquivo)". Sem tabela de nomes de arquivo.
-- Lacunas de contexto: o que não pôde ser lido ou confirmado (arquivos fora da exportação, documentos sem texto, áudios sem transcrição e o que a revisão anotou).
-- Nota de rastreabilidade.
+Diagnóstico da eficiência do fluxo operacional; Principais pontos críticos de atraso (numerados); Impactos no prazo final; Recomendações práticas (numeradas). Termina com "— Fim do relatório —".
 
 ## Postura
 

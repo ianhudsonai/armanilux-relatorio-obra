@@ -47,6 +47,9 @@ CHAVES_PRESERVAR = (
     "responsabilidades_personalizadas",
     "produtividade_personalizada",
     "lacunas_adicionais",
+    "prazos_contratuais",
+    "pontos_criticos",
+    "impactos_prazo",
 )
 
 
