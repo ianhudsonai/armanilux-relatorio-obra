@@ -73,6 +73,21 @@ class EventosATeste(unittest.TestCase):
         self.assertEqual(len([e for e in de_novo["eventos"] if e["etapa"] == "C"]), antes + 1)
         self.assertEqual(refeita["etapas"]["C"]["situacao"], "Atividade realizada")
 
+    def test_evento_adicionado_e_depois_editado_nao_aparece_duas_vezes(self):
+        analise = self._analise()
+        antes = len(analise["eventos"])
+        analise["eventos_adicionais"] = [{"data": "2026-01-10", "hora": "15:00", "etapa": "C", "autor": "Ana", "ocorrencia": "Medição realizada."}]
+        refeita = completar_relato(analise)
+        # A revisão corrige o texto do fato que ela mesma acrescentou e remonta.
+        refeita["eventos_adicionais"][0]["ocorrencia"] = "Medição in loco realizada na cozinha."
+        de_novo = completar_relato(refeita)
+        textos = [e["ocorrencia"] for e in de_novo["eventos"] if e["data"] == "2026-01-10" and e["hora"] == "15:00"]
+        self.assertEqual(textos, ["Medição in loco realizada na cozinha."])
+        self.assertEqual(len(de_novo["eventos"]), antes + 1)
+        # Tirar o fato da lista também tira do relatório.
+        de_novo["eventos_adicionais"] = []
+        self.assertEqual(len(completar_relato(de_novo)["eventos"]), antes)
+
     def test_remover_e_trocar_etapa(self):
         eventos = [
             {"data": "2026-01-10", "hora": "10:00", "autor": "A", "etapa": "J", "ocorrencia": "x"},
@@ -136,7 +151,7 @@ class RemontagemTeste(unittest.TestCase):
                 de_novo["revisado"] = True
                 caminho.write_text(json.dumps(de_novo, ensure_ascii=False), encoding="utf-8")
                 self.assertEqual(executar(["--rebuild-only", "--recalcular", "--obra-dir", str(obra), *argv]), 0)
-                final = sorted((obra / "05-relatorios").glob("*.docx"), key=lambda x: int(x.stem.rsplit("-v", 1)[1]))[-1]
+                [final] = [p for p in (obra / "05-relatorios").glob("*.docx") if "rascunho" not in p.name]
                 self.assertNotIn("RASCUNHO NÃO REVISADO", _texto(final))
             finally:
                 for chave, valor in antigos.items():

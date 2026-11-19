@@ -44,7 +44,7 @@ Dentro dela:
 | `02-projetos-pdf` | PDF e Word de projeto |
 | `03-midias` | fotos, áudios, vídeos e alguns quadros do vídeo |
 | `04-transcricoes` | o que foi dito nos áudios, e a análise |
-| `05-relatorios` | o Word, com versão no nome (`v1`, `v2`, …) |
+| `05-relatorios` | o Word, com versão no nome (`v1`, `v2`, …); antes da revisão, `v1-rascunho` |
 
 Abra o arquivo `Relatorio-Cronologico-Obra-...-v1.docx` no Word. O PDF só é criado se o LibreOffice estiver instalado. O arquivo para mandar no grupo é o Word.
 

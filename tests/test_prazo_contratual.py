@@ -54,6 +54,25 @@ class ConfrontoTeste(unittest.TestCase):
         self.assertIn("Projeto executivo até 6 d.u. da medição", nota)
         self.assertIn("Paulo Ribeiro, 02/01/2026", nota)
 
+    def test_prazo_em_dias_corridos_conta_dias_corridos(self):
+        from docx import Document
+
+        import build_docx
+
+        prazo = {"descricao": "Entrega em 7 dias", "inicio": "2026-01-12", "fim": "2026-01-20", "limite_du": 7, "unidade": "dias_corridos", "fonte": "Orçamento"}
+        relato = completar_relato({"obra": {"numero": "1001"}, "eventos": EVENTOS, "prazos_contratuais": [prazo]})
+        [item] = relato["confronto_contrato"]
+        # 12/1 a 20/1 = 8 dias corridos (em dias úteis seriam 6, e o prazo pareceria cumprido).
+        self.assertEqual((item["realizado"], item["excedeu"], item["unidade"]), (8, True, "dias_corridos"))
+        with TemporaryDirectory() as pasta:
+            documento = Document(str(build_docx.montar_docx(relato, Path(pasta) / "r.docx", None, None)))
+        tabela = next(t for t in documento.tables if t.rows[0].cells[0].text == "Prazo contratual de referência")
+        self.assertEqual([c.text for c in tabela.rows[1].cells], ["Entrega em 7 dias", "7 dias corridos", "8 dias corridos"])
+
+    def test_sem_unidade_continua_em_dias_uteis(self):
+        relato = completar_relato({"obra": {}, "eventos": EVENTOS, "prazos_contratuais": PRAZOS[2:3]})
+        self.assertEqual(relato["confronto_contrato"][0]["unidade"], "dias_uteis")
+
     def test_prazo_sem_numero_nao_vira_zero(self):
         relato = completar_relato(
             {"obra": {}, "eventos": EVENTOS, "prazos_contratuais": [{"descricao": "Entrega conforme cronograma", "de": "G", "para": "H", "limite_du": "a combinar"}]}

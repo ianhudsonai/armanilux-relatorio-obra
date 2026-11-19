@@ -395,9 +395,12 @@ def confronto_contrato(eventos: list[dict], prazos: list[dict]) -> list[dict]:
     for prazo in prazos or []:
         inicio = prazo.get("inicio") or primeiros.get(prazo.get("de", ""))
         fim = prazo.get("fim") or primeiros.get(prazo.get("para", ""))
+        # Contrato que diz só "dias" conta dias corridos; a revisão marca "unidade": "dias_corridos".
+        unidade = "dias_corridos" if prazo.get("unidade") == "dias_corridos" else "dias_uteis"
         realizado = None
         if inicio and fim and fim >= inicio:
-            realizado = dias_uteis_entre(date.fromisoformat(inicio), date.fromisoformat(fim))
+            de, ate = date.fromisoformat(inicio), date.fromisoformat(fim)
+            realizado = (ate - de).days if unidade == "dias_corridos" else dias_uteis_entre(de, ate)
         try:
             limite = int(float(str(prazo.get("limite_du")).replace(",", "."))) or None
         except ValueError:
@@ -406,6 +409,7 @@ def confronto_contrato(eventos: list[dict], prazos: list[dict]) -> list[dict]:
             {
                 "descricao": prazo.get("descricao", ""),
                 "limite_du": limite,
+                "unidade": unidade,
                 "inicio": inicio or "",
                 "fim": fim or "",
                 "realizado": realizado,
@@ -1012,8 +1016,15 @@ def _nota_rastreabilidade(mensagens: list[Mensagem], eventos: list[dict], anexo:
 
 
 def _juntar_adicionais(base: dict) -> list[dict]:
-    """Eventos lidos do grupo mais os que o agente acrescentou à mão, sem repetir."""
-    eventos = list(base.get("eventos") or [])
+    """Eventos lidos do grupo mais os que o agente acrescentou à mão, sem repetir.
+    Os acrescentados levam "origem": "revisao" e são refeitos a cada remontagem a partir de
+    eventos_adicionais: editar ou tirar um item da lista muda o relatório sem deixar a cópia antiga."""
+    def _chave(item: dict) -> tuple:
+        return (item.get("data"), item.get("hora") or "00:00", item.get("etapa"), item.get("ocorrencia", ""))
+
+    # analise.json de antes desta marca: o fato igual a um acrescentado também é da revisão.
+    da_revisao = {_chave(extra) for extra in base.get("eventos_adicionais") or []}
+    eventos = [e for e in base.get("eventos") or [] if e.get("origem") != "revisao" and _chave(e) not in da_revisao]
     vistos = {(e["data"], e.get("hora", ""), e["etapa"], e.get("ocorrencia", "")) for e in eventos}
     for extra in base.get("eventos_adicionais") or []:
         if extra.get("etapa") not in ORDEM or not extra.get("data"):
@@ -1027,6 +1038,7 @@ def _juntar_adicionais(base: dict) -> list[dict]:
             "impacto": extra.get("impacto", ""),
             "midias": list(extra.get("midias") or []),
             "documentos": list(extra.get("documentos") or []),
+            "origem": "revisao",
         }
         if extra.get("destaque"):
             item["destaque"] = extra["destaque"]

@@ -194,7 +194,7 @@ class FluxoTeste(Ambiente):
         self.assertEqual(executar(["--listar", *base]), 0)
         self.assertEqual(executar(["--indice", "1", *base]), 0)
         obra = self.base / "Armanilux" / "Relatorios-de-Obra" / "1001 - Família Almeida"
-        self.assertTrue((obra / "05-relatorios" / "Relatorio-Cronologico-Obra-1001-v1.docx").exists())
+        self.assertTrue((obra / "05-relatorios" / "Relatorio-Cronologico-Obra-1001-v1-rascunho.docx").exists())
         dados = registro.carregar()
         self.assertEqual(list(dados["exportacoes"].values())[0]["status"], registro.GERADO)
 
@@ -204,7 +204,7 @@ class FluxoTeste(Ambiente):
         self.assertEqual(len(dados["fila"]), 1)
         self.assertTrue(dados["exportacoes"][dados["fila"][0]]["atualiza_relatorio"])
         self.assertEqual(executar(["--todas", *base]), 0)
-        self.assertTrue((obra / "05-relatorios" / "Relatorio-Cronologico-Obra-1001-v2.docx").exists())
+        self.assertTrue((obra / "05-relatorios" / "Relatorio-Cronologico-Obra-1001-v1-rascunho.docx").exists())
 
         self.assertEqual(executar(["--concluir", "--todas"]), 0)
         estados = sorted(i["status"] for i in registro.carregar()["exportacoes"].values())
@@ -220,8 +220,8 @@ class FluxoTeste(Ambiente):
         base = ["--downloads", str(downloads), "--skip-transcribe", "--skip-keyframes"]
         self.assertEqual(executar(["--todas", *base]), 0)
         pasta = self.base / "Armanilux" / "Relatorios-de-Obra"
-        self.assertTrue((pasta / "1001 - Família Almeida" / "05-relatorios" / "Relatorio-Cronologico-Obra-1001-v1.docx").exists())
-        self.assertTrue((pasta / "2002 - Cliente Dois" / "05-relatorios" / "Relatorio-Cronologico-Obra-2002-v1.docx").exists())
+        self.assertTrue((pasta / "1001 - Família Almeida" / "05-relatorios" / "Relatorio-Cronologico-Obra-1001-v1-rascunho.docx").exists())
+        self.assertTrue((pasta / "2002 - Cliente Dois" / "05-relatorios" / "Relatorio-Cronologico-Obra-2002-v1-rascunho.docx").exists())
 
     def test_identidade_vem_do_nome_quando_o_grupo_nao_diz(self):
         self._preparar()
