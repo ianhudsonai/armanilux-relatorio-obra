@@ -3,7 +3,8 @@
 # Pode rodar de novo: se Python, FFmpeg e as bibliotecas já existem, só confere.
 
 param(
-    [switch]$BaixarModelo
+    [switch]$BaixarModelo,
+    [switch]$Pdf
 )
 
 $OutputEncoding = [System.Text.Encoding]::UTF8
@@ -172,6 +173,35 @@ if ($BaixarModelo) {
     & $venvPython -c "from faster_whisper import WhisperModel; WhisperModel('small', device='cpu', compute_type='int8')"
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Não consegui baixar isso. O relatório ainda pode ser feito. Os áudios ficam sem o texto do que foi falado até o download funcionar."
+    }
+}
+
+if ($Pdf) {
+    $temWord = $false
+    try {
+        $word = New-Object -ComObject Word.Application -ErrorAction Stop
+        $temWord = $true
+        # Se a pessoa estava com o Word aberto, o COM usa esse mesmo Word: não fechar.
+        if ($word.Documents.Count -eq 0) { $word.Quit(0) }
+    } catch {}
+    $soffice = @(
+        (Join-Path $env:ProgramFiles "LibreOffice\program\soffice.exe"),
+        (Join-Path ${env:ProgramFiles(x86)} "LibreOffice\program\soffice.exe")
+    ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+    if ($temWord) {
+        Escrever-Ok "PDF: vai ser feito pelo Microsoft Word deste computador."
+    } elseif ($soffice) {
+        Escrever-Ok "PDF: vai ser feito pelo LibreOffice."
+    } elseif (Comando-Existe "winget") {
+        Escrever-Titulo "Instalando o LibreOffice, gratuito, para transformar o relatório em PDF (cerca de 350 MB). Se o Windows abrir Sim ou Não, clique em Sim."
+        & winget install --id TheDocumentFoundation.LibreOffice -e --accept-package-agreements --accept-source-agreements
+        if ($LASTEXITCODE -eq 0 -or $LASTEXITCODE -eq -1978335189) {
+            Escrever-Ok "LibreOffice instalado. O relatório vai sair também em PDF."
+        } else {
+            Escrever-Aviso "O LibreOffice não foi instalado (código $LASTEXITCODE). O relatório sai em Word; o PDF fica para depois."
+        }
+    } else {
+        Escrever-Aviso "Sem o Word, o LibreOffice e o winget, o PDF não sai. O relatório sai em Word."
     }
 }
 

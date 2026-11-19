@@ -24,7 +24,8 @@ from analyze import (
     montar_analise,
 )
 from build_charts import grafico_barras, grafico_gantt
-from build_docx import montar_docx, proxima_versao, tentar_pdf
+from build_docx import montar_docx, proxima_versao
+from entrega import converter_pdf, copiar_para_link, formato_entrega
 from common import configurar_saida, escrever_json, ler_json
 from config_io import carregar, pasta_relatorios
 from extract_documents import extrair_pasta
@@ -191,7 +192,7 @@ def _avisar_prazos(analise: dict) -> None:
             print(f"Aviso de prazo: \"{item['descricao']}\": sem fonte_data.")
 
 
-def _gravar(pasta_obra: Path, analise: dict, gerar_pdf: bool = False, mostrar: bool = False) -> Path:
+def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_pdf: bool = False, mostrar: bool = False) -> Path:
     _conferir(pasta_obra, analise)
     _avisar_prazos(analise)
     figuras = pasta_obra / "05-relatorios" / "figuras"
@@ -216,12 +217,21 @@ def _gravar(pasta_obra: Path, analise: dict, gerar_pdf: bool = False, mostrar: b
                 raise
             print(f"O arquivo {destino.name} está aberto (provavelmente no Word). Gravei outra cópia.")
             copia += 1
-    pdf = tentar_pdf(destino) if gerar_pdf else None
+    formato = formato_entrega(config)
+    quer_pdf = forcar_pdf or formato in ("pdf", "link")
+    pdf = None
+    if quer_pdf:
+        print("Fazendo o PDF (pode levar até 1 minuto)...", flush=True)
+        pdf = converter_pdf(destino)
     print(f"Relatório gravado em:\n{destino}")
     if pdf:
         print(f"PDF gravado em:\n{pdf}")
-    elif gerar_pdf:
-        print("O PDF não saiu. O arquivo para enviar é o Word. O PDF só aparece se o LibreOffice estiver instalado.")
+    elif quer_pdf:
+        print(
+            "O PDF não saiu. O arquivo para enviar é o Word. Se o PDF estiver aberto, feche e remonte. "
+            "Se o computador não tem o Microsoft Word nem o LibreOffice, rode de novo $preparar-projeto-armanilux "
+            "e escolha PDF: ele instala o LibreOffice."
+        )
     else:
         print("O arquivo para enviar é o Word.")
     pendencias = analise.get("pendencias") or []
@@ -229,12 +239,38 @@ def _gravar(pasta_obra: Path, analise: dict, gerar_pdf: bool = False, mostrar: b
         print(f"Pendências com status Pendente: {len(pendencias)}.")
     # Linha fixa para o agente achar o arquivo e entregá-lo na conversa.
     print(f"RELATORIO_WORD: {destino}")
+    if pdf:
+        print(f"RELATORIO_PDF: {pdf}")
+    if formato == "link":
+        _copiar_para_nuvem(pasta_obra, pdf or destino, (config or {}).get("pasta_link"), rascunho)
     if mostrar:
         try:
             mostrar_no_explorer(destino)
         except Exception as erro:  # abrir a pasta ajuda, mas não pode derrubar o relatório
             print(f"Aviso: não consegui abrir a pasta: {erro}")
     return destino
+
+
+def _copiar_para_nuvem(pasta_obra: Path, arquivo: Path, pasta_link: str | None, rascunho: bool) -> None:
+    if rascunho:
+        print("Rascunho não vai para a pasta da nuvem. Quando o relatório for revisado, a versão final vai.")
+        return
+    if not pasta_link:
+        print("Aviso: a entrega por link não tem pasta da nuvem. Rode de novo $preparar-projeto-armanilux.")
+        return
+    try:
+        copia = copiar_para_link(arquivo, Path(pasta_link), pasta_obra.name)
+    except OSError:
+        print(
+            f"Aviso: não consegui copiar o relatório para a pasta da nuvem ({pasta_link}). "
+            "Se o arquivo estiver aberto lá, feche e remonte. Se a pasta não existe mais, rode de novo $preparar-projeto-armanilux."
+        )
+        return
+    print(
+        "Cópia na pasta da nuvem. Para mandar por link: no OneDrive ou no Google Drive, "
+        "clique com o botão direito no arquivo, Compartilhar, e escolha só as pessoas que podem ver."
+    )
+    print(f"RELATORIO_LINK: {copia}")
 
 
 def _aplicar_preferencias(analise: dict, config: dict | None) -> None:
@@ -271,7 +307,7 @@ def _reconstruir(args, raiz: Path, config: dict | None) -> int:
         analise = completar_relato(analise)
         escrever_json(caminho, analise)
     _aplicar_preferencias(analise, config)
-    _gravar(pasta, analise, bool(args.pdf or (config or {}).get("gerar_pdf")), args.mostrar)
+    _gravar(pasta, analise, config, args.pdf, args.mostrar)
     return 0
 
 
@@ -302,7 +338,7 @@ def executar(argv: list[str] | None = None) -> int:
     parser.add_argument("--whisper-model", default="small")
     parser.add_argument("--rebuild-only", action="store_true")
     parser.add_argument("--recalcular", action="store_true", help="Recalcula dias úteis e textos a partir dos eventos já salvos")
-    parser.add_argument("--pdf", action="store_true", help="Mantido por compatibilidade; o PDF é tentado sempre que o LibreOffice existe")
+    parser.add_argument("--pdf", action="store_true", help="Faz também o PDF, mesmo que o preparo tenha escolhido só Word")
     parser.add_argument("--mostrar", action="store_true", help="Abre a pasta do relatório com o Word selecionado")
     parser.add_argument("--listar", action="store_true", help="Só mostra as conversas sem relatório")
     parser.add_argument("--indice", action="append", default=None, help="Número(s) da lista, como 1 ou 1,3")
@@ -338,7 +374,6 @@ def executar(argv: list[str] | None = None) -> int:
         raiz = garantir_raiz(None)
     print(f"Pasta de trabalho: {raiz}")
     modelo = (config or {}).get("modelo_pasta_obra") or "{numero} - {cliente}"
-    gerar_pdf = bool(args.pdf or (config or {}).get("gerar_pdf"))
     if args.rebuild_only:
         return _reconstruir(args, raiz, config)
 
@@ -484,7 +519,7 @@ def executar(argv: list[str] | None = None) -> int:
     except Exception as erro:
         print(f"Aviso: não consegui montar os candidatos por etapa: {erro}")
     relogio.marca("conversa analisada")
-    destino = _gravar(pasta_obra, analise, gerar_pdf, args.mostrar)
+    destino = _gravar(pasta_obra, analise, config, args.pdf, args.mostrar)
     relogio.marca("Word montado")
     try:
         _anotar_relatorio(origem, args.sha, destino, pasta_obra)

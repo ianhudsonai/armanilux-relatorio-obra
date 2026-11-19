@@ -42,6 +42,8 @@ def padroes() -> dict:
         "nome": "",
         "funcao": "",
         "gerar_pdf": False,
+        "formato_entrega": "",
+        "pasta_link": "",
         "modelo_pasta_obra": MODELO_PADRAO,
         "baixar_modelo_whisper": False,
     }

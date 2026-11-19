@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
 import os
 import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ / "skills" / "relatorio-cronologico-obra" / "scripts"))
@@ -41,6 +44,58 @@ class ConfigTeste(unittest.TestCase):
                 self.assertEqual(nome_pasta_obra({"modelo_pasta_obra": "{sala}"}, "1", "A"), "1 - A")
             finally:
                 os.environ.pop("ARMANILUX_CONFIG", None)
+
+    def test_entrega_por_link_acha_a_pasta_da_nuvem_e_sem_nuvem_vira_pdf(self):
+        from preparar import main as preparar_main
+
+        with TemporaryDirectory() as temporario:
+            base = Path(temporario)
+            onedrive = base / "OneDrive"
+            onedrive.mkdir()
+            os.environ["ARMANILUX_CONFIG"] = str(base / "config.json")
+            try:
+                with mock.patch.dict(os.environ, {"OneDrive": str(onedrive), "OneDriveCommercial": ""}):
+                    preparar_main(["--pasta-raiz", str(base / "A"), "--entrega", "link", "--pasta-link", "auto"])
+                lido = carregar()
+                self.assertEqual(lido["formato_entrega"], "link")
+                self.assertEqual(lido["pasta_link"], str(onedrive / "Armanilux" / "Relatorios"))
+                self.assertIn("Entrega: link", (base / "A" / "LEIA-ME.txt").read_text(encoding="utf-8"))
+
+                saida = io.StringIO()
+                with mock.patch("preparar.pasta_da_nuvem", return_value=None), contextlib.redirect_stdout(saida):
+                    preparar_main(["--pasta-raiz", str(base / "A"), "--entrega", "link", "--pasta-link", "auto"])
+                self.assertEqual(carregar()["formato_entrega"], "pdf")
+                self.assertIn("Não achei a pasta do OneDrive nem do Google Drive", saida.getvalue())
+
+                preparar_main(["--pasta-raiz", str(base / "A"), "--pdf", "sim"])
+                self.assertEqual(carregar()["formato_entrega"], "pdf")
+            finally:
+                os.environ.pop("ARMANILUX_CONFIG", None)
+
+    def test_onedrive_e_google_drive_aparecem_os_dois_para_a_pessoa_escolher(self):
+        from preparar import pastas_da_nuvem
+
+        with TemporaryDirectory() as temporario:
+            base = Path(temporario)
+            onedrive, google = base / "OneDrive", base / "Meu Drive"
+            onedrive.mkdir()
+            google.mkdir()
+            self.assertEqual(
+                pastas_da_nuvem([onedrive, base / "nao-existe", google]),
+                [onedrive / "Armanilux" / "Relatorios", google / "Armanilux" / "Relatorios"],
+            )
+
+    def test_pasta_link_digitada_que_nao_existe_nao_vira_pasta_fantasma(self):
+        from preparar import main as preparar_main
+
+        with TemporaryDirectory() as temporario:
+            base = Path(temporario)
+            with mock.patch.dict(os.environ, {"ARMANILUX_CONFIG": str(base / "config.json")}):
+                saida = io.StringIO()
+                with contextlib.redirect_stdout(saida):
+                    preparar_main(["--pasta-raiz", str(base / "A"), "--entrega", "link", "--pasta-link", str(base / "OneDriv" / "x" / "y")])
+                self.assertEqual(carregar()["formato_entrega"], "pdf")
+                self.assertIn("Não achei a pasta", saida.getvalue())
 
     def test_relatorio_sem_config_pede_a_preparacao(self):
         with TemporaryDirectory() as temporario:

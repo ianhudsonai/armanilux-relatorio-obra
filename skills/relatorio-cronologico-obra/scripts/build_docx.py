@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import re
-import shutil
-import subprocess
 from datetime import date
 from pathlib import Path
 
@@ -597,20 +595,3 @@ def montar_docx(analise: dict, destino: Path, grafico_barras: Path | None, grafi
 
     documento.save(destino)
     return destino
-
-
-def tentar_pdf(docx: Path) -> Path | None:
-    soffice = shutil.which("soffice") or shutil.which("libreoffice")
-    if not soffice:
-        return None
-    try:
-        subprocess.run(
-            [soffice, "--headless", "--convert-to", "pdf", "--outdir", str(docx.parent), str(docx)],
-            capture_output=True,
-            timeout=120,
-            check=False,
-        )
-    except (subprocess.TimeoutExpired, OSError):
-        return None
-    pdf = docx.with_suffix(".pdf")
-    return pdf if pdf.exists() else None
