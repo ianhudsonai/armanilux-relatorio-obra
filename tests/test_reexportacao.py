@@ -112,6 +112,16 @@ class ReexportacaoTeste(unittest.TestCase):
         self.assertIn("RASCUNHO NÃO REVISADO", texto)
         self.assertIn("Vistoria final combinada por telefone", texto)
 
+    def test_remontagens_depois_de_revisado_regravam_a_mesma_versao(self):
+        self._rodar(_zip(self.base / "export1" / "WhatsApp Chat - Obra 1001.zip", CHAT))
+        self._revisar()
+        self._remontar()
+        self._remontar()  # correção de digitação depois da aprovação
+
+        finais = sorted(p.name for p in self.relatorios.glob("*.docx"))
+        self.assertEqual(finais, ["Relatorio-Cronologico-Obra-1001-v1.docx"])
+        self.assertTrue((self.relatorios / "rascunhos" / "Relatorio-Cronologico-Obra-1001-v1-rascunho.docx").exists())
+
     def test_exportacao_sem_midia_menor_que_a_antiga_e_a_conversa_usada(self):
         self._rodar(_zip(self.base / "export1" / "WhatsApp Chat - Obra 1001.zip", CHAT))
 

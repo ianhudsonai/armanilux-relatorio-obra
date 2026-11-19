@@ -549,16 +549,18 @@ def _inserir_figura(documento: Document, caminho: Path | None, legenda: str) -> 
     _paragrafo(documento, legenda, tamanho=9, italico=True)
 
 
-def proxima_versao(pasta: Path, numero: str, rascunho: bool = False, copia: int = 1) -> Path:
+def proxima_versao(pasta: Path, numero: str, rascunho: bool = False, copia: int = 1, versao: int | None = None) -> Path:
     """Próximo vN revisado. O rascunho leva o número da versão que ele vai virar
     (`-vN-rascunho.docx`) e é regravado a cada remontagem, sem gastar versão.
+    `versao` já fixada (analise.json) é usada como está: a final vN é regravada.
     `copia` > 1 é para quando o rascunho está aberto no Word e não dá para regravar."""
     import re
 
     slug = re.sub(r"[^0-9A-Za-z.-]+", "", numero) or "sem-numero"
-    versao = 1
-    while (pasta / f"Relatorio-Cronologico-Obra-{slug}-v{versao}.docx").exists():
-        versao += 1
+    if versao is None:
+        versao = 1
+        while (pasta / f"Relatorio-Cronologico-Obra-{slug}-v{versao}.docx").exists():
+            versao += 1
     if not rascunho:
         return pasta / f"Relatorio-Cronologico-Obra-{slug}-v{versao}.docx"
     sufixo = "" if copia == 1 else f"-{copia}"
