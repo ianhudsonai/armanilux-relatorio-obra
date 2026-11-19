@@ -39,5 +39,36 @@ class OrganizarTeste(unittest.TestCase):
             self.assertIn("origem.txt", (obra / "01-conversas" / "origem.txt").name)
 
 
+class ReextrairTeste(unittest.TestCase):
+    def test_mesma_conversa_duas_vezes_nao_duplica(self):
+        with TemporaryDirectory() as temporario:
+            raiz = Path(temporario)
+            zip_path = raiz / "export.zip"
+            with zipfile.ZipFile(zip_path, "w") as arquivo:
+                arquivo.writestr("_chat.txt", b"conversa")
+                arquivo.writestr("projeto.pdf", b"%PDF-1.4 a")
+                arquivo.writestr("foto.jpg", b"jpg-bytes")
+            obra = garantir_obra(raiz / "obras", "1001", "Cliente")
+            primeiro = extrair_zip(zip_path, obra)
+            segundo = extrair_zip(zip_path, obra)
+            self.assertEqual(primeiro["ja_existiam"], 0)
+            self.assertEqual(segundo["ja_existiam"], 3)
+            self.assertEqual(sorted(p.name for p in (obra / "02-projetos-pdf").iterdir()), ["projeto.pdf"])
+            self.assertEqual(sorted(p.name for p in (obra / "03-midias").iterdir() if p.is_file()), ["foto.jpg"])
+            self.assertEqual(sorted(p.name for p in (obra / "01-conversas").glob("*.txt") if p.name != "origem.txt"), ["_chat.txt"])
+
+    def test_arquivo_com_mesmo_nome_e_conteudo_diferente_ganha_outro_nome(self):
+        with TemporaryDirectory() as temporario:
+            raiz = Path(temporario)
+            obra = garantir_obra(raiz / "obras", "1001", "Cliente")
+            for versao, conteudo in (("a", b"%PDF-1.4 versao antiga"), ("b", b"%PDF-1.4 versao nova mais longa")):
+                zip_path = raiz / f"{versao}.zip"
+                with zipfile.ZipFile(zip_path, "w") as arquivo:
+                    arquivo.writestr("projeto.pdf", conteudo)
+                extrair_zip(zip_path, obra)
+            nomes = sorted(p.name for p in (obra / "02-projetos-pdf").iterdir())
+            self.assertEqual(nomes, ["projeto-2.pdf", "projeto.pdf"])
+
+
 if __name__ == "__main__":
     unittest.main()
