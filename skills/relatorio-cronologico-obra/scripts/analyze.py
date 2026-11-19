@@ -460,28 +460,58 @@ def _cadeia(primeiros: dict[str, str], frente: str) -> list[dict]:
     return saida
 
 
-def intervalos_marcos_de(eventos: list[dict]) -> tuple[list[dict], dict]:
-    """Marco = primeiro fato realizado de cada etapa. Em obra multifrente, os intervalos são
-    medidos dentro de cada frente, como no relatório aprovado; sem frentes, na obra inteira.
-    Devolve também a duração do primeiro ao último registro."""
+def _primeiros_por_frente(eventos: list[dict]) -> list[tuple[str, dict[str, str]]]:
+    """(frente, primeiros marcos sem J) de cada frente; sem frentes, um grupo só, com nome ""."""
     frentes = frentes_da_obra(eventos)
     if not frentes:
-        saida = _cadeia(primeiros_marcos(eventos), "")
+        grupos = [("", primeiros_marcos(eventos))]
     else:
         nomes = frentes if GERAL in frentes else frentes + [GERAL]
-        cadeias = [_cadeia(primeiros_marcos(eventos, nome), nome) for nome in nomes]
-        saida = []
-        for cadeia in sorted((c for c in cadeias if c), key=lambda c: c[0]["inicio"]):
-            saida.extend(cadeia)
-    datas = sorted(evento["data"] for evento in eventos)
-    duracao = {}
-    if datas:
-        duracao = {
-            "inicio": datas[0],
-            "fim": datas[-1],
-            "dias_uteis": dias_uteis_entre(date.fromisoformat(datas[0]), date.fromisoformat(datas[-1])),
-        }
-    return saida, duracao
+        grupos = [(nome, primeiros_marcos(eventos, nome)) for nome in nomes]
+    return [(nome, {e: d for e, d in primeiros.items() if e != "J"}) for nome, primeiros in grupos]
+
+
+def duracao_da_obra(obra: dict | None, eventos: list[dict]) -> dict:
+    """Duração única do relatório (Quadro-Resumo, Análise de Prazos e Conclusão): o período do grupo;
+    sem ele, do primeiro ao último registro."""
+    obra = obra or {}
+    if obra.get("periodo_inicio") and obra.get("periodo_fim"):
+        inicio, fim = obra["periodo_inicio"], obra["periodo_fim"]
+    else:
+        datas = sorted(evento["data"] for evento in eventos)
+        if not datas:
+            return {}
+        inicio, fim = datas[0], datas[-1]
+    return {"inicio": inicio, "fim": fim, "dias_uteis": dias_uteis_entre(date.fromisoformat(inicio), date.fromisoformat(fim))}
+
+
+def intervalos_marcos_de(eventos: list[dict], obra: dict | None = None) -> tuple[list[dict], dict]:
+    """Marco = primeiro fato realizado de cada etapa. Em obra multifrente, os intervalos são
+    medidos dentro de cada frente, como no relatório aprovado; sem frentes, na obra inteira.
+    Devolve também a duração da obra (duracao_da_obra)."""
+    cadeias = [_cadeia(primeiros, nome) for nome, primeiros in _primeiros_por_frente(eventos)]
+    saida = []
+    for cadeia in sorted((c for c in cadeias if c), key=lambda c: c[0]["inicio"]):
+        saida.extend(cadeia)
+    return saida, duracao_da_obra(obra, eventos)
+
+
+_FIM_DE_CICLO = ("G", "H", "I", "L")  # aprovação → entrega → equipe → conclusão
+
+
+def ciclos_incompletos(eventos: list[dict]) -> list[dict]:
+    """Frente que chegou à aprovação (G) e parou antes da conclusão: a próxima data do ciclo
+    (entrega, entrada da equipe ou conclusão) é dado não identificado, e o relatório diz isso."""
+    saida = []
+    for nome, primeiros in _primeiros_por_frente(eventos):
+        feitas = [etapa for etapa in _FIM_DE_CICLO if etapa in primeiros]
+        if not feitas or feitas[-1] == "L":
+            continue
+        ultima = feitas[-1]
+        saida.append(
+            {"frente": nome, "de": ultima, "inicio": primeiros[ultima], "para": _FIM_DE_CICLO[_FIM_DE_CICLO.index(ultima) + 1]}
+        )
+    return sorted(saida, key=lambda item: item["inicio"])
 
 
 def confronto_contrato(eventos: list[dict], prazos: list[dict]) -> list[dict]:
@@ -1207,14 +1237,8 @@ def completar_relato(base: dict) -> dict:
     pendencias = list(base.get("pendencias_revisadas") or base.get("pendencias") or [])
     intervalos = _intervalos(eventos)
     desde = _desde_etapa_anterior(eventos)
-    datas = sorted({item["data"] for item in eventos})
-    if obra.get("periodo_inicio") and obra.get("periodo_fim"):
-        # O período do relatório é o do grupo, o mesmo que aparece no cabeçalho.
-        dias_periodo = dias_uteis_entre(date.fromisoformat(obra["periodo_inicio"]), date.fromisoformat(obra["periodo_fim"]))
-    elif len(datas) >= 2:
-        dias_periodo = dias_uteis_entre(date.fromisoformat(datas[0]), date.fromisoformat(datas[-1]))
-    else:
-        dias_periodo = 0
+    # O período do relatório é o do grupo, o mesmo do cabeçalho e da Análise de Prazos.
+    dias_periodo = duracao_da_obra(obra, eventos).get("dias_uteis", 0)
     maior = max((item["dias_uteis"] for item in intervalos), default=0)
     relato = dict(base)
     relato["obra"] = obra
@@ -1222,7 +1246,8 @@ def completar_relato(base: dict) -> dict:
     relato["eventos"] = eventos
     relato["convencao_dias_uteis"] = CONVENCAO_DIAS_UTEIS
     relato["intervalos"] = intervalos
-    relato["intervalos_marcos"], relato["duracao_marcos"] = intervalos_marcos_de(eventos)
+    relato["intervalos_marcos"], relato["duracao_marcos"] = intervalos_marcos_de(eventos, obra)
+    relato["ciclos_incompletos"] = ciclos_incompletos(eventos)
     relato["confronto_contrato"] = confronto_contrato(eventos, base.get("prazos_contratuais") or [])
     if "lacunas_automaticas" in base:
         relato["lacunas"] = juntar_lacunas(base)

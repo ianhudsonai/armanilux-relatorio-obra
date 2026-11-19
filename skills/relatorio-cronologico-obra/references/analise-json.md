@@ -2,7 +2,7 @@
 
 O arquivo fica em `04-transcricoes/analise.json`. O Word é montado a partir dele.
 
-Campos que o script recalcula com `--recalcular`: `intervalos`, `intervalos_marcos`, `duracao_marcos`, `confronto_contrato`, `lacunas`, `kpis`, `etapas`, `marcos` e, em cada evento, `destaque_auto` (cor sugerida).
+Campos que o script recalcula com `--recalcular`: `intervalos`, `intervalos_marcos`, `duracao_marcos` (período do grupo, o mesmo do Quadro-Resumo), `ciclos_incompletos` (frente que parou entre a aprovação e a conclusão), `confronto_contrato`, `lacunas`, `kpis`, `etapas`, `marcos` e, em cada evento, `destaque_auto` (cor sugerida).
 
 Campos que vêm da leitura do zip, para o agente consultar. Não edite: `lacunas_automaticas`, `arquivos_fora_da_exportacao` (nomes dos arquivos que o WhatsApp não exportou), `documentos_texto`, `transcricoes`, `conversa` (caminho, dentro da obra, da conversa da última exportação lida; a conferência e a remontagem usam esta). `versao` (número da versão deste relatório, fixado na primeira gravação; uma conversa nova abre a seguinte).
 

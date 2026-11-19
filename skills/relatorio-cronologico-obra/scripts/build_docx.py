@@ -10,9 +10,11 @@ from analyze import (
     LIMITE_INTERVALO_LONGO,
     ORDEM,
     TITULOS,
+    ciclos_incompletos,
     confronto_contrato,
     data_da_conclusao,
     diz_programado,
+    duracao_da_obra,
     frentes_da_obra,
     intervalos_marcos_de,
     marcos_de,
@@ -247,7 +249,7 @@ def _quadro_resumo(documento: Document, analise: dict) -> None:
         ["Entrada da equipe de instalação", _primeira(analise, "I")],
         ["Último registro do grupo", formatar_data(fim)],
         ["Duração decorrida (corridos)", corridos],
-        ["Duração decorrida (dias úteis)", f"{analise['kpis']['dias_uteis_periodo']} dias úteis"],
+        ["Duração decorrida (dias úteis)", f"{duracao_da_obra(obra, analise.get('eventos') or []).get('dias_uteis', 0)} dias úteis"],
         ["Conclusão e validação final", formatar_data(conclusao) if conclusao else "DADO NÃO IDENTIFICADO (pendente — ver Etapa L)"],
         [
             "Prazo contratual",
@@ -471,7 +473,7 @@ def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path 
         abertura = "Intervalos entre marcos (primeiro fato realizado de cada etapa), em dias úteis."
     _paragrafo(documento, abertura + " Intervalo de calendário não é atraso atribuído a ninguém.", tamanho=10)
     # Sempre dos eventos: remontar sem --recalcular não deixa número antigo ao lado do Quadro-Resumo.
-    marcos, duracao = intervalos_marcos_de(analise.get("eventos") or [])
+    marcos, duracao = intervalos_marcos_de(analise.get("eventos") or [], analise.get("obra"))
     if not marcos:
         _paragrafo(documento, "Intervalo entre marcos: dado não identificado.")
     else:
@@ -485,10 +487,21 @@ def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path 
             )
             for item in marcos
         ]
-        if duracao:
+        # Ciclo que parou no meio: a data que falta aparece, como "dado não identificado".
+        for item in ciclos_incompletos(analise.get("eventos") or []):
             linhas.append(
                 (
-                    f"DURAÇÃO TOTAL REGISTRADA ({formatar_data(duracao['inicio'])} → {formatar_data(duracao['fim'])})",
+                    (f"{item['frente']} — " if item.get("frente") else "")
+                    + f"{_titulo_marco(item['de'])} ({formatar_data(item['inicio'])}) → {_titulo_marco(item['para'])}: {DADO}",
+                    "pendente",
+                    True,
+                )
+            )
+        if duracao:
+            rotulo = "DURAÇÃO TOTAL DA OBRA" if _tem_periodo(analise) else "DURAÇÃO TOTAL REGISTRADA"
+            linhas.append(
+                (
+                    f"{rotulo} ({formatar_data(duracao['inicio'])} → {formatar_data(duracao['fim'])})",
                     f"{duracao['dias_uteis']} d.u.",
                     False,
                 )
@@ -500,7 +513,7 @@ def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path 
         for indice, (rotulo, dias, longo) in enumerate(linhas, start=1):
             linha = tabela.rows[indice]
             _texto_celula(linha.cells[0], rotulo, tamanho=9)
-            _texto_celula(linha.cells[1], dias, tamanho=9, negrito=True, cor=VERMELHO if longo else None)
+            _texto_celula(linha.cells[1], dias, tamanho=9, negrito=True, cor=VERMELHO if longo and dias != "pendente" else None)
             total = duracao and indice == len(linhas)
             if longo or total:
                 for celula in linha.cells:
@@ -549,12 +562,18 @@ def _numerados(documento: Document, itens: list[str]) -> None:
         _paragrafo(documento, f"{indice}. {item}", tamanho=10, depois=3)
 
 
+def _tem_periodo(analise: dict) -> bool:
+    obra = analise.get("obra") or {}
+    return bool(obra.get("periodo_inicio") and obra.get("periodo_fim"))
+
+
 def _impacto_padrao(analise: dict) -> str:
-    duracao = intervalos_marcos_de(analise.get("eventos") or [])[1]
+    duracao = duracao_da_obra(analise.get("obra"), analise.get("eventos") or [])
     if not duracao:
         return DADO + "."
     corridos = (date.fromisoformat(duracao["fim"]) - date.fromisoformat(duracao["inicio"])).days
-    texto = f"Do primeiro ao último registro classificado: {duracao['dias_uteis']} dias úteis ({corridos} dias corridos). "
+    origem = "Do início do grupo ao último registro" if _tem_periodo(analise) else "Do primeiro ao último registro classificado"
+    texto = f"{origem}: {duracao['dias_uteis']} dias úteis ({corridos} dias corridos). "
     medidos = [item for item in _confronto(analise) if item["realizado"] is not None and item["limite_du"]]
     if not analise.get("prazos_contratuais"):
         return texto + "Prazo contratual não declarado no grupo: dado não identificado."
