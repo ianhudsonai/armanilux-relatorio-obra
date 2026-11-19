@@ -30,15 +30,21 @@ O jeito mais seguro é uma execução só, com os dois caminhos:
 python install-skill-from-github.py --repo ianhudsonai/armanilux-relatorio-obra --path skills/preparar-projeto-armanilux skills/relatorio-cronologico-obra
 ```
 
-O `python` e o script são os do `$skill-installer` já instalado no Codex. O script pede rede. Se o modo local pedir aprovação, peça para a pessoa aprovar.
+O script pede rede. Se o aplicativo pedir aprovação, peça para a pessoa aprovar.
 
-Destino no Windows: `%USERPROFILE%\.codex\skills\`. No Linux e no Mac: `~/.codex/skills`.
+## Onde instalar
 
-## Se o $skill-installer não estiver disponível
+Instale só na pasta de skills do aplicativo que está executando estas instruções. Não instale em outro aplicativo. Não procure outras ferramentas no computador para decidir o destino. A existência de uma pasta ou de um comando de outro aplicativo não muda o destino.
 
-Baixe o zip do repositório e copie as duas pastas para `%USERPROFILE%\.codex\skills\`.
+- Se você é o Codex: `%USERPROFILE%\.codex\skills\` no Windows, `~/.codex/skills` no Linux e no Mac. Use o `$skill-installer` com o comando acima. O destino padrão dele já é essa pasta.
+- Se você é o Claude Code: `~/.claude/skills` (no Windows, `%USERPROFILE%\.claude\skills`). Não use o instalador do Codex. Copie as duas pastas só para essa pasta do Claude Code.
+- Se a pessoa pedir um aplicativo específico, instale só nele, mesmo que você seja outro aplicativo.
 
-Se existir a pasta `%USERPROFILE%\.claude` ou o comando `claude`, copie as mesmas duas pastas também para `%USERPROFILE%\.claude\skills\` (no Mac ou Linux, `~/.claude/skills`). Não copie para o Claude se nenhum dos dois existir.
+Não copie para os dois.
+
+## Se o instalador do seu aplicativo não estiver disponível
+
+Baixe o zip do repositório e copie as duas pastas somente para a pasta de skills do aplicativo em que você está, como na lista acima.
 
 ## Depois de instalar
 

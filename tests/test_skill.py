@@ -111,8 +111,15 @@ class SkillTeste(unittest.TestCase):
         self.assertIn("instale as skills", agentes)
         self.assertIn("skills/preparar-projeto-armanilux", agentes)
         self.assertIn("skills/relatorio-cronologico-obra", agentes)
+        self.assertIn(".codex/skills", agentes)
         self.assertIn(".claude/skills", agentes)
+        self.assertIn("Não instale em outro aplicativo", agentes)
+        self.assertIn("Não procure outras ferramentas", agentes)
+        self.assertNotIn("Se existir a pasta", agentes)
         self.assertIn("Missing --path", agentes)
+        leia_me = (RAIZ / "README.md").read_text(encoding="utf-8")
+        self.assertNotIn("the claude command exists", leia_me.lower())
+        self.assertIn("only into the app", leia_me.lower())
 
     def test_acha_programa_instalado_pelo_winget_fora_do_path(self):
         import os

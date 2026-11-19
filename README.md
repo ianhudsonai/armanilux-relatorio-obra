@@ -22,7 +22,9 @@ O exemplo que vem junto é inventado (Obra 1001, Família Almeida). Não é clie
 2. Cole a linha do começo desta página. Quando pedir para usar a internet ou rodar um comando, aprove.
 3. Abra um chat novo e escreva `$preparar-projeto-armanilux`. Responda as perguntas. A pasta padrão é `Documentos\Armanilux`.
 
-Não precisa procurar um arquivo para clicar. Quem já tiver esta pasta no computador pode, se quiser, dar dois cliques em `instalar.bat`. Isso só instala as ferramentas. As perguntas ficam no Codex.
+Não precisa procurar um arquivo para clicar. A instalação fica só no Codex, o aplicativo que você está usando. Não vai para outros programas.
+
+Quem já tiver esta pasta no computador pode, se quiser, dar dois cliques em `instalar.bat`. Isso só instala as ferramentas. As perguntas ficam no Codex.
 
 ## Usar no dia a dia
 
@@ -78,7 +80,7 @@ This is an [Agent Skills](https://agentskills.io/specification) package aimed at
 
 There are two skills. `preparar-projeto-armanilux` is once per person: questions, per-user winget, venv, ffmpeg, optional Whisper download, and `%USERPROFILE%\.armanilux-relatorio\config.json`. `relatorio-cronologico-obra` only writes the report and reads that config. Each skill folder is self-contained; the small `config_io.py` is duplicated so a copied skill does not need the other folder's code. The report skill may call the setup skill's `instalar.ps1` if both are installed and a library is missing.
 
-The one-line paste is `https://github.com/ianhudsonai/armanilux-relatorio-obra instale as skills`. `AGENTS.md` tells the agent that `$skill-installer`'s `install-skill-from-github.py` rejects a bare repo URL (`Missing --path for GitHub URL`) and that the reliable call is one `--path` with both `skills/preparar-projeto-armanilux` and `skills/relatorio-cronologico-obra`. If `~/.claude` or the `claude` command exists, the same folders also go to `~/.claude/skills`.
+The one-line paste is `https://github.com/ianhudsonai/armanilux-relatorio-obra instale as skills`. `AGENTS.md` tells the agent that `$skill-installer`'s `install-skill-from-github.py` rejects a bare repo URL (`Missing --path for GitHub URL`) and that the reliable call is one `--path` with both `skills/preparar-projeto-armanilux` and `skills/relatorio-cronologico-obra`. Install only into the app that is running these instructions, or only into the app the person named. Codex goes to `%USERPROFILE%\.codex\skills` (`~/.codex/skills`). Claude Code, when that is the agent running, goes to `~/.claude/skills`. Do not copy into the other app, and do not choose a destination by detecting that another tool is installed.
 
 `skills/relatorio-cronologico-obra/scripts/run_pipeline.py` creates `Documents\Armanilux\Relatorios-de-Obra\<obra - cliente>\{01-conversas,02-projetos-pdf,03-midias,04-transcricoes,05-relatorios}`, streams the zip (zip-slip is dropped; mojibake filenames are repaired), parses Android and iPhone WhatsApp exports, transcribes speech locally, pulls a few video frames, reads PDF/docx, and writes a versioned docx. Business days are `(start, end]` excluding weekends, Brazilian national holidays, Carnival Monday and Tuesday, SP state 9 July, and São Paulo city 25 January and Corpus Christi (`holidays` subdiv São Paulo Capital, plus Carnival added in code). Ash Wednesday stays a business day. Intervals are not summed into an "Armanilux delay".
 
