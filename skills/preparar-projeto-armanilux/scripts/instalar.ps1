@@ -90,11 +90,15 @@ function Achar-Python {
     return $null
 }
 
+# Só 3.10 a 3.13: as versões fixas de requirements.txt foram testadas nelas.
+# Python mais novo pode ainda não ter as bibliotecas prontas, e o pip pararia no meio.
 function Python-Serve($exe) {
     if (-not $exe) { return $false }
     $nota = & $exe -c "import sys; print(sys.version_info[0] * 100 + sys.version_info[1])" 2>$null
     if ($LASTEXITCODE -ne 0) { return $false }
-    return ([int]"$nota".Trim()) -ge 310
+    $numero = 0
+    if (-not [int]::TryParse("$nota".Trim(), [ref]$numero)) { return $false }
+    return ($numero -ge 310 -and $numero -le 313)
 }
 
 function Achar-Ffmpeg {
@@ -118,7 +122,7 @@ if (-not (Python-Serve $python)) {
     $python = Achar-Python
 }
 if (-not (Python-Serve $python)) {
-    Write-Host "O Python 3.10 ou mais novo não ficou disponível depois da instalação."
+    Write-Host "O Python 3.12 não ficou disponível depois da instalação."
     exit 1
 }
 Escrever-Ok "Python: $python"
@@ -140,6 +144,12 @@ if ($ffmpeg) {
 
 $venv = Join-Path $env:USERPROFILE ".armanilux-relatorio\venv"
 $venvPython = Join-Path $venv "Scripts\python.exe"
+if ((Test-Path $venv) -and -not (Python-Serve $venvPython)) {
+    # Ambiente de um Python fora de 3.10-3.13, ou quebrado: fica guardado ao lado, nada é apagado.
+    $guardado = "venv-antigo-" + (Get-Date -Format "yyyyMMdd-HHmmss")
+    Escrever-Aviso "O ambiente Python antigo não serve mais. Guardei como $guardado e vou criar outro."
+    Rename-Item -Path $venv -NewName $guardado
+}
 if (-not (Test-Path $venvPython)) {
     Escrever-Titulo "Criando o ambiente Python da Armanilux..."
     & $python -m venv $venv

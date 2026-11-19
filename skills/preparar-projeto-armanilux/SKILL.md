@@ -41,7 +41,7 @@ $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Env
 powershell -ExecutionPolicy Bypass -File "<pasta-desta-skill>\scripts\instalar.ps1"
 ```
 
-O instalador prefere `winget install Python.Python.3.12 --scope user` e o mesmo escopo para o FFmpeg. O pip fica em `%USERPROFILE%\.armanilux-relatorio\venv`. Pode rodar de novo. Se já estiver instalado, só confere.
+O instalador aceita um Python 3.10 a 3.13 que já exista; fora disso, instala com `winget install Python.Python.3.12 --scope user`, e o mesmo escopo para o FFmpeg. O pip fica em `%USERPROFILE%\.armanilux-relatorio\venv`, com as versões fixas de `scripts/requirements.txt`; um ambiente antigo de outro Python é guardado ao lado como `venv-antigo-<data>` e refeito. Pode rodar de novo. Se já estiver instalado, só confere.
 
 Se terminar com erro, explique em português e pare. Não mande a pessoa atrás de um arquivo.
 
