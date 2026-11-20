@@ -38,7 +38,7 @@ _PAREN = re.compile(r"\(([^)]*)\)")
 _NUMERO = re.compile(r"\b(\d{3,}(?:\.\d+)*)(?:\.v\d+)?\b", re.IGNORECASE)
 # "apto 302 - Obra 8977": o número depois de "Obra" é o da obra.
 _NUMERO_DA_OBRA = re.compile(r"\bobra\s*(\d{3,}(?:\.\d+)*(?:\.v\d+)?)\b", re.IGNORECASE)
-# Solto no nome, 2026 é ano, não obra ("Obra 2026" ainda vale, por _NUMERO_DA_OBRA).
+# Solto no nome, 2026 perde para outro número (é o ano); sozinho, vale (pode ser a obra 2010).
 _ANO = re.compile(r"^(?:19|20)\d{2}$")
 _COPIA = re.compile(r"\s*\(\d{1,2}\)\s*$")
 # Nome que o WhatsApp dá ao .txt solto: não diz obra nem cliente.
@@ -74,8 +74,9 @@ def _do_nome(nome_arquivo: str) -> tuple[str, str]:
     entre_parenteses = _PAREN.findall(base)
     sem_parenteses = _PAREN.sub(" ", base)
     numero = ""
+    candidatos = list(_NUMERO.finditer(sem_parenteses))
     achado = _NUMERO_DA_OBRA.search(sem_parenteses) or next(
-        (item for item in _NUMERO.finditer(sem_parenteses) if not _ANO.match(item.group(1))), None
+        (item for item in candidatos if not _ANO.match(item.group(1))), candidatos[0] if candidatos else None
     )
     if achado:
         numero = chave_obra(achado.group(1))

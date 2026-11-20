@@ -114,8 +114,10 @@ class BuscaTeste(Ambiente):
             {"numero": "1001", "cliente": "Família Almeida"},
         )
         self.assertEqual(inferir_identidade("_chat.txt"), {"numero": "", "cliente": ""})
-        self.assertEqual(inferir_identidade("Silva 2026.zip")["numero"], "")
+        # Ano solto perde para outro número; sozinho, pode ser a obra 2010 (a pessoa confirma).
+        self.assertEqual(inferir_identidade("Silva 2026 - 1001.zip")["numero"], "1001")
         self.assertEqual(inferir_identidade("Silva 2026 obra 1001.zip")["numero"], "1001")
+        self.assertEqual(inferir_identidade("Conversa do WhatsApp com 2010 - Família Costa.zip")["numero"], "2010")
 
     def test_numero_depois_de_obra_vale_mais_que_outro_numero_do_nome(self):
         # "apto 302" é o apartamento; a obra é a 8977.

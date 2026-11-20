@@ -84,6 +84,20 @@ class PastaDaObraTeste(unittest.TestCase):
             self.assertNotEqual(garantir_obra(raiz, "100", "Silva"), primeira)
             self.assertEqual(len([p for p in raiz.iterdir() if p.is_dir()]), 3)
 
+    def test_duas_pastas_da_mesma_obra_avisam_e_nao_escolhem_sozinhas(self):
+        import io
+        from contextlib import redirect_stdout
+
+        with TemporaryDirectory() as temporario:
+            raiz = Path(temporario)
+            (raiz / "1001 - Silva").mkdir()
+            (raiz / "1001 - Silva Marmores").mkdir()
+            saida = io.StringIO()
+            with redirect_stdout(saida):
+                nova = garantir_obra(raiz, "1001", "Família Silva")
+            self.assertEqual(nova.name, "1001 - Família Silva")
+            self.assertIn("2 pastas", saida.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -40,6 +40,7 @@ def _pasta_da_mesma_obra(raiz: Path, numero: str, modelo: str) -> Path | None:
     Só vale quando há exatamente uma: o número identifica a obra; o cliente varia na digitação."""
     if not numero or "{cliente}" not in modelo or not raiz.is_dir():
         return None
+    # Monta o nome com uma marca no lugar do cliente para saber o que vem antes e depois dele.
     marca = "\x00"
     molde = nome_pasta_obra({"modelo_pasta_obra": modelo}, numero, marca)
     if marca not in molde:
@@ -53,6 +54,9 @@ def _pasta_da_mesma_obra(raiz: Path, numero: str, modelo: str) -> Path | None:
         and pasta.name.startswith(antes)
         and pasta.name.endswith(depois)
     ]
+    if len(iguais) > 1:
+        nomes = ", ".join(sorted(pasta.name for pasta in iguais))
+        print(f"Aviso: a obra {numero} tem {len(iguais)} pastas ({nomes}). Não escolhi uma sozinho; confira com a pessoa.")
     return iguais[0] if len(iguais) == 1 else None
 
 

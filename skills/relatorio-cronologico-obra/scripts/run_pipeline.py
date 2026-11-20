@@ -725,7 +725,7 @@ def _processar_escolha(args, config: dict | None) -> int:
     import registro
 
     dados = registro.carregar()
-    if not dados["fila"] and not dados.get("lista"):
+    if not dados["fila"] and (args.todas or not dados.get("lista")):
         _listar(config, args.downloads)
         dados = registro.carregar()
     try:
