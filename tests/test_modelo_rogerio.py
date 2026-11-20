@@ -64,12 +64,12 @@ class ClassificacaoEStatusTeste(unittest.TestCase):
         self.assertTrue(etapa_c[0].startswith("Leitura da Etapa C:") or any(t.startswith("Leitura da Etapa C:") for t in etapa_c[:3]))
         self.assertIn("Status: medição realizada em 07/01/2026.", etapa_c[:4])
 
-    def test_sem_status_escrito_etapa_vazia_ou_so_programada_diz_isso(self):
+    def test_sem_status_escrito_so_etapa_programada_diz_isso(self):
         textos = _textos(_montar(_relato()))
-        self.assertIn("Status: sem registro no grupo – dado não identificado.", _depois(textos, "B – Solicitação de vistas e/ou visitas “in loco”")[:4])
         self.assertIn("Status: programado, sem confirmação no grupo.", _depois(textos, "H – Data das entregas dos materiais na obra")[:4])
-        # Etapa com fato realizado e sem status escrito não ganha linha inventada.
-        self.assertFalse([t for t in _depois(textos, "A – Aprovação de chapas")[:3] if t.startswith("Status:")])
+        # Etapa vazia já diz "dado não identificado" na tabela; etapa com fato realizado não ganha linha inventada.
+        for titulo in ("B – Solicitação de vistas e/ou visitas “in loco”", "A – Aprovação de chapas"):
+            self.assertFalse([t for t in _depois(textos, titulo)[:3] if t.startswith("Status:")], titulo)
 
 
 class EtapaLEIntervalosTeste(unittest.TestCase):
@@ -79,6 +79,23 @@ class EtapaLEIntervalosTeste(unittest.TestCase):
         for marco in ("entrega do material na obra", "entrada da equipe de instalação", "conclusão dos serviços e validação final"):
             self.assertIn(marco, falta)
         self.assertNotIn("medição in loco", falta)
+        # O termo assinado já aparece em "Pendência em aberto"; a frase fala só dos marcos da obra.
+        self.assertNotIn("termo de entrega", falta)
+
+    def test_etapa_l_sem_frase_quando_todos_os_marcos_estao_comprovados(self):
+        eventos = [dict(e) for e in EVENTOS[:4]] + [
+            _evento("2026-02-23", "H", "Material entregue na obra."),
+            _evento("2026-02-24", "I", "Equipe de instalação entrou na obra."),
+            _evento("2026-03-02", "L", "Obra entregue e validada pela cliente.", conclusao=True),
+        ]
+        relato = completar_relato({"obra": {}, "eventos": eventos})
+        self.assertFalse([t for t in _textos(_montar(relato)) if t.startswith("Sem comprovação no grupo")])
+
+    def test_interpretacao_com_frente_vale_em_obra_sem_frentes(self):
+        relato = _relato(interpretacao_intervalos=[{"de": "D", "para": "G", "frente": "Cozinha", "texto": "Aprovação rápida."}])
+        tabela = next(t for t in _montar(relato).tables if t.rows[0].cells[0].text == "Intervalo entre marcos")
+        linha = next(r for r in tabela.rows[1:] if "(20/01/2026)" in r.cells[0].text and "(26/01/2026)" in r.cells[0].text)
+        self.assertEqual(linha.cells[2].text, "Aprovação rápida.")
 
     def test_interpretacao_escrita_na_revisao_vira_coluna_dos_intervalos(self):
         relato = _relato(interpretacao_intervalos=[{"de": "D", "para": "G", "texto": "Análise e aprovação pelo cliente."}])
@@ -137,6 +154,21 @@ class DiagnosticoERecomendacoesTeste(unittest.TestCase):
         self.assertIn("1. Atualizar o grupo toda semana.", _textos(documento))
         self.assertFalse([t for t in documento.tables if t.rows[0].cells[0].text == "Prioridade"])
         self.assertNotIn("Pontos de controle recomendados", _textos(documento))
+
+    def test_entrada_mal_escrita_nao_derruba_o_word(self):
+        relato = _relato(
+            diagnostico_temas=["texto solto", {"tema": "Marcenaria", "avaliacao": "Ponto crítico", "leitura": "Atrasou."}],
+            interpretacao_intervalos=["texto solto"],
+        )
+        self.assertEqual(_tabela(_montar(relato), "Tema")[1], ["Marcenaria", "Ponto crítico", "Atrasou."])
+
+    def test_avaliacao_fora_da_lista_segura_a_versao_final(self):
+        import build_docx
+
+        relato = _relato(diagnostico_temas=[{"tema": "Marcenaria", "avaliacao": "Ruim", "leitura": "Atrasou."}])
+        self.assertTrue([item for item in build_docx.textos_que_faltam(relato) if "diagnostico_temas" in item and "Ruim" in item])
+        ok = _relato(diagnostico_temas=[{"tema": "Marcenaria", "avaliacao": "Gargalo documentado", "leitura": "Atrasou."}])
+        self.assertFalse([item for item in build_docx.textos_que_faltam(ok) if "diagnostico_temas" in item])
 
     def test_recomendacao_em_tabela_conta_como_escrita_para_a_versao_final(self):
         import build_docx

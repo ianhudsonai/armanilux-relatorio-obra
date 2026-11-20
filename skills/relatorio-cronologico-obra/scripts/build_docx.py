@@ -420,7 +420,12 @@ def _escrever_etapa(documento: Document, analise: dict, codigo: str) -> None:
         marcos = marcos_de(analise.get("eventos") or [], analise.get("pendencias") or [])
         if marcos:
             _tabela_simples(documento, ["Marco", "Situação"], [[item["marco"], item["situacao"]] for item in marcos], [12.2, 5.2])
-            falta = [item["marco"][0].lower() + item["marco"][1:] for item in marcos if item["situacao"] != "Concluído"]
+            # O termo assinado já sai em "Pendência em aberto": a frase fala dos marcos da obra.
+            falta = [
+                item["marco"][0].lower() + item["marco"][1:]
+                for item in marcos
+                if item["situacao"] != "Concluído" and not item["marco"].startswith("Termo de entrega")
+            ]
             if falta:
                 _paragrafo(documento, f"Sem comprovação no grupo até {_ultimo_registro(analise)}: {'; '.join(falta)}.", tamanho=10)
         pendencias = [item for item in analise.get("pendencias") or [] if (item.get("status") or "Pendente") == "Pendente"]
@@ -436,17 +441,16 @@ def _ultimo_registro(analise: dict) -> str:
     fim = (analise.get("obra") or {}).get("periodo_fim") or max(
         (item["data"] for item in analise.get("eventos") or []), default=""
     )
-    return formatar_data(fim) if fim else DADO
+    return formatar_data(fim) if fim else "o último registro do grupo"
 
 
 def _status_da_etapa(escrito: str, eventos: list[dict]) -> str:
-    """O veredito curto da etapa (como no relatório que o Rogério usa). Sem texto da revisão, só
-    as etapas sem fato realizado ganham status: o resto não tem o que dizer sem a leitura do grupo."""
+    """O veredito curto da etapa (como no relatório que o Rogério usa). Sem texto da revisão, só a
+    etapa que tem apenas fato programado ganha status; etapa vazia já diz "dado não identificado" na
+    tabela, e etapa com fato realizado não tem veredito sem a leitura do grupo."""
     if escrito:
         return escrito
-    if not eventos:
-        return "sem registro no grupo – dado não identificado."
-    if not any(realizado(item) for item in eventos):
+    if eventos and not any(realizado(item) for item in eventos):
         return "programado, sem confirmação no grupo."
     return ""
 
@@ -556,11 +560,26 @@ def _confronto_contrato(documento: Document, confronto: list[dict]) -> None:
 def _interpretacoes(analise: dict) -> dict[tuple[str, str, str], str]:
     """interpretacao_intervalos da revisão: (de, para, frente) -> texto curto."""
     saida = {}
-    for item in analise.get("interpretacao_intervalos") or []:
+    for item in _dicionarios(analise.get("interpretacao_intervalos")):
         texto = _texto(item.get("texto"))
         if item.get("de") and item.get("para") and texto:
             saida[(item["de"], item["para"], item.get("frente") or "")] = texto
     return saida
+
+
+def _interpretacao_do_intervalo(interpretacoes: dict[tuple[str, str, str], str], item: dict) -> str:
+    """Pela frente do intervalo; depois, sem frente; em obra sem frentes, a única escrita para esse par."""
+    frente = item.get("frente") or ""
+    texto = interpretacoes.get((item["de"], item["para"], frente)) or interpretacoes.get((item["de"], item["para"], ""))
+    if texto or frente:
+        return texto or ""
+    mesmas = [valor for (de, para, _), valor in interpretacoes.items() if (de, para) == (item["de"], item["para"])]
+    return mesmas[0] if len(mesmas) == 1 else ""
+
+
+def _dicionarios(valor) -> list[dict]:
+    """Lista da revisão em que cada item é um objeto; item escrito de outro jeito é ignorado."""
+    return [item for item in valor if isinstance(item, dict)] if isinstance(valor, list) else []
 
 
 def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path | None, grafico_gantt: Path | None) -> None:
@@ -588,8 +607,7 @@ def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path 
                 _dias(item["dias_uteis"], item.get("dias_uteis_max")),
                 item["longo"],
                 item["longo"],
-                interpretacoes.get((item["de"], item["para"], item.get("frente") or ""))
-                or interpretacoes.get((item["de"], item["para"], ""), ""),
+                _interpretacao_do_intervalo(interpretacoes, item),
             )
             for item in marcos
         ]
@@ -704,10 +722,19 @@ def textos_que_faltam(analise: dict) -> list[str]:
     recomendacoes = analise.get("recomendacoes_personalizadas")
     if not (_linhas_de_recomendacao(recomendacoes) if isinstance(recomendacoes, list) else _itens(recomendacoes)):
         faltam.append("recomendacoes_personalizadas")
+    fora_da_lista = sorted(
+        {_texto(item.get("avaliacao")) for item in _dicionarios(analise.get("diagnostico_temas"))} - set(AVALIACOES)
+    )
+    if fora_da_lista:
+        faltam.append(f"diagnostico_temas: avaliação fora da lista ({', '.join(fora_da_lista)}); use {', '.join(AVALIACOES)}")
     lacuna_de_prazo = any("prazo contratual" in str(item).lower() for item in analise.get("lacunas_adicionais") or [])
     if not analise.get("prazos_contratuais") and not lacuna_de_prazo:
         faltam.append("prazo contratual (prazos_contratuais, ou em lacunas_adicionais a frase de que não há prazo declarado)")
     return faltam
+
+
+# Avaliações do diagnóstico por tema (como no relatório que o Rogério usa).
+AVALIACOES = ("Gargalo documentado", "Ponto crítico", "Comprovação incompleta", "Fluxo eficiente", "Não verificável")
 
 
 def _linhas_de_recomendacao(recomendacoes: list) -> list[list[str]]:
@@ -726,7 +753,7 @@ def _linhas_de_recomendacao(recomendacoes: list) -> list[list[str]]:
 def _diagnostico(documento: Document, analise: dict) -> None:
     documento.add_heading("Análise Técnica — Diagnóstico", level=1)
     # Avaliação por tema, como no relatório que o Rogério usa ("Gargalo documentado", "Fluxo eficiente"...).
-    temas = [item for item in analise.get("diagnostico_temas") or [] if _texto(item.get("tema"))]
+    temas = [item for item in _dicionarios(analise.get("diagnostico_temas")) if _texto(item.get("tema"))]
     if temas:
         _tabela_simples(
             documento,

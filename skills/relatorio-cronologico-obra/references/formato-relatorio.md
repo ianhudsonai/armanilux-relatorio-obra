@@ -27,9 +27,9 @@ Cada etapa:
 1. Uma ou duas linhas de introdução, só quando a revisão escreveu (`comentarios.<etapa>.introducao`).
 2. Tabela Data | Evento / Ocorrência. Data sem hora; fato só programado leva "(programado)" na data, se o texto não disser. Uma frase objetiva por linha, sem nome de arquivo nem trecho de transcrição. Linha salmão = reprocesso; amarela = ocioso. Na etapa J, a tabela é Data | Interferência | Impacto; com `grupo` nos fatos, uma tabela por tipo, com subtítulo "J.1 — <tipo>" na ordem do primeiro fato (as sem tipo por último, em "Outras interferências"), e no fim a linha "Dias de equipe sem frente registrados no grupo" quando a revisão contou `dias_sem_frente`.
 3. "Leitura da Etapa X:" em até três frases (`comentarios.<etapa>.leitura`); sem leitura revisada, o período da etapa em dias úteis.
-4. "Status:" em uma linha (`comentarios.<etapa>.status`): o que está comprovado e o que não está. Sem status revisado, só a etapa sem registro ("sem registro no grupo – dado não identificado.") ou só programada ("programado, sem confirmação no grupo.") ganha a linha.
+4. "Status:" em uma linha (`comentarios.<etapa>.status`): o que está comprovado e o que não está. Sem status revisado, só a etapa que tem apenas fato programado ganha a linha ("programado, sem confirmação no grupo.").
 
-Na etapa L, também a tabela Marco | Situação, a frase "Sem comprovação no grupo até <último registro>: …" com os marcos não concluídos e, se houver, Pendência em aberto | Status. Não existe etapa K.
+Na etapa L, também a tabela Marco | Situação, a frase "Sem comprovação no grupo até <último registro>: …" com os marcos não concluídos (o termo assinado fica na tabela de pendências) e, se houver, Pendência em aberto | Status. Não existe etapa K.
 
 ## Análise de Prazos — Intervalos em Dias Úteis
 
@@ -37,7 +37,7 @@ Marco é o primeiro registro realizado de cada etapa (programação não conta; 
 
 ## Análise Técnica — Diagnóstico
 
-Quando a revisão escreveu `diagnostico_temas`, abre com a tabela Tema | Avaliação | Leitura (Gargalo documentado, Ponto crítico, Comprovação incompleta, Fluxo eficiente, Não verificável). Depois, cinco blocos numerados, cada um com tópicos curtos e datados: 1. Reprocessos identificados; 2. Tempos ociosos; 3. Atrasos operacionais internos; 4. Dependências externas; 5. Interferências de obra (Etapa J): impacto no cronograma e na produtividade. Sem revisão, cada bloco diz `dado não identificado (preencher na revisão)`.
+Quando a revisão escreveu `diagnostico_temas`, abre com a tabela Tema | Avaliação | Leitura (Gargalo documentado, Ponto crítico, Comprovação incompleta, Fluxo eficiente, Não verificável; outra avaliação segura a versão final). Depois, cinco blocos numerados, cada um com tópicos curtos e datados: 1. Reprocessos identificados; 2. Tempos ociosos; 3. Atrasos operacionais internos; 4. Dependências externas; 5. Interferências de obra (Etapa J): impacto no cronograma e na produtividade. Sem revisão, cada bloco diz `dado não identificado (preencher na revisão)`.
 
 ## Conclusão Estratégica
 
