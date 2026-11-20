@@ -11,7 +11,7 @@ Não instale Python, Node nem git: num computador novo eles ainda não existem, 
 Instale só no aplicativo em que você está rodando. Nunca nos dois. Não procure outros aplicativos no computador para decidir.
 
 - Você é o Claude Code (no terminal ou no aplicativo Claude): `%USERPROFILE%\.claude\skills`
-- Você é o Codex (no aplicativo Codex, no ChatGPT ou no terminal): `%USERPROFILE%\.agents\skills`, a pasta de skills de usuário das versões atuais do Codex. Se ela não existir e `%USERPROFILE%\.codex\skills` existir, use `%USERPROFILE%\.codex\skills` (versões antigas).
+- Você é o Codex (no aplicativo ChatGPT, no aplicativo Codex ou no terminal): `%USERPROFILE%\.codex\skills`. É a pasta em que o `$skill-installer` grava e que o Codex do aplicativo ChatGPT no Windows carregou no teste de 20/11/2026. (A documentação nova do Codex também cita `%USERPROFILE%\.agents\skills`; não copie para as duas.)
 - Se a pessoa pediu um aplicativo específico, instale só nele, mesmo que você seja o outro.
 - Se não souber qual você é, pergunte uma vez: "Este chat é do Codex ou do Claude Code?"
 
@@ -19,13 +19,12 @@ No Linux e no Mac, as mesmas pastas ficam em `~/.claude/skills`, `~/.agents/skil
 
 ## 2. Instale
 
-No Windows, rode no PowerShell, com `$destino` do passo 1 (o exemplo é do Codex; no Claude Code, troque a linha do `$destino` por `$destino = Join-Path $env:USERPROFILE ".claude\skills"`):
+No Windows, rode no PowerShell, com `$destino` do passo 1 (o exemplo é do Codex; no Claude Code, troque `.codex\skills` por `.claude\skills`):
 
 ```powershell
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $ProgressPreference = "SilentlyContinue"
-$destino = Join-Path $env:USERPROFILE ".agents\skills"
-if (-not (Test-Path $destino) -and (Test-Path (Join-Path $env:USERPROFILE ".codex\skills"))) { $destino = Join-Path $env:USERPROFILE ".codex\skills" }
+$destino = Join-Path $env:USERPROFILE ".codex\skills"
 $zip = Join-Path $env:TEMP "armanilux-relatorio-obra.zip"
 $tmp = Join-Path $env:TEMP "armanilux-relatorio-obra"
 Invoke-WebRequest "https://github.com/ianhudsonai/armanilux-relatorio-obra/archive/refs/heads/main.zip" -OutFile $zip
@@ -51,4 +50,4 @@ Se uma das duas já estava instalada, ela não é trocada. Só se a pessoa pedir
 
 - Sem internet ou acesso bloqueado: peça para a pessoa aprovar o acesso à rede e rode de novo.
 - `Expand-Archive` falhou: rode de novo (o download pode ter sido cortado). Não instale Python.
-- No Codex, se `$preparar-projeto-armanilux` não aparecer num chat novo: mova as duas pastas de `%USERPROFILE%\.agents\skills` para `%USERPROFILE%\.codex\skills` (ou o contrário) e abra outro chat novo.
+- No Codex, se `$preparar-projeto-armanilux` não aparecer num chat novo: mova as duas pastas de `%USERPROFILE%\.codex\skills` para `%USERPROFILE%\.agents\skills` e abra outro chat novo.
