@@ -24,7 +24,7 @@ Tabela Indicador | Valor: início do grupo, primeiros marcos realizados (chapas,
 Cada etapa:
 
 1. Uma ou duas linhas de introdução, só quando a revisão escreveu (`comentarios.<etapa>.introducao`).
-2. Tabela Data | Evento / Ocorrência. Data sem hora; fato só programado leva "(programado)" na data, se o texto não disser. Uma frase objetiva por linha, sem nome de arquivo nem trecho de transcrição. Linha salmão = reprocesso; amarela = ocioso. Na etapa J, a tabela é Data | Interferência | Impacto.
+2. Tabela Data | Evento / Ocorrência. Data sem hora; fato só programado leva "(programado)" na data, se o texto não disser. Uma frase objetiva por linha, sem nome de arquivo nem trecho de transcrição. Linha salmão = reprocesso; amarela = ocioso. Na etapa J, a tabela é Data | Interferência | Impacto; com `grupo` nos fatos, uma tabela por tipo, com subtítulo "J.1 — <tipo>" na ordem do primeiro fato (as sem tipo por último, em "Outras interferências"), e no fim a linha "Dias de equipe sem frente registrados no grupo" quando a revisão contou `dias_sem_frente`.
 3. "Leitura da Etapa X:" em até três frases (`comentarios.<etapa>.leitura`); sem leitura revisada, o período da etapa em dias úteis.
 
 Na etapa L, também a tabela Marco | Situação e, se houver, Pendência em aberto | Status. Não existe etapa K.

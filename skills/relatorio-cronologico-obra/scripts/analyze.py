@@ -501,6 +501,42 @@ def intervalos_marcos_de(eventos: list[dict], obra: dict | None = None) -> tuple
     return saida, duracao_da_obra(obra, eventos)
 
 
+OUTRAS_INTERFERENCIAS = "Outras interferências"
+
+
+def grupos_da_etapa_j(eventos: list[dict]) -> list[tuple[str, list[dict]]]:
+    """Interferências por tipo ("grupo" no evento, como J.1 civil e terceiros, J.2 a frente crítica,
+    J.3 logística no relatório aprovado), na ordem do primeiro fato de cada tipo; as sem tipo vão
+    por último em "Outras interferências". Sem nenhum tipo marcado, um grupo só, com nome ""."""
+    da_j = sorted((e for e in eventos if e["etapa"] == "J"), key=lambda e: (e["data"], e.get("hora") or ""))
+    if not any((e.get("grupo") or "").strip() for e in da_j):
+        return [("", da_j)] if da_j else []
+    grupos: dict[str, list[dict]] = {}
+    for evento in da_j:
+        grupos.setdefault((evento.get("grupo") or "").strip() or OUTRAS_INTERFERENCIAS, []).append(evento)
+    outras = grupos.pop(OUTRAS_INTERFERENCIAS, None)
+    return list(grupos.items()) + ([(OUTRAS_INTERFERENCIAS, outras)] if outras else [])
+
+
+def dias_sem_frente(eventos: list[dict]) -> dict:
+    """Soma dos dias de equipe sem frente que a revisão contou em cada interferência
+    ("dias_sem_frente"). Sem nenhuma contagem, {}: o relatório não inventa total."""
+    contados = []
+    for evento in eventos:
+        if evento["etapa"] != "J":
+            continue
+        try:
+            dias = int(evento.get("dias_sem_frente") or 0)
+        except (TypeError, ValueError):
+            dias = 0
+        if dias > 0:
+            contados.append((evento["data"], dias))
+    if not contados:
+        return {}
+    datas = sorted({data for data, _ in contados})
+    return {"dias": sum(dias for _, dias in contados), "datas": len(datas), "inicio": datas[0], "fim": datas[-1]}
+
+
 _FIM_DE_CICLO = ("G", "H", "I", "L")  # aprovação → entrega → equipe → conclusão
 
 
@@ -1229,8 +1265,9 @@ def _juntar_adicionais(base: dict) -> list[dict]:
             item["programado"] = True
         if extra.get("data_evento"):
             item["data_evento"] = extra["data_evento"]
-        if extra.get("frente"):
-            item["frente"] = extra["frente"]
+        for campo in ("frente", "grupo", "dias_sem_frente"):
+            if extra.get(campo):
+                item[campo] = extra[campo]
         chave = (item["data"], item["hora"], item["etapa"], item["ocorrencia"])
         if chave not in vistos:
             vistos.add(chave)
@@ -1397,6 +1434,7 @@ def aplicar_ajustes(eventos: list[dict], ajustes: list[dict]) -> list[dict]:
                     evento[marca] = bool(ajuste[marca])
             if ajuste.get("data_evento"):
                 evento["data_evento"] = ajuste["data_evento"]
-            if ajuste.get("frente"):
-                evento["frente"] = ajuste["frente"]
+            for campo in ("frente", "grupo", "dias_sem_frente"):
+                if ajuste.get(campo):
+                    evento[campo] = ajuste[campo]
     return eventos
