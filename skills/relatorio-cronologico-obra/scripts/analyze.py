@@ -371,11 +371,16 @@ def data_do_fato(evento: dict) -> str:
     return evento.get("data_evento") or evento["data"]
 
 
+def realizado(evento: dict) -> bool:
+    """O fato aconteceu (não é só programação, pedido ou agendamento)."""
+    return not evento.get("programado")
+
+
 def conta_como_marco(evento: dict) -> bool:
     """Fato realizado que pode marcar a etapa: não é só programação nem interferência, não foi
     marcado fora do ciclo ("marco": false, como reposição ou peça extra), e na etapa L só a
     conclusão marcada."""
-    if evento.get("programado") or evento.get("marco") is False:
+    if not realizado(evento) or evento.get("marco") is False:
         return False
     if evento["etapa"] == "L":
         return conclui(evento)
@@ -403,7 +408,7 @@ def frentes_da_obra(eventos: list[dict]) -> list[str]:
     ordem: dict[str, str] = {}
     for evento in eventos:
         frente = frente_de(evento)
-        if frente and conta_como_marco(evento) and data_do_fato(evento) < ordem.get(frente, "9999"):
+        if frente and realizado(evento) and data_do_fato(evento) < ordem.get(frente, "9999"):
             ordem[frente] = data_do_fato(evento)
     return sorted(ordem, key=lambda nome: (ordem[nome], nome))
 
@@ -1390,7 +1395,7 @@ def data_da_conclusao(eventos: list[dict]) -> str:
 def _situacao_marco(eventos: list[dict], codigo: str) -> str:
     if codigo == "L":
         return "Concluído" if data_da_conclusao(eventos) else "dado não identificado (pendente)"
-    if any(item["etapa"] == codigo and not item.get("programado") for item in eventos):
+    if any(item["etapa"] == codigo and realizado(item) for item in eventos):
         return "Concluído"
     if any(item["etapa"] == codigo for item in eventos):
         return "Programado, sem confirmação"
@@ -1436,7 +1441,7 @@ def aplicar_ajustes(eventos: list[dict], ajustes: list[dict]) -> list[dict]:
             if ajuste.get("destaque"):
                 evento["destaque"] = ajuste["destaque"]
             for marca in ("conclusao", "programado", "marco"):
-                if marca in ajuste:  # aceita false, para desmarcar
+                if ajuste.get(marca) is not None:  # aceita false, para desmarcar; null não muda nada
                     evento[marca] = bool(ajuste[marca])
             if ajuste.get("data_evento"):
                 evento["data_evento"] = ajuste["data_evento"]
