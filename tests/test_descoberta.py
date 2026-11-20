@@ -104,6 +104,19 @@ class BuscaTeste(Ambiente):
         e = inferir_identidade("sem-pista.zip")
         self.assertEqual(e["numero"], "")
 
+    def test_copia_baixada_de_novo_chat_solto_e_ano_nao_viram_cliente_nem_numero(self):
+        # Visto na avaliação de prontidão: "(1)" virava o cliente "1"; _chat.txt, o cliente "chat"; 2026, o número.
+        self.assertEqual(
+            inferir_identidade("WhatsApp Chat - Obra 1001 (1).zip"), {"numero": "1001", "cliente": ""}
+        )
+        self.assertEqual(
+            inferir_identidade("Conversa do WhatsApp com 1001 - Família Almeida (2).zip"),
+            {"numero": "1001", "cliente": "Família Almeida"},
+        )
+        self.assertEqual(inferir_identidade("_chat.txt"), {"numero": "", "cliente": ""})
+        self.assertEqual(inferir_identidade("Silva 2026.zip")["numero"], "")
+        self.assertEqual(inferir_identidade("Silva 2026 obra 1001.zip")["numero"], "1001")
+
     def test_numero_depois_de_obra_vale_mais_que_outro_numero_do_nome(self):
         # "apto 302" é o apartamento; a obra é a 8977.
         self.assertEqual(inferir_identidade("Conversa do WhatsApp com apto 302 - Obra 8977.zip")["numero"], "8977")
@@ -160,6 +173,23 @@ class RegistroTeste(Ambiente):
         self.assertEqual(item["caminho"], str(destino))
         with self.assertRaises(RuntimeError):
             registro.concluir(sha)
+
+    def test_zip_apagado_sai_da_lista(self):
+        zip_path = zip_com(self.base / "Downloads" / "Conversa do WhatsApp com 1001.zip", CONVERSA)
+        self.assertEqual(len(self._achar("Downloads")["fila"]), 1)
+        zip_path.unlink()
+        self.assertEqual(self._achar("Downloads")["fila"], [])
+
+    def test_concluir_com_zip_que_ja_saiu_do_lugar_nao_diz_que_guardou(self):
+        zip_path = zip_com(self.base / "Downloads" / "Conversa do WhatsApp com 1001.zip", CONVERSA)
+        sha = self._achar("Downloads")["fila"][0]
+        obra = self.base / "obras" / "1001 - Família Almeida"
+        registro.registrar_relatorio(sha, str(obra / "05-relatorios" / "r-v1.docx"), 1, str(obra))
+        zip_path.unlink()  # a pessoa moveu o zip antes de aprovar
+        self.assertIsNone(registro.concluir(sha))
+        item = registro.carregar()["exportacoes"][sha]
+        self.assertEqual(item["status"], registro.CONCLUIDO)
+        self.assertEqual(item["caminho"], str(zip_path))
 
     def test_nao_conclui_sem_relatorio(self):
         zip_com(self.base / "Downloads" / "Conversa do WhatsApp com 1001.zip", CONVERSA)
@@ -224,6 +254,22 @@ class FluxoTeste(Ambiente):
         self.assertEqual(estados, [registro.CONCLUIDO, registro.CONCLUIDO])
         self.assertEqual(len(list((obra / "01-conversas").glob("*.zip"))), 2)
         self.assertEqual(list(downloads.glob("*.zip")), [])
+
+    def test_numeros_da_lista_nao_mudam_depois_de_gerar_um_relatorio(self):
+        # Visto na avaliação de prontidão: depois de gerar a 1, o "--indice 3" da mesma lista caía em outra conversa.
+        self._preparar()
+        downloads = self.base / "Downloads"
+        for numero, cliente, dia in (("1003", "Família Costa", "03"), ("1002", "Família Lima", "02"), ("1001", "Família Almeida", "01")):
+            conversa = CONVERSA.replace("1001", numero).replace("Família Almeida", cliente).replace("13/01/2026", f"{dia}/02/2026")
+            zip_com(downloads / f"Conversa do WhatsApp com {numero} - {cliente}.zip", conversa)
+        base = ["--downloads", str(downloads), "--skip-transcribe", "--skip-keyframes"]
+        executar(["--listar", *base])
+        self.assertEqual(executar(["--indice", "1", *base]), 0)
+        self.assertEqual(executar(["--indice", "3", "--obra", "1001", "--cliente", "Família Almeida Corrigida", *base]), 0)
+
+        obras = self.base / "Armanilux" / "Relatorios-de-Obra"
+        nova = obras / "1001 - Família Almeida Corrigida" / "01-conversas"
+        self.assertIn("Obra 1001", "".join(p.read_text(encoding="utf-8") for p in nova.glob("*.txt")))
 
     def test_lote_gera_varias_em_sequencia(self):
         self._preparar()

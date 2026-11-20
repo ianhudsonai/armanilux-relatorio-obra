@@ -38,6 +38,11 @@ _PAREN = re.compile(r"\(([^)]*)\)")
 _NUMERO = re.compile(r"\b(\d{3,}(?:\.\d+)*)(?:\.v\d+)?\b", re.IGNORECASE)
 # "apto 302 - Obra 8977": o número depois de "Obra" é o da obra.
 _NUMERO_DA_OBRA = re.compile(r"\bobra\s*(\d{3,}(?:\.\d+)*(?:\.v\d+)?)\b", re.IGNORECASE)
+# Solto no nome, 2026 é ano, não obra ("Obra 2026" ainda vale, por _NUMERO_DA_OBRA).
+_ANO = re.compile(r"^(?:19|20)\d{2}$")
+_COPIA = re.compile(r"\s*\(\d{1,2}\)\s*$")
+# Nome que o WhatsApp dá ao .txt solto: não diz obra nem cliente.
+_SEM_IDENTIDADE = {"chat", "conversa", "whatsapp chat", "conversa do whatsapp"}
 
 
 def normalizar_nome(nome: str) -> str:
@@ -63,10 +68,15 @@ def _limpar_cliente(texto: str) -> str:
 def _do_nome(nome_arquivo: str) -> tuple[str, str]:
     base = corrigir_mojibake(unicodedata.normalize("NFC", Path(nome_arquivo).stem))
     base = _PREFIXO.sub("", base).strip()
+    base = _COPIA.sub("", base)  # "(1)" do Windows ao baixar de novo não é cliente
+    if base.lower().lstrip("_") in _SEM_IDENTIDADE:
+        return "", ""
     entre_parenteses = _PAREN.findall(base)
     sem_parenteses = _PAREN.sub(" ", base)
     numero = ""
-    achado = _NUMERO_DA_OBRA.search(sem_parenteses) or _NUMERO.search(sem_parenteses)
+    achado = _NUMERO_DA_OBRA.search(sem_parenteses) or next(
+        (item for item in _NUMERO.finditer(sem_parenteses) if not _ANO.match(item.group(1))), None
+    )
     if achado:
         numero = chave_obra(achado.group(1))
         resto = sem_parenteses.replace(achado.group(0), " ", 1)

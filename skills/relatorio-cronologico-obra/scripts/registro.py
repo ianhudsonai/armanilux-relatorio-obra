@@ -83,7 +83,10 @@ def _ordenar(itens: list[dict]) -> list[dict]:
 
 
 def _fila(dados: dict) -> list[dict]:
-    return _ordenar([i for i in dados["exportacoes"].values() if i.get("status") in NA_FILA])
+    """Conversas sem relatório cujo arquivo ainda está no lugar (zip apagado ou movido sai da lista)."""
+    return _ordenar(
+        [i for i in dados["exportacoes"].values() if i.get("status") in NA_FILA and Path(i.get("caminho") or "").is_file()]
+    )
 
 
 def sincronizar(achados: list[dict], salvar_agora: bool = True) -> dict:
@@ -183,8 +186,9 @@ def anotar_remontagem(pasta_obra: str, caminho_relatorio: str, versao: int) -> b
     return True
 
 
-def concluir(sha: str, copiar: bool = False) -> Path:
-    """Só depois que a pessoa aprovar o relatório: guarda o zip na obra e fecha."""
+def concluir(sha: str, copiar: bool = False) -> Path | None:
+    """Só depois que a pessoa aprovar o relatório: guarda o zip na obra e fecha.
+    Devolve None se o zip já não estava no lugar (a conversa extraída continua na obra)."""
     dados = carregar()
     item = dados["exportacoes"][sha]
     if item.get("status") != GERADO:
@@ -193,6 +197,11 @@ def concluir(sha: str, copiar: bool = False) -> Path:
     destino_dir = Path(item["pasta_obra"]) / "01-conversas"
     destino_dir.mkdir(parents=True, exist_ok=True)
     destino = destino_dir / origem.name
+    if not origem.exists() and not destino.exists():
+        item["status"] = CONCLUIDO
+        item["concluido_em"] = item["atualizado_em"] = _agora()
+        salvar(dados)
+        return None
     if origem.exists() and os.path.normcase(str(origem.resolve())) != os.path.normcase(str(destino.resolve())):
         if destino.exists():
             destino = destino_dir / f"{origem.stem}-{sha[:6]}{origem.suffix}"
@@ -207,15 +216,23 @@ def concluir(sha: str, copiar: bool = False) -> Path:
     return destino
 
 
+def fixar_lista(dados: dict) -> dict:
+    """Guarda a lista numerada que a pessoa viu. Os números valem até o próximo --listar,
+    mesmo depois que uma conversa da lista ganha relatório e sai da fila."""
+    dados["lista"] = list(dados.get("fila") or [])
+    salvar(dados)
+    return dados
+
+
 def escolher(dados: dict, indices: list[int] | None, todas: bool) -> list[str]:
-    fila = list(dados.get("fila") or [])
     if todas:
-        return fila
+        return list(dados.get("fila") or [])
+    lista = list(dados.get("lista") or dados.get("fila") or [])
     escolhidos = []
     for indice in indices or []:
-        if indice < 1 or indice > len(fila):
+        if indice < 1 or indice > len(lista) or lista[indice - 1] not in dados["exportacoes"]:
             raise IndexError(indice)
-        escolhidos.append(fila[indice - 1])
+        escolhidos.append(lista[indice - 1])
     return escolhidos
 
 

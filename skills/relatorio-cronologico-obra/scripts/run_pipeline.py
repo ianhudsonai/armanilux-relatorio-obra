@@ -706,7 +706,7 @@ def _listar(config: dict | None, downloads: str | None) -> int:
             raizes.append(Path(config["pasta_raiz"]))
     else:
         raizes = pastas_de_busca(config=config)
-    dados = registro.sincronizar(descobrir_em(raizes))
+    dados = registro.fixar_lista(registro.sincronizar(descobrir_em(raizes)))
     print(registro.formatar_lista(dados))
     return 0
 
@@ -725,7 +725,7 @@ def _processar_escolha(args, config: dict | None) -> int:
     import registro
 
     dados = registro.carregar()
-    if not dados["fila"]:
+    if not dados["fila"] and not dados.get("lista"):
         _listar(config, args.downloads)
         dados = registro.carregar()
     try:
@@ -784,7 +784,14 @@ def _concluir(args) -> int:
         return 2
     for sha in shas:
         destino = registro.concluir(sha, copiar=args.copiar)
-        print(f"Concluída. Conversa guardada em:\n{destino}")
+        if destino is None:
+            item = registro.carregar()["exportacoes"][sha]
+            print(
+                f"Concluída. O zip não estava mais em {item['caminho']}, então não guardei uma cópia dele. "
+                f"A conversa já lida continua em {Path(item['pasta_obra']) / '01-conversas'}."
+            )
+        else:
+            print(f"Concluída. Conversa guardada em:\n{destino}")
     return 0
 
 

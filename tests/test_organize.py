@@ -70,5 +70,20 @@ class ReextrairTeste(unittest.TestCase):
             self.assertEqual(nomes, ["projeto-2.pdf", "projeto.pdf"])
 
 
+class PastaDaObraTeste(unittest.TestCase):
+    def test_mesma_obra_com_cliente_escrito_de_outro_jeito_usa_a_pasta_que_ja_existe(self):
+        # Visto na avaliação de prontidão: "Silva" e depois "Silva Marmores" faziam duas pastas da obra 1001.
+        with TemporaryDirectory() as temporario:
+            raiz = Path(temporario)
+            primeira = garantir_obra(raiz, "1001", "Silva")
+            self.assertEqual(garantir_obra(raiz, "1001", "Silva Marmores"), primeira)
+            invertido = "{cliente} - {numero}"
+            outra = garantir_obra(raiz, "2002", "Costa", invertido)
+            self.assertEqual(garantir_obra(raiz, "2002", "Família Costa", invertido), outra)
+            # Número que só começa igual não é a mesma obra.
+            self.assertNotEqual(garantir_obra(raiz, "100", "Silva"), primeira)
+            self.assertEqual(len([p for p in raiz.iterdir() if p.is_dir()]), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

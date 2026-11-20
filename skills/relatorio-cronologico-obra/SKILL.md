@@ -4,7 +4,7 @@ description: Gera o Relatório Cronológico de Obra da Armanilux (etapas A a L, 
 license: MIT
 metadata:
   author: Armanilux
-  version: "1.15"
+  version: "1.16"
   idioma: pt-BR
 ---
 
@@ -68,6 +68,8 @@ Número da obra e cliente são adivinhados pelo nome do arquivo e pelo grupo, e 
 - Sim: rode com `--indice`.
 - Não: pergunte o número da obra e o nome do cliente certos e rode essa conversa sozinha, com os dois: `--indice 1 --obra "8977" --cliente "Família Souza"`. Com várias escolhidas, rode juntas só as confirmadas (`--indice 2,3`) e cada corrigida à parte; não use `--todas` quando alguma foi corrigida.
 - O script disse que não conseguiu descobrir: pergunte só isso e rode do mesmo jeito.
+
+Os números valem os da última lista mostrada, até o próximo `--listar`, mesmo depois que uma conversa dela ganha relatório. Se a obra já tem pasta com o cliente escrito de outro jeito, o script usa a pasta que existe e avisa.
 
 ```bash
 PYTHON SKILL/scripts/run_pipeline.py --indice 1,3
