@@ -421,7 +421,8 @@ def _da_frente(evento: dict, frente: str | None) -> bool:
 
 def avisos_de_frente(eventos: list[dict], prazos: list[dict]) -> list[str]:
     """Numa obra multifrente, fato de aprovação, entrega, instalação ou conclusão sem frente volta a
-    misturar frentes no intervalo "Obra em geral"; prazo com frente que não existe fica sem realizado."""
+    misturar frentes no intervalo "Obra em geral"; marco com data fora da ordem do ciclo sai da Análise de
+    Prazos; prazo com frente que não existe fica sem realizado."""
     frentes = frentes_da_obra(eventos)
     avisos = []
     if frentes:
@@ -432,6 +433,13 @@ def avisos_de_frente(eventos: list[dict], prazos: list[dict]) -> list[str]:
             avisos.append(
                 f"Aviso de frente: {len(soltos)} {fato} de aprovação, entrega, instalação ou conclusão sem frente "
                 f"numa obra multifrente ({datas}). Acrescente \"frente\" ou confirme que é da obra toda."
+            )
+    for nome, primeiros in _primeiros_por_frente(eventos):
+        for etapa, data in marcos_em_ordem(primeiros)[1]:
+            onde = f"{nome}: " if nome else ""
+            avisos.append(
+                f"Aviso de frente: {onde}{TITULOS[etapa]} em {formatar_data(data)} está fora da ordem do ciclo e não entra "
+                "na Análise de Prazos. Confira a data, a etapa e a frente desse fato."
             )
     for prazo in prazos or []:
         frente = (prazo.get("frente") or "").strip()
@@ -459,13 +467,22 @@ def primeiros_marcos(eventos: list[dict], frente: str | None = None) -> dict[str
 MARCOS_DO_CICLO = ("A", "C", "D", "G", "H", "I", "L")
 
 
+def marcos_em_ordem(primeiros: dict[str, str]) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+    """Marcos do ciclo que formam a maior sequência com datas em ordem (mantidos) e os que ficam
+    fora dela (data fora da ordem do ciclo, em geral fato mal datado ou na frente errada).
+    Assim uma etapa com data errada não esconde as outras."""
+    candidatos = [(etapa, primeiros[etapa]) for etapa in MARCOS_DO_CICLO if primeiros.get(etapa)]
+    melhor: list[list[tuple[str, str]]] = []
+    for indice, (etapa, data) in enumerate(candidatos):
+        anteriores = [melhor[j] for j in range(indice) if candidatos[j][1] <= data]
+        base = max(anteriores, key=len, default=[])
+        melhor.append(base + [(etapa, data)])
+    mantidos = max(melhor, key=len, default=[])
+    return mantidos, [par for par in candidatos if par not in mantidos]
+
+
 def _cadeia(primeiros: dict[str, str], frente: str) -> list[dict]:
-    # Na ordem do ciclo; etapa com data anterior à do marco já escolhido (fora de ordem) fica fora.
-    marcos: list[tuple[str, str]] = []
-    for etapa in MARCOS_DO_CICLO:
-        data = primeiros.get(etapa)
-        if data and (not marcos or data >= marcos[-1][1]):
-            marcos.append((etapa, data))
+    marcos, _fora = marcos_em_ordem(primeiros)
     saida = []
     for (de, inicio), (para, fim) in zip(marcos, marcos[1:]):
         dias = dias_uteis_entre(date.fromisoformat(inicio), date.fromisoformat(fim))
@@ -567,6 +584,7 @@ def ciclos_incompletos(eventos: list[dict]) -> list[dict]:
     for nome, primeiros in _primeiros_por_frente(eventos):
         if nome == GERAL:
             continue
+        primeiros = dict(marcos_em_ordem(primeiros)[0])
         feitas = [etapa for etapa in _FIM_DE_CICLO if etapa in primeiros]
         if not feitas or feitas[-1] == "L":
             continue

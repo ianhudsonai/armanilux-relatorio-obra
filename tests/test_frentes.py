@@ -124,6 +124,20 @@ class FrentesTeste(unittest.TestCase):
             [("D", "G", 5), ("G", "I", 5)],
         )
 
+    def test_etapa_com_data_errada_nao_esconde_o_resto_e_gera_aviso(self):
+        # Chapas (A) marcadas em maio, depois da medição, do preliminar e da aprovação: sai A, ficam C → D → G.
+        eventos = [
+            _evento("2026-05-04", "A", "Banhos"),
+            _evento("2026-02-02", "C", "Banhos"),
+            _evento("2026-03-02", "D", "Banhos"),
+            _evento("2026-04-06", "G", "Banhos"),
+            _evento("2026-04-13", "G", "Living"),
+        ]
+        relato = completar_relato({"obra": {}, "eventos": eventos})
+        self.assertEqual([(m["frente"], m["de"], m["para"]) for m in relato["intervalos_marcos"]], [("Banhos", "C", "D"), ("Banhos", "D", "G")])
+        avisos = avisos_de_frente(eventos, [])
+        self.assertTrue(any("Banhos" in aviso and "04/05/2026" in aviso and "fora da ordem" in aviso for aviso in avisos), avisos)
+
 
 if __name__ == "__main__":
     unittest.main()
