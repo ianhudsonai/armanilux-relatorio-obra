@@ -36,8 +36,10 @@ SEM_IDENTIDADE = (
 
 def zip_com(caminho: Path, conversa: str, nome_txt: str = "_chat.txt") -> Path:
     caminho.parent.mkdir(parents=True, exist_ok=True)
+    # Data fixa dentro do zip: a mesma conversa dá o mesmo arquivo, como uma cópia baixada de novo.
+    # Com a hora atual, dois zips feitos em segundos diferentes saíam diferentes (teste instável no CI).
     with zipfile.ZipFile(caminho, "w") as arquivo:
-        arquivo.writestr(nome_txt, conversa.encode("utf-8"))
+        arquivo.writestr(zipfile.ZipInfo(nome_txt, date_time=(2026, 1, 1, 0, 0, 0)), conversa.encode("utf-8"))
     return caminho
 
 
