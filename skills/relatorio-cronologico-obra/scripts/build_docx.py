@@ -22,6 +22,7 @@ from analyze import (
     frentes_da_obra,
     grupos_da_etapa_j,
     intervalos_marcos_de,
+    realizado,
     marcos_de,
     primeira_programacao,
 )
@@ -419,10 +420,35 @@ def _escrever_etapa(documento: Document, analise: dict, codigo: str) -> None:
         marcos = marcos_de(analise.get("eventos") or [], analise.get("pendencias") or [])
         if marcos:
             _tabela_simples(documento, ["Marco", "Situação"], [[item["marco"], item["situacao"]] for item in marcos], [12.2, 5.2])
+            falta = [item["marco"][0].lower() + item["marco"][1:] for item in marcos if item["situacao"] != "Concluído"]
+            if falta:
+                _paragrafo(documento, f"Sem comprovação no grupo até {_ultimo_registro(analise)}: {'; '.join(falta)}.", tamanho=10)
         pendencias = [item for item in analise.get("pendencias") or [] if (item.get("status") or "Pendente") == "Pendente"]
         if pendencias:
             _tabela_simples(documento, ["Pendência em aberto", "Status"], [[item["item"], "Pendente"] for item in pendencias], [13.4, 4.0])
     _leitura(documento, f"Leitura da Etapa {codigo}", _texto_leitura(_comentario(analise, codigo, "leitura"), eventos))
+    status = _status_da_etapa(_comentario(analise, codigo, "status"), eventos)
+    if status:
+        _leitura(documento, "Status", status)
+
+
+def _ultimo_registro(analise: dict) -> str:
+    fim = (analise.get("obra") or {}).get("periodo_fim") or max(
+        (item["data"] for item in analise.get("eventos") or []), default=""
+    )
+    return formatar_data(fim) if fim else DADO
+
+
+def _status_da_etapa(escrito: str, eventos: list[dict]) -> str:
+    """O veredito curto da etapa (como no relatório que o Rogério usa). Sem texto da revisão, só
+    as etapas sem fato realizado ganham status: o resto não tem o que dizer sem a leitura do grupo."""
+    if escrito:
+        return escrito
+    if not eventos:
+        return "sem registro no grupo – dado não identificado."
+    if not any(realizado(item) for item in eventos):
+        return "programado, sem confirmação no grupo."
+    return ""
 
 
 def _nota_metodologica(documento: Document, analise: dict) -> None:
@@ -433,6 +459,14 @@ def _nota_metodologica(documento: Document, analise: dict) -> None:
         "e das transcrições de áudio e vídeo feitas neste computador, sem envio a serviço em nuvem. As datas e "
         "descrições refletem o que foi registrado no grupo; o que não consta é sinalizado como “dado não identificado”.",
         tamanho=10,
+    )
+    _leitura(
+        documento,
+        "Classificação usada",
+        "fato documentado (mensagem, documento ou transcrição com data) • programado (data informada, sem "
+        "confirmação de que aconteceu) • dependência externa (condição da obra, do cliente, da arquitetura ou de "
+        "outro fornecedor) • dado não identificado (não aparece de forma conclusiva no grupo) • impacto potencial "
+        "(consequência possível, sem atraso comprovado).",
     )
     if "lacunas" not in analise:
         limites = "dado não identificado (análise anterior a esta versão)."
@@ -519,6 +553,16 @@ def _confronto_contrato(documento: Document, confronto: list[dict]) -> None:
     documento.add_paragraph()
 
 
+def _interpretacoes(analise: dict) -> dict[tuple[str, str, str], str]:
+    """interpretacao_intervalos da revisão: (de, para, frente) -> texto curto."""
+    saida = {}
+    for item in analise.get("interpretacao_intervalos") or []:
+        texto = _texto(item.get("texto"))
+        if item.get("de") and item.get("para") and texto:
+            saida[(item["de"], item["para"], item.get("frente") or "")] = texto
+    return saida
+
+
 def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path | None, grafico_gantt: Path | None) -> None:
     documento.add_heading("Análise de Prazos — Intervalos em Dias Úteis", level=1)
     marco = "primeiro fato realizado de cada etapa; na aprovação, a que valeu"
@@ -534,7 +578,8 @@ def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path 
     if not marcos and not incompletos:
         _paragrafo(documento, "Intervalo entre marcos: dado não identificado.")
     else:
-        # (rótulo, dias, vermelho, amarelo)
+        interpretacoes = _interpretacoes(analise)
+        # (rótulo, dias, vermelho, amarelo, interpretação)
         linhas = [
             (
                 _prefixo_frente(item)
@@ -543,6 +588,8 @@ def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path 
                 _dias(item["dias_uteis"], item.get("dias_uteis_max")),
                 item["longo"],
                 item["longo"],
+                interpretacoes.get((item["de"], item["para"], item.get("frente") or ""))
+                or interpretacoes.get((item["de"], item["para"], ""), ""),
             )
             for item in marcos
         ]
@@ -555,6 +602,7 @@ def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path 
                     "pendente",
                     False,
                     True,
+                    "",
                 )
             )
         if duracao:
@@ -565,16 +613,21 @@ def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path 
                     f"{duracao['dias_uteis']} d.u.",
                     False,
                     True,
+                    "",
                 )
             )
-        tabela = documento.add_table(rows=1 + len(linhas), cols=2)
+        # A coluna só aparece quando a revisão escreveu alguma interpretação.
+        com_interpretacao = any(linha[4] for linha in linhas)
+        tabela = documento.add_table(rows=1 + len(linhas), cols=3 if com_interpretacao else 2)
         tabela.style = "Table Grid"
-        _larguras(tabela, [14.2, 3.2])
-        _cabecalho_tabela(tabela, ["Intervalo entre marcos", "Dias úteis"])
-        for indice, (rotulo, dias, vermelho, amarelo) in enumerate(linhas, start=1):
+        _larguras(tabela, [9.0, 2.6, 5.8] if com_interpretacao else [14.2, 3.2])
+        _cabecalho_tabela(tabela, ["Intervalo entre marcos", "Dias úteis"] + (["Interpretação"] if com_interpretacao else []))
+        for indice, (rotulo, dias, vermelho, amarelo, interpretacao) in enumerate(linhas, start=1):
             linha = tabela.rows[indice]
             _texto_celula(linha.cells[0], rotulo, tamanho=9)
             _texto_celula(linha.cells[1], dias, tamanho=9, negrito=True, cor=VERMELHO if vermelho else None)
+            if com_interpretacao:
+                _texto_celula(linha.cells[2], interpretacao, tamanho=9)
             if amarelo:
                 for celula in linha.cells:
                     _sombrear(celula, AMARELO)
@@ -648,7 +701,8 @@ def textos_que_faltam(analise: dict) -> list[str]:
         faltam.append("impactos_prazo")
     if not _pontos_criticos(analise):
         faltam.append("pontos_criticos")
-    if not _itens(analise.get("recomendacoes_personalizadas")):
+    recomendacoes = analise.get("recomendacoes_personalizadas")
+    if not (_linhas_de_recomendacao(recomendacoes) if isinstance(recomendacoes, list) else _itens(recomendacoes)):
         faltam.append("recomendacoes_personalizadas")
     lacuna_de_prazo = any("prazo contratual" in str(item).lower() for item in analise.get("lacunas_adicionais") or [])
     if not analise.get("prazos_contratuais") and not lacuna_de_prazo:
@@ -656,8 +710,30 @@ def textos_que_faltam(analise: dict) -> list[str]:
     return faltam
 
 
+def _linhas_de_recomendacao(recomendacoes: list) -> list[list[str]]:
+    """Recomendação com prioridade ({"prioridade", "medida", "resultado"}) ou só o texto da medida."""
+    linhas = []
+    for item in recomendacoes:
+        if isinstance(item, dict):
+            medida = _texto(item.get("medida"))
+            if medida:
+                linhas.append([_texto(item.get("prioridade")) or "—", medida, _texto(item.get("resultado"))])
+        elif str(item).strip():
+            linhas.append(["—", str(item).strip(), ""])
+    return linhas
+
+
 def _diagnostico(documento: Document, analise: dict) -> None:
     documento.add_heading("Análise Técnica — Diagnóstico", level=1)
+    # Avaliação por tema, como no relatório que o Rogério usa ("Gargalo documentado", "Fluxo eficiente"...).
+    temas = [item for item in analise.get("diagnostico_temas") or [] if _texto(item.get("tema"))]
+    if temas:
+        _tabela_simples(
+            documento,
+            ["Tema", "Avaliação", "Leitura"],
+            [[_texto(item.get("tema")), _texto(item.get("avaliacao")), _texto(item.get("leitura"))] for item in temas],
+            [4.6, 3.4, 9.4],
+        )
     for _, titulo, valor in _blocos_do_diagnostico(analise):
         documento.add_heading(titulo, level=2)
         _marcadores(documento, _itens(valor))
@@ -706,7 +782,15 @@ def _conclusao_estrategica(documento: Document, analise: dict) -> None:
     documento.add_heading("Impactos no prazo final", level=2)
     _paragrafo(documento, _texto(analise.get("impactos_prazo")) or _impacto_padrao(analise), tamanho=10)
     documento.add_heading("Recomendações práticas", level=2)
-    _numerados(documento, _itens(analise.get("recomendacoes_personalizadas")))
+    recomendacoes = analise.get("recomendacoes_personalizadas")
+    if isinstance(recomendacoes, list) and any(isinstance(item, dict) for item in recomendacoes):
+        _tabela_simples(documento, ["Prioridade", "Medida proposta", "Resultado esperado"], _linhas_de_recomendacao(recomendacoes), [2.6, 8.4, 6.4])
+    else:
+        _numerados(documento, _itens(recomendacoes))
+    controle = _itens(analise.get("pontos_de_controle"))
+    if controle:
+        documento.add_heading("Pontos de controle recomendados", level=2)
+        _marcadores(documento, controle)
     fim = documento.add_paragraph()
     fim.alignment = WD_ALIGN_PARAGRAPH.CENTER
     _fonte(fim.add_run("— Fim do relatório —"), 10, italico=True, cor=CINZA)
