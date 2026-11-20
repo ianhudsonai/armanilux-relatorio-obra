@@ -502,6 +502,8 @@ def intervalos_marcos_de(eventos: list[dict], obra: dict | None = None) -> tuple
 
 
 OUTRAS_INTERFERENCIAS = "Outras interferências"
+# Campos que a revisão escreve no evento e que passam de eventos_adicionais e ajustes_eventos.
+CAMPOS_DA_REVISAO = ("frente", "grupo", "dias_sem_frente")
 
 
 def grupos_da_etapa_j(eventos: list[dict]) -> list[tuple[str, list[dict]]]:
@@ -521,7 +523,8 @@ def grupos_da_etapa_j(eventos: list[dict]) -> list[tuple[str, list[dict]]]:
 def dias_sem_frente(eventos: list[dict]) -> dict:
     """Soma dos dias de equipe sem frente que a revisão contou em cada interferência
     ("dias_sem_frente"). Sem nenhuma contagem, {}: o relatório não inventa total."""
-    contados = []
+    # Por data, vale a maior contagem: duas mensagens do mesmo dia falam da mesma equipe parada.
+    por_data: dict[str, int] = {}
     for evento in eventos:
         if evento["etapa"] != "J":
             continue
@@ -530,11 +533,11 @@ def dias_sem_frente(eventos: list[dict]) -> dict:
         except (TypeError, ValueError):
             dias = 0
         if dias > 0:
-            contados.append((evento["data"], dias))
-    if not contados:
+            por_data[evento["data"]] = max(dias, por_data.get(evento["data"], 0))
+    if not por_data:
         return {}
-    datas = sorted({data for data, _ in contados})
-    return {"dias": sum(dias for _, dias in contados), "datas": len(datas), "inicio": datas[0], "fim": datas[-1]}
+    datas = sorted(por_data)
+    return {"dias": sum(por_data.values()), "datas": len(datas), "inicio": datas[0], "fim": datas[-1]}
 
 
 _FIM_DE_CICLO = ("G", "H", "I", "L")  # aprovação → entrega → equipe → conclusão
@@ -1265,7 +1268,7 @@ def _juntar_adicionais(base: dict) -> list[dict]:
             item["programado"] = True
         if extra.get("data_evento"):
             item["data_evento"] = extra["data_evento"]
-        for campo in ("frente", "grupo", "dias_sem_frente"):
+        for campo in CAMPOS_DA_REVISAO:
             if extra.get(campo):
                 item[campo] = extra[campo]
         chave = (item["data"], item["hora"], item["etapa"], item["ocorrencia"])
@@ -1434,7 +1437,7 @@ def aplicar_ajustes(eventos: list[dict], ajustes: list[dict]) -> list[dict]:
                     evento[marca] = bool(ajuste[marca])
             if ajuste.get("data_evento"):
                 evento["data_evento"] = ajuste["data_evento"]
-            for campo in ("frente", "grupo", "dias_sem_frente"):
-                if ajuste.get(campo):
+            for campo in CAMPOS_DA_REVISAO:
+                if campo in ajuste:  # aceita "" e 0, para limpar
                     evento[campo] = ajuste[campo]
     return eventos

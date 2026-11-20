@@ -94,6 +94,18 @@ class EtapaJTeste(unittest.TestCase):
         self.assertEqual([e.get("grupo") for e in relato["eventos"]], ["Civil e terceiros", "Civil e terceiros"])
         self.assertEqual(dias_sem_frente(relato["eventos"])["dias"], 2)
 
+    def test_mesma_data_conta_uma_vez(self):
+        # Duas mensagens do mesmo dia sobre a mesma equipe parada: 1 dia, não 2. Parada longa contada
+        # numa mensagem só (7 dias) vale inteira.
+        eventos = [_j("2026-08-03", "Sem frente nos banhos.", dias_sem_frente=1), _j("2026-08-03", "Dia perdido.", dias_sem_frente=1),
+                   _j("2026-07-22", "Equipe fora de 13 a 21/07.", dias_sem_frente=7)]
+        self.assertEqual(dias_sem_frente(eventos), {"dias": 8, "datas": 2, "inicio": "2026-07-22", "fim": "2026-08-03"})
+
+    def test_ajuste_limpa_o_tipo_errado(self):
+        lido = _j("2026-06-22", "Contrapisos fora de cota.", grupo="Logística", dias_sem_frente=1)
+        eventos = aplicar_ajustes([lido], [{"data": "2026-06-22", "etapa_original": "J", "grupo": "", "dias_sem_frente": 0}])
+        self.assertEqual((eventos[0]["grupo"], eventos[0]["dias_sem_frente"]), ("", 0))
+
 
 if __name__ == "__main__":
     unittest.main()
