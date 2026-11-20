@@ -4,8 +4,9 @@ Uso:
     python tools/pontuar_relatorio.py --gabarito <gabarito.json> --obra-dir "<pasta da obra>" [--docx <arquivo.docx>]
 
 O gabarito de obra real tem dados de cliente: fica FORA deste repositório público.
-Sem --docx, usa o .docx mais novo de 05-relatorios. Os marcos e intervalos são refeitos dos
-eventos do analise.json com o código desta pasta, como o Word faz.
+Sem --docx, usa o .docx mais novo de 05-relatorios. Os marcos, intervalos e somas são refeitos dos
+eventos do analise.json com o código desta pasta, como o Word faz: a nota mede a revisão (os fatos e
+marcas no analise.json) com o motor atual. Os itens "texto" e "quadro" leem o Word como ele está.
 
 Tipos de conferência (campo "tipo" de cada item de "checks"):
 - marco: "etapa", "frente" (opcional), "aceita": ["AAAA-MM-DD"] ou ["AAAA-MM-DD..AAAA-MM-DD"] (faixa)
@@ -14,7 +15,7 @@ Tipos de conferência (campo "tipo" de cada item de "checks"):
 - texto: "contem" e "nao_contem" (trechos do Word, com tabelas)
 - quadro: "linha" do Quadro-Resumo e "aceita" (trechos que o valor deve ter; basta um)
 - evento: "etapa" (uma letra ou várias, ex. "EJ"), "data" (da mensagem ou do fato), "contem" (palavras; basta uma)
-- soma_campo: "campo" dos eventos (ex.: dias_sem_frente, contado uma vez por data) e "aceita" (números)
+- soma_campo: "campo" da etapa J (dias_sem_frente ou dias_perdidos_armanilux, somado como no Word) e "aceita"
 - confronto: "descricao" (trecho), "sem_estouro_interno": true e/ou "com_realizado": true
 - gantt_sem: "rotulo" que não pode aparecer na linha do tempo
 """
@@ -54,13 +55,11 @@ def _texto_docx(caminho: Path) -> tuple[str, dict[str, str]]:
 
 
 def _faixa(eventos: list[dict], etapa: str, frente: str | None) -> str:
-    if hasattr(analyze, "faixas_dos_marcos"):
-        faixa = analyze.faixas_dos_marcos(eventos, frente).get(etapa)
-        if not faixa:
-            return ""
-        inicio, ate = faixa
-        return inicio if inicio == ate else f"{inicio}..{ate}"
-    return analyze.primeiros_marcos(eventos, frente).get(etapa, "")
+    faixa = analyze.faixas_dos_marcos(eventos, frente).get(etapa)
+    if not faixa:
+        return ""
+    inicio, ate = faixa
+    return inicio if inicio == ate else f"{inicio}..{ate}"
 
 
 def _intervalo(eventos: list[dict], obra: dict, check: dict) -> str:
@@ -70,18 +69,6 @@ def _intervalo(eventos: list[dict], obra: dict, check: dict) -> str:
             maximo = item.get("dias_uteis_max", item["dias_uteis"])
             return str(item["dias_uteis"]) if maximo == item["dias_uteis"] else f"{item['dias_uteis']}-{maximo}"
     return "(sem esse intervalo)"
-
-
-def _soma(eventos: list[dict], campo: str) -> int:
-    por_data: dict[str, int] = {}
-    for evento in eventos:
-        try:
-            valor = int(evento.get(campo) or 0)
-        except (TypeError, ValueError):
-            valor = 0
-        if valor > 0:
-            por_data[evento["data"]] = max(valor, por_data.get(evento["data"], 0))
-    return sum(por_data.values())
 
 
 def _conferir(check: dict, analise: dict, texto: str, quadro: dict[str, str]) -> tuple[bool, str]:
@@ -113,7 +100,7 @@ def _conferir(check: dict, analise: dict, texto: str, quadro: dict[str, str]) ->
         ]
         return bool(achados), achados[0]["ocorrencia"][:120] if achados else "(não achado)"
     if tipo == "soma_campo":
-        soma = _soma(eventos, check["campo"])
+        soma = analyze.dias_sem_frente(eventos, check["campo"]).get("dias", 0)
         return soma in check["aceita"], str(soma)
     if tipo == "confronto":
         confronto = analyze.confronto_contrato(eventos, analise.get("prazos_contratuais") or [])
@@ -132,8 +119,6 @@ def _conferir(check: dict, analise: dict, texto: str, quadro: dict[str, str]) ->
     if tipo == "gantt_sem":
         import build_charts
 
-        if not hasattr(build_charts, "linhas_gantt"):
-            return False, "(versão sem linhas_gantt)"
         rotulos = [linha["rotulo"] for linha in build_charts.linhas_gantt(eventos)]
         return not any(_normal(check["rotulo"]) in _normal(r) for r in rotulos), "; ".join(rotulos)
     raise ValueError(f"tipo desconhecido: {tipo}")
@@ -155,7 +140,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--docx", type=Path)
     parser.add_argument("--analise", type=Path, help="padrão: 04-transcricoes/analise.json da obra")
     args = parser.parse_args(argv)
-    analise = json.loads((args.analise or args.obra_dir / "04-transcricoes" / "analise.json").read_text(encoding="utf-8"))
+    caminho = args.analise or args.obra_dir / "04-transcricoes" / "analise.json"
+    if not caminho.exists():
+        print(f"Sem {caminho}: o relatório não foi feito pela skill, então só dá para conferir o Word à mão.")
+        return 1
+    analise = json.loads(caminho.read_text(encoding="utf-8"))
     analise = analyze.completar_relato(analise)
     docx = args.docx
     if docx is None:

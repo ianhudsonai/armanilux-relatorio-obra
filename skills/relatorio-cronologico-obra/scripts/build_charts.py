@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from analyze import ORDEM, TITULOS, data_da_conclusao
+from analyze import ORDEM, TITULOS, data_da_conclusao, data_do_fato
 from common import LARGURA_FIGURA_CM
 
 LARGURA_POL = LARGURA_FIGURA_CM / 2.54  # mesma largura com que o Word insere a figura
@@ -155,7 +155,7 @@ def linhas_gantt(eventos: list[dict]) -> list[dict]:
     linhas = []
     for codigo in ORDEM:
         # Programação não é registro do que aconteceu; o fato conta na data em que ocorreu.
-        datas = [item.get("data_evento") or item["data"] for item in eventos if item["etapa"] == codigo and not item.get("programado")]
+        datas = [data_do_fato(item) for item in eventos if item["etapa"] == codigo and not item.get("programado")]
         if not datas:
             continue
         nome = SEM_CONCLUSAO if codigo == "L" and not data_da_conclusao(eventos) else _nome_curto(codigo)

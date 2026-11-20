@@ -26,7 +26,7 @@ PISOS = {
     "fim": "2025-10-28",
     "limite_du": 6,
     "fonte_data": "2025-08-29",
-    "quem_segurou": "Arquitetura: aval para iniciar só em 28/10; preliminar enviado no mesmo dia",
+    "quem_segurou": "Arquitetura: aval para iniciar só em 27/10; preliminar enviado no mesmo dia",
     "externo": True,
 }
 BANHOS = {"descricao": "Banhos: medição → preliminar (até 6 d.u.)", "inicio": "2026-03-12", "fim": "2026-03-30", "limite_du": 6, "fonte_data": "2025-08-29"}
@@ -61,7 +61,7 @@ class DoisLadosTeste(unittest.TestCase):
         relato = completar_relato({"obra": {"periodo_inicio": "2025-08-29", "periodo_fim": "2026-08-01"}, "eventos": EVENTOS, "prazos_contratuais": [PISOS, BANHOS]})
         texto = _texto(relato)
         self.assertIn("Prazo contratual de referência | Contrato | Realizado | Quem segurou", texto)
-        self.assertIn("9 d.u. | Arquitetura: aval para iniciar só em 28/10; preliminar enviado no mesmo dia", texto)
+        self.assertIn("9 d.u. | Arquitetura: aval para iniciar só em 27/10; preliminar enviado no mesmo dia", texto)
         self.assertIn("1 de 2 prazos contratuais com as duas datas passou do limite por causa da Armanilux; 1 por espera do outro lado", texto)
 
     def test_dias_perdidos_dos_dois_lados(self):

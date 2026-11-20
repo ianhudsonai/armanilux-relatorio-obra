@@ -97,7 +97,10 @@ def diz_programado(texto: str) -> bool:
 
 
 # Ação que aconteceu, embora não seja marco: cobrança, pedido, envio, fato que não se realizou.
-_ACAO_REALIZADA = ("cobr", "pede", "pedi", "solicit", "envi", "nao realiz", "nao foi realiz", "nao ocorr", "nao aconteceu")
+_ACAO_REALIZADA = (
+    "cobr", "pede", "pedi", "solicit", "envi", "lembr", "cancel",
+    "nao realiz", "nao foi realiz", "nao ocorr", "nao aconteceu", "nao houve",
+)
 
 
 def avisos_de_programado(eventos: list[dict]) -> list[str]:
@@ -114,6 +117,8 @@ def avisos_de_programado(eventos: list[dict]) -> list[str]:
                 "aconteceu, mas não é marco. Troque \"programado\": true por \"marco\": false."
             )
     return avisos
+
+
 # Intervalo entre marcos acima disto sai em vermelho na Análise de Prazos.
 LIMITE_INTERVALO_LONGO = 20
 
@@ -482,17 +487,17 @@ def _momento(evento: dict) -> tuple[str, str]:
 
 
 def _aprovacoes(escopo: list[dict]) -> tuple[list[dict], dict | None]:
-    """(aprovações revistas, aprovação que valeu) de um ciclo. Uma aprovação é revista quando,
-    depois dela e até a aprovação seguinte, há revisão (E ou F): vale a primeira não revista.
-    Mudança depois da última aprovação (já na produção) não desfaz a aprovação."""
+    """(aprovações revistas, aprovação que valeu) de um ciclo. Vale a aprovação que vem depois da
+    última revisão (E ou F) seguida de nova aprovação; as anteriores a ela foram revistas. Mudança
+    depois da última aprovação (já na produção) não desfaz a aprovação."""
     aprovacoes = sorted((e for e in escopo if e["etapa"] == "G" and conta_como_marco(e)), key=_momento)
     revisoes = [_momento(e) for e in escopo if e["etapa"] in ("E", "F") and realizado(e)]
-    revistas: list[dict] = []
-    for atual, proxima in zip(aprovacoes, aprovacoes[1:]):
-        if not any(_momento(atual) < momento <= _momento(proxima) for momento in revisoes):
-            break
-        revistas.append(atual)
-    return revistas, (aprovacoes[len(revistas)] if aprovacoes else None)
+    valeu = 0
+    for indice in range(1, len(aprovacoes)):
+        anterior, atual = _momento(aprovacoes[indice - 1]), _momento(aprovacoes[indice])
+        if any(anterior < momento <= atual for momento in revisoes):
+            valeu = indice
+    return aprovacoes[:valeu], (aprovacoes[valeu] if aprovacoes else None)
 
 
 def _ciclos(eventos: list[dict]) -> list[tuple[str, list[dict]]]:
@@ -518,7 +523,7 @@ def faixas_dos_marcos(eventos: list[dict], frente: str | None = None) -> dict[st
         inicio, ate = faixas.get(evento["etapa"], ("9999", "9999"))
         faixas[evento["etapa"]] = (min(inicio, data_do_fato(evento)), min(ate, data_do_fato_ate(evento)))
     if "G" in faixas and (frente is not None or not frentes_da_obra(eventos)):
-        valeu = _aprovacoes(escopo)[1]
+        _revistas, valeu = _aprovacoes(escopo)
         faixas["G"] = (data_do_fato(valeu), data_do_fato_ate(valeu))
     return faixas
 
@@ -587,13 +592,8 @@ def _cadeia(faixas: dict[str, tuple[str, str]], frente: str) -> list[dict]:
 
 
 def _faixas_por_frente(eventos: list[dict]) -> list[tuple[str, dict[str, tuple[str, str]]]]:
-    """(frente, faixas dos marcos sem J) de cada frente; sem frentes, um grupo só, com nome ""."""
-    frentes = frentes_da_obra(eventos)
-    if not frentes:
-        grupos = [("", faixas_dos_marcos(eventos))]
-    else:
-        nomes = frentes if GERAL in frentes else frentes + [GERAL]
-        grupos = [(nome, faixas_dos_marcos(eventos, nome)) for nome in nomes]
+    """(frente, faixas dos marcos sem J) de cada ciclo; sem frentes, um grupo só, com nome ""."""
+    grupos = [(nome, faixas_dos_marcos(eventos, nome or None)) for nome, _fatos in _ciclos(eventos)]
     return [(nome, {e: f for e, f in faixas.items() if e != "J"}) for nome, faixas in grupos]
 
 

@@ -43,6 +43,11 @@ class AprovacaoRevistaTeste(unittest.TestCase):
         eventos = [_evento("2026-04-17", "G", "10:00"), _evento("2026-04-17", "E", "15:00"), _evento("2026-04-22", "G"), _evento("2026-06-09", "H")]
         self.assertEqual(primeiros_marcos(eventos, "Banhos")["G"], "2026-04-22")
 
+    def test_aprovacao_repetida_antes_da_revisao_tambem_e_revista(self):
+        eventos = [_evento("2026-04-10", "G"), _evento("2026-04-14", "G"), _evento("2026-04-20", "E"), _evento("2026-04-24", "G"), _evento("2026-06-09", "H")]
+        self.assertEqual(primeiros_marcos(eventos, "Banhos")["G"], "2026-04-24")
+        self.assertEqual(aprovacoes_revistas(eventos)[0]["revistas"], ["2026-04-10", "2026-04-14"])
+
     def test_sem_nova_aprovacao_a_primeira_vale(self):
         eventos = [_evento("2026-04-17", "G"), _evento("2026-04-20", "E"), _evento("2026-06-09", "H")]
         self.assertEqual(primeiros_marcos(eventos, "Banhos")["G"], "2026-04-17")

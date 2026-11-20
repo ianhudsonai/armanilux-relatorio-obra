@@ -13,6 +13,7 @@ from analyze import (
     aprovacoes_revistas,
     ciclos_incompletos,
     confronto_contrato,
+    data_do_fato,
     data_da_conclusao,
     dias_sem_frente,
     diz_programado,
@@ -317,8 +318,8 @@ def _texto_evento(evento: dict) -> str:
 def _texto_linha(evento: dict) -> str:
     """Texto da linha; fato sem dia exato diz a faixa em que aconteceu."""
     texto = _texto_evento(evento)
-    if evento.get("data_evento_ate") and evento["data_evento_ate"] > (evento.get("data_evento") or evento["data"]):
-        texto += f" (fato entre {formatar_data(evento.get('data_evento') or evento['data'])} e {formatar_data(evento['data_evento_ate'])})"
+    if (evento.get("data_evento_ate") or "") > data_do_fato(evento):
+        texto += f" (fato entre {formatar_data(data_do_fato(evento))} e {formatar_data(evento['data_evento_ate'])})"
     return texto
 
 
