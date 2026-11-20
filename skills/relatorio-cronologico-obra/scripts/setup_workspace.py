@@ -35,9 +35,39 @@ def garantir_raiz(caminho: Path | None = None) -> Path:
     return raiz
 
 
+def _pasta_da_mesma_obra(raiz: Path, numero: str, modelo: str) -> Path | None:
+    """A pasta que já existe para este número de obra, com o cliente escrito de outro jeito.
+    Só vale quando há exatamente uma: o número identifica a obra; o cliente varia na digitação."""
+    if not numero or "{cliente}" not in modelo or not raiz.is_dir():
+        return None
+    # Monta o nome com uma marca no lugar do cliente para saber o que vem antes e depois dele.
+    marca = "\x00"
+    molde = nome_pasta_obra({"modelo_pasta_obra": modelo}, numero, marca)
+    if marca not in molde:
+        return None
+    antes, depois = molde.split(marca, 1)
+    iguais = [
+        pasta
+        for pasta in raiz.iterdir()
+        if pasta.is_dir()
+        and len(pasta.name) > len(antes) + len(depois)
+        and pasta.name.startswith(antes)
+        and pasta.name.endswith(depois)
+    ]
+    if len(iguais) > 1:
+        nomes = ", ".join(sorted(pasta.name for pasta in iguais))
+        print(f"Aviso: a obra {numero} tem {len(iguais)} pastas ({nomes}). Não escolhi uma sozinho; confira com a pessoa.")
+    return iguais[0] if len(iguais) == 1 else None
+
+
 def garantir_obra(raiz: Path, numero: str, cliente: str, modelo: str = "{numero} - {cliente}") -> Path:
     nome = nome_pasta_obra({"modelo_pasta_obra": modelo}, numero, cliente)
     obra = raiz / nome
+    if not obra.exists():
+        existente = _pasta_da_mesma_obra(raiz, numero, modelo)
+        if existente:
+            print(f"A obra {numero} já tem pasta: {existente.name}. Usei essa.")
+            obra = existente
     for subpasta in SUBPASTAS:
         (obra / subpasta).mkdir(parents=True, exist_ok=True)
     (obra / "03-midias" / "quadros").mkdir(parents=True, exist_ok=True)
