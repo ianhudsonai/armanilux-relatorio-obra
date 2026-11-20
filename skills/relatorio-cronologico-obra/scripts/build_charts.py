@@ -64,9 +64,15 @@ def _nome_curto(codigo: str) -> str:
     return NOME_CURTO.get(codigo, TITULOS.get(codigo, codigo))
 
 
-def _dia_mes_ano(iso: str) -> str:
+def _dia_mes_ano(iso: str, ate: str = "") -> str:
+    """"09/06/26"; fato sem dia exato: "09–11/06/26" (mesmo mês) ou "28/06–02/07/26"."""
     dia = datetime.fromisoformat(iso)
-    return dia.strftime("%d/%m/%y")
+    if not ate or ate == iso:
+        return dia.strftime("%d/%m/%y")
+    fim = datetime.fromisoformat(ate)
+    if (dia.year, dia.month) == (fim.year, fim.month):
+        return f"{dia:%d}–{fim:%d/%m/%y}"
+    return f"{dia:%d/%m}–{fim:%d/%m/%y}"
 
 
 def _vazio(eixo) -> None:
@@ -95,21 +101,26 @@ def grafico_barras(intervalos_marcos: list[dict], destino: Path) -> Path:
         rotulos = [
             (f"{item['frente']}\n" if item.get("frente") else "")
             + f"{item['de']} {_nome_curto(item['de'])} → {item['para']} {_nome_curto(item['para'])}\n"
-            f"{_dia_mes_ano(item['inicio'])} a {_dia_mes_ano(item['fim'])}"
+            f"{_dia_mes_ano(item['inicio'], item.get('inicio_ate', ''))} a {_dia_mes_ano(item['fim'], item.get('fim_ate', ''))}"
             for item in intervalos_marcos
         ]
         valores = [item["dias_uteis"] for item in intervalos_marcos]
+        maximos = [max(item.get("dias_uteis_max") or 0, item["dias_uteis"]) for item in intervalos_marcos]
         barras = eixo.barh(range(linhas), valores, color=DOURADO, edgecolor=MARROM, linewidth=0.6, height=0.6)
+        # Faixa (fato sem dia exato): o trecho incerto vai claro e tracejado depois da barra.
+        for indice, (valor, maximo) in enumerate(zip(valores, maximos)):
+            if maximo > valor:
+                eixo.barh(indice, maximo - valor, left=valor, color="white", edgecolor=MARROM, linewidth=0.6, height=0.6, hatch="///")
         eixo.set_yticks(range(linhas))
         eixo.set_yticklabels(rotulos, fontsize=9)
         eixo.invert_yaxis()
-        topo = max(valores) or 1
+        topo = max(maximos) or 1
         eixo.set_xlim(0, topo * 1.24)
-        for barra, valor in zip(barras, valores):
+        for barra, valor, maximo in zip(barras, valores, maximos):
             eixo.text(
-                barra.get_width() + topo * 0.015,
+                maximo + topo * 0.015,
                 barra.get_y() + barra.get_height() / 2,
-                f"{valor} d.u.",
+                f"{valor} d.u." if maximo == valor else f"{valor}–{maximo} d.u.",
                 va="center",
                 fontsize=9,
                 fontweight="bold",
