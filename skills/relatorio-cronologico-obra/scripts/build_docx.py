@@ -462,7 +462,8 @@ def _nota_metodologica(documento: Document, analise: dict) -> None:
         documento,
         "Convenção de cores nas tabelas",
         "salmão = reprocesso ou retrabalho • amarelo = tempo ocioso, espera ou pendência • "
-        "na Análise de Prazos, em vermelho o que passou do prazo contratual informado (tabela de confronto) e, "
+        "na Análise de Prazos, em vermelho o que passou do prazo contratual informado (tabela de confronto; com a espera "
+        "do outro lado em \"Quem segurou\", o número fica preto na linha amarela) e, "
         f"na tabela de marcos, os intervalos acima de {LIMITE_INTERVALO_LONGO} dias úteis.",
     )
 
