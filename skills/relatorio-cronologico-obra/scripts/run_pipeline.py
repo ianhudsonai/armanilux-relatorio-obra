@@ -242,7 +242,7 @@ def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_
     problemas = _conferir(pasta_obra, analise)
     _avisar_prazos(analise)
     figuras = pasta_obra / "05-relatorios" / "figuras"
-    marcos = intervalos_marcos_de(analise.get("eventos") or [])[0]  # dos eventos, como o Word
+    marcos = intervalos_marcos_de(analise.get("eventos") or [], analise.get("obra"))[0]  # dos eventos, como o Word
     barras = grafico_barras(marcos, figuras / "dias-uteis.png")
     gantt = grafico_gantt(analise.get("eventos") or [], figuras / "gantt.png")
     pasta = pasta_obra / "05-relatorios"

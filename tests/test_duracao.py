@@ -46,8 +46,9 @@ class DuracaoTeste(unittest.TestCase):
     def test_total_da_analise_de_prazos_e_o_do_quadro(self):
         eventos = [_evento("2026-01-05", "C"), _evento("2026-01-12", "D")]
         relato = completar_relato({"obra": OBRA, "eventos": eventos})
-        # 02/01 (sexta) → 10/02 (terça): 27 dias úteis contados no calendário (20 em janeiro, 7 em fevereiro; 25/01 cai num domingo).
-        self.assertEqual(relato["duracao_marcos"], {"inicio": "2026-01-02", "fim": "2026-02-10", "dias_uteis": 27})
+        # 02/01 (sexta) → 10/02 (terça), contando do dia seguinte: 20 dias úteis em janeiro (05 a 30)
+        # e 7 em fevereiro (02 a 10) = 27; 25/01 cai num domingo.
+        self.assertEqual(relato["duracao_marcos"], {"inicio": "2026-01-02", "fim": "2026-02-10", "dias_uteis": 27, "do_grupo": True})
         documento = _documento(relato)
         self.assertEqual(dict(_tabela(documento, "Indicador"))["Duração decorrida (dias úteis)"], "27 dias úteis")
         self.assertEqual(_tabela(documento, "Intervalo entre marcos")[-1], ["DURAÇÃO TOTAL DA OBRA (02/01/2026 → 10/02/2026)", "27 d.u."])
@@ -57,7 +58,7 @@ class DuracaoTeste(unittest.TestCase):
     def test_sem_periodo_do_grupo_vale_o_primeiro_e_o_ultimo_registro(self):
         eventos = [_evento("2026-01-05", "C"), _evento("2026-01-12", "D")]
         relato = completar_relato({"obra": {}, "eventos": eventos})
-        self.assertEqual(relato["duracao_marcos"], {"inicio": "2026-01-05", "fim": "2026-01-12", "dias_uteis": 5})
+        self.assertEqual(relato["duracao_marcos"], {"inicio": "2026-01-05", "fim": "2026-01-12", "dias_uteis": 5, "do_grupo": False})
 
     def test_ciclo_incompleto_mostra_a_data_que_falta(self):
         eventos = [
@@ -86,6 +87,31 @@ class DuracaoTeste(unittest.TestCase):
             _evento("2026-02-02", "L", conclusao=True),
         ]
         self.assertEqual(completar_relato({"obra": OBRA, "eventos": eventos})["ciclos_incompletos"], [])
+
+    def test_lacuna_no_meio_do_ciclo_e_sem_marco_entre_datas(self):
+        # Living: aprovado e com equipe, sem data de entrega; Banhos: só aprovado. Nenhuma frente tem
+        # dois marcos seguidos para medir, e as lacunas aparecem mesmo assim.
+        eventos = [_evento("2026-01-05", "G", "Living"), _evento("2026-01-20", "I", "Living"), _evento("2026-01-07", "G", "Banhos"),
+                   _evento("2026-01-08", "H")]
+        relato = completar_relato({"obra": OBRA, "eventos": eventos})
+        self.assertEqual(
+            [(p["frente"], p["de"], p["para"]) for p in relato["ciclos_incompletos"]],
+            [("Living", "G", "H"), ("Banhos", "G", "H"), ("Living", "I", "L")],
+        )
+        linhas = _tabela(_documento(relato), "Intervalo entre marcos")
+        self.assertEqual([linha[1] for linha in linhas].count("pendente"), 3)
+        self.assertFalse(any(linha[0].startswith("Obra em geral") for linha in linhas))
+
+    def test_conclusao_de_uma_frente_fecha_o_ciclo_e_nao_a_obra(self):
+        eventos = [
+            _evento("2026-01-07", "G", "Banhos"), _evento("2026-01-14", "H", "Banhos"), _evento("2026-01-21", "I", "Banhos"),
+            _evento("2026-02-02", "L", "Banhos", conclusao=True),
+        ]
+        relato = completar_relato({"obra": OBRA, "eventos": eventos})
+        self.assertEqual(relato["ciclos_incompletos"], [])
+        self.assertEqual(relato["intervalos_marcos"][-1]["para"], "L")
+        marcos = {m["marco"]: m["situacao"] for m in relato["marcos"]}
+        self.assertEqual(marcos["Conclusão dos serviços e validação final"], "dado não identificado (pendente)")
 
 
 if __name__ == "__main__":

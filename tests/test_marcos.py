@@ -38,7 +38,7 @@ class MarcosTeste(unittest.TestCase):
                 ("D", "G", "2026-01-12", "2026-02-02", 15),
             ],
         )
-        self.assertEqual(relato["duracao_marcos"], {"inicio": "2026-01-05", "fim": "2026-02-02", "dias_uteis": 20})
+        self.assertEqual(relato["duracao_marcos"], {"inicio": "2026-01-05", "fim": "2026-02-02", "dias_uteis": 20, "do_grupo": False})
 
 
 class TabelaWordTeste(unittest.TestCase):

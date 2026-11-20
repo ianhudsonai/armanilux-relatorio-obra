@@ -377,7 +377,7 @@ def conta_como_marco(evento: dict) -> bool:
     if evento.get("programado"):
         return False
     if evento["etapa"] == "L":
-        return fecha_a_obra(evento)
+        return conclui(evento)
     return True
 
 
@@ -482,7 +482,12 @@ def duracao_da_obra(obra: dict | None, eventos: list[dict]) -> dict:
         if not datas:
             return {}
         inicio, fim = datas[0], datas[-1]
-    return {"inicio": inicio, "fim": fim, "dias_uteis": dias_uteis_entre(date.fromisoformat(inicio), date.fromisoformat(fim))}
+    return {
+        "inicio": inicio,
+        "fim": fim,
+        "dias_uteis": dias_uteis_entre(date.fromisoformat(inicio), date.fromisoformat(fim)),
+        "do_grupo": bool(obra.get("periodo_inicio") and obra.get("periodo_fim")),
+    }
 
 
 def intervalos_marcos_de(eventos: list[dict], obra: dict | None = None) -> tuple[list[dict], dict]:
@@ -500,18 +505,25 @@ _FIM_DE_CICLO = ("G", "H", "I", "L")  # aprovação → entrega → equipe → c
 
 
 def ciclos_incompletos(eventos: list[dict]) -> list[dict]:
-    """Frente que chegou à aprovação (G) e parou antes da conclusão: a próxima data do ciclo
-    (entrega, entrada da equipe ou conclusão) é dado não identificado, e o relatório diz isso."""
+    """Datas que faltam no ciclo aprovação → entrega → equipe → conclusão de cada frente: a etapa
+    pulada no meio (aprovado e com equipe, sem data de entrega) e a próxima depois da última
+    registrada. O relatório mostra cada uma como dado não identificado. Fatos sem frente numa obra
+    multifrente ("Obra em geral") não formam ciclo."""
     saida = []
     for nome, primeiros in _primeiros_por_frente(eventos):
+        if nome == GERAL:
+            continue
         feitas = [etapa for etapa in _FIM_DE_CICLO if etapa in primeiros]
         if not feitas or feitas[-1] == "L":
             continue
-        ultima = feitas[-1]
-        saida.append(
-            {"frente": nome, "de": ultima, "inicio": primeiros[ultima], "para": _FIM_DE_CICLO[_FIM_DE_CICLO.index(ultima) + 1]}
-        )
-    return sorted(saida, key=lambda item: item["inicio"])
+        ultima = _FIM_DE_CICLO.index(feitas[-1])
+        anterior = None
+        for etapa in _FIM_DE_CICLO[: ultima + 2]:
+            if etapa in primeiros:
+                anterior = etapa
+            elif anterior:
+                saida.append({"frente": nome, "de": anterior, "inicio": primeiros[anterior], "para": etapa})
+    return sorted(saida, key=lambda item: (item["inicio"], _posicao(item["para"])))
 
 
 def confronto_contrato(eventos: list[dict], prazos: list[dict]) -> list[dict]:
@@ -1315,10 +1327,15 @@ def montar_analise(
     return completar_relato(base)
 
 
-def fecha_a_obra(evento: dict) -> bool:
-    """Só o fato da etapa L que a revisão marcou com "conclusao": true fecha a obra.
-    Outro fato da etapa L (reclamação, reparo, entrega parcial) não fecha."""
+def conclui(evento: dict) -> bool:
+    """Fato da etapa L que a revisão marcou com "conclusao": true. Outro fato da etapa L
+    (reclamação, reparo, entrega parcial) não conclui nada."""
     return evento["etapa"] == "L" and bool(evento.get("conclusao"))
+
+
+def fecha_a_obra(evento: dict) -> bool:
+    """Conclusão da obra toda: marcada e sem frente. Com frente, fecha só o ciclo daquela frente."""
+    return conclui(evento) and not (evento.get("frente") or "").strip()
 
 
 def data_da_conclusao(eventos: list[dict]) -> str:
