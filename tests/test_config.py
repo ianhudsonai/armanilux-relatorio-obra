@@ -36,6 +36,25 @@ class DocumentosTeste(unittest.TestCase):
         self.assertEqual(Path(padroes()["pasta_raiz"]), pasta_documentos() / "Armanilux")
 
 
+class PastaAntigaTeste(unittest.TestCase):
+    def test_quem_ja_tem_documents_armanilux_continua_nela(self):
+        # Revisão do #52: sem config, quem já usava %USERPROFILE%\Documents\Armanilux não é mandado para outra pasta.
+        import config_io
+
+        with TemporaryDirectory() as temporario:
+            casa = Path(temporario)
+            antiga = casa / "Documents" / "Armanilux"
+            antiga.mkdir(parents=True)
+            nova = casa / "OneDrive" / "Documentos"
+            nova.mkdir(parents=True)
+            with mock.patch.object(config_io.Path, "home", return_value=casa), mock.patch.object(
+                config_io, "pasta_documentos", return_value=nova
+            ):
+                self.assertEqual(Path(config_io.padroes()["pasta_raiz"]), antiga)
+                (nova / "Armanilux").mkdir()
+                self.assertEqual(Path(config_io.padroes()["pasta_raiz"]), nova / "Armanilux")
+
+
 class ConfigTeste(unittest.TestCase):
     def test_gravar_ler_e_mudar_de_novo(self):
         with TemporaryDirectory() as temporario:

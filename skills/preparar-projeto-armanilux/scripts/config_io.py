@@ -56,9 +56,18 @@ def pasta_documentos() -> Path:
     return Path.home() / "Documents"
 
 
+def pasta_armanilux_padrao() -> Path:
+    """Documentos\\Armanilux. Quem já usava %USERPROFILE%\\Documents\\Armanilux continua nela."""
+    nova = pasta_documentos() / "Armanilux"
+    antiga = Path.home() / "Documents" / "Armanilux"
+    if not nova.exists() and antiga.is_dir():
+        return antiga
+    return nova
+
+
 def padroes() -> dict:
     return {
-        "pasta_raiz": str(pasta_documentos() / "Armanilux"),
+        "pasta_raiz": str(pasta_armanilux_padrao()),
         "nome": "",
         "funcao": "",
         "gerar_pdf": False,

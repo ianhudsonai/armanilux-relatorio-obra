@@ -41,6 +41,8 @@ class ConferenciasDoInstaladorTeste(unittest.TestCase):
     def test_confere_espaco_livre_antes_de_instalar(self):
         self.assertIn("function Conferir-Espaco", self.texto)
         self.assertLess(self.texto.index("\nConferir-Espaco"), self.texto.index("Winget-Instalar \"Python.Python.3.12\""))
+        # Revisão do #52: com tudo instalado, rodar de novo só confere; disco cheio vira aviso, não parada.
+        self.assertIn("\nConferir-Espaco -Bloquear:$precisaInstalar", self.texto)
 
     def test_testa_as_bibliotecas_depois_do_pip_e_tenta_o_vc_redist(self):
         depois_do_pip = self.texto.split("pip install -r $requisitos", 1)[1]

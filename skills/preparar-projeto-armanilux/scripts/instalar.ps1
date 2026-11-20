@@ -120,20 +120,29 @@ function Espaco-Suficiente([double]$livreGb) {
     return ($livreGb -ge 3)
 }
 
-function Conferir-Espaco {
-    $letra = (Split-Path $env:USERPROFILE -Qualifier).TrimEnd(':')
-    $disco = Get-PSDrive -Name $letra -ErrorAction SilentlyContinue
-    if (-not $disco) { return }
-    $livreGb = [math]::Round($disco.Free / 1GB, 1)
-    if (-not (Espaco-Suficiente $livreGb)) {
+# Confere o disco da pasta do usuário e o do Windows (onde o winget instala). Com -Bloquear,
+# pouco espaço para a instalação; sem, só avisa (rodar de novo com tudo instalado só confere).
+function Conferir-Espaco([switch]$Bloquear) {
+    $letras = @()
+    foreach ($caminho in @($env:USERPROFILE, $env:SystemDrive)) {
+        try { $letras += (Split-Path $caminho -Qualifier -ErrorAction Stop).TrimEnd(':') } catch {}
+    }
+    foreach ($letra in ($letras | Select-Object -Unique)) {
+        $disco = Get-PSDrive -Name $letra -ErrorAction SilentlyContinue
+        if (-not $disco -or $null -eq $disco.Free) { continue }
+        $livreGb = [math]::Round($disco.Free / 1GB, 1)
+        if (Espaco-Suficiente $livreGb) {
+            Escrever-Ok "Espaço livre no disco $letra`: $livreGb GB."
+            continue
+        }
         Write-Host "O disco $letra`: tem só $livreGb GB livres. A instalação precisa de pelo menos 3 GB."
         Write-Host "Libere espaço (por exemplo, esvazie a Lixeira e apague downloads antigos) e peça a preparação de novo."
-        exit 1
+        if ($Bloquear) { exit 1 }
     }
-    Escrever-Ok "Espaço livre no disco $letra`: $livreGb GB."
 }
 
-Conferir-Espaco
+$precisaInstalar = (-not (Python-Serve (Achar-Python))) -or (-not (Test-Path (Join-Path $env:USERPROFILE ".armanilux-relatorio\venv\Scripts\python.exe")))
+Conferir-Espaco -Bloquear:$precisaInstalar
 Atualizar-Caminho
 $python = Achar-Python
 if (-not (Python-Serve $python)) {
