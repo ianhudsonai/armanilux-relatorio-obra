@@ -13,9 +13,11 @@ from analyze import (
     ciclos_incompletos,
     confronto_contrato,
     data_da_conclusao,
+    dias_sem_frente,
     diz_programado,
     duracao_da_obra,
     frentes_da_obra,
+    grupos_da_etapa_j,
     intervalos_marcos_de,
     marcos_de,
     primeira_programacao,
@@ -329,6 +331,26 @@ def _tabela_linhas(documento: Document, cabecalhos: list[str], linhas: list[list
     documento.add_paragraph()
 
 
+def _tabelas_da_etapa_j(documento: Document, analise: dict) -> None:
+    """Uma tabela por tipo de interferência (J.1, J.2…), como no relatório aprovado; sem tipo
+    marcado, uma tabela só. Depois, o total de dias de equipe sem frente, se a revisão contou."""
+    grupos = grupos_da_etapa_j(analise.get("eventos") or []) or [("", [])]
+    for numero, (nome, eventos) in enumerate(grupos, start=1):
+        if nome:
+            documento.add_heading(f"J.{numero} — {nome}", level=2)
+        linhas = [[_data_da_linha(item), _texto_evento(item), item.get("impacto") or DADO] for item in eventos]
+        cores = [_cor_do_evento(item) for item in eventos] or [None]
+        _tabela_linhas(documento, ["Data", "Interferência", "Impacto"], linhas or [["—", DADO, DADO]], [2.6, 8.0, 6.8], cores)
+    total = dias_sem_frente(analise.get("eventos") or [])
+    if total:
+        datas = "1 data" if total["datas"] == 1 else f"{total['datas']} datas"
+        _leitura(
+            documento,
+            "Dias de equipe sem frente registrados no grupo",
+            f"{total['dias']}, em {datas}, de {formatar_data(total['inicio'])} a {formatar_data(total['fim'])}.",
+        )
+
+
 def _leitura(documento: Document, rotulo: str, texto: str) -> None:
     paragrafo = documento.add_paragraph()
     paragrafo.paragraph_format.space_after = Pt(8)
@@ -368,8 +390,7 @@ def _escrever_etapa(documento: Document, analise: dict, codigo: str) -> None:
     eventos = sorted(_eventos_da_etapa(analise, codigo), key=lambda e: (e["data"], e.get("hora") or ""))
     cores = [_cor_do_evento(item) for item in eventos] or [None]
     if codigo == "J":
-        linhas = [[_data_da_linha(item), _texto_evento(item), item.get("impacto") or DADO] for item in eventos]
-        _tabela_linhas(documento, ["Data", "Interferência", "Impacto"], linhas or [["—", DADO, DADO]], [2.6, 8.0, 6.8], cores)
+        _tabelas_da_etapa_j(documento, analise)
     else:
         linhas = [[_data_da_linha(item), _texto_evento(item)] for item in eventos]
         _tabela_linhas(documento, ["Data", "Evento / Ocorrência"], linhas or [["—", DADO]], [2.6, 14.8], cores)
