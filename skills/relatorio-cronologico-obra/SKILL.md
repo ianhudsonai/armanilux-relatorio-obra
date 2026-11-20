@@ -12,13 +12,13 @@ metadata:
 
 Gere um Relatório Cronológico de Obra da Armanilux, em português do Brasil, formal, sem emoji. O entregável é um `.docx` na pasta `05-relatorios`. Não existe etapa K. Não mande áudio, vídeo, foto ou conversa para outro serviço na internet (de transcrição, tradução ou armazenamento): transcrição, feriados e o Word saem dos scripts desta pasta, neste computador. O que você mesmo lê para revisar passa pelo aplicativo em que você roda; o preparo já avisou a pessoa.
 
-Leia, antes de redigir ou corrigir o texto:
+Antes da revisão (passo 4), leia:
 
 - `references/revisao.md` — como revisar: o que ler, cada regra dos fatos, prazos e textos
-- `references/prompt-padrao.md` — etapas e o que cada uma exige
-- `references/formato-relatorio.md` — cara do documento
-- `references/dias-uteis.md` — regra de contagem
-- `references/analise-json.md` — o que pode ser editado
+- `references/prompt-padrao.md` — etapas A a L e o que cada uma exige
+- `references/formato-relatorio.md` — cara do documento, antes de escrever os textos
+- `references/dias-uteis.md` — ao falar de dias úteis ou prazos
+- `references/analise-json.md` — nome e formato de cada campo, antes de editar o JSON
 
 O script já aplica esse formato. Não improvise outro sumário, não some intervalos como "atraso da Armanilux" e não invente data, nome ou prazo. O que não estiver no histórico fica escrito `dado não identificado`.
 
@@ -50,6 +50,8 @@ A pessoa não sabe que precisa pedir para você continuar. Fique no mesmo turno 
 ## 1. Preparar a pasta
 
 A pasta dos relatórios é `Relatorios-de-Obra` dentro de `pasta_raiz` do config.json. Cada obra usa `modelo_pasta_obra` (padrão `{numero} - {cliente}`). Dentro da obra ficam `01-conversas`, `02-projetos-pdf`, `03-midias`, `04-transcricoes` e `05-relatorios`.
+
+Se a pessoa informar o número da obra e o cliente, passe `--obra` e `--cliente`. Se não informar, o script tenta ler do próprio grupo e você confirma no passo 2. Não chute um nome de cliente.
 
 ## 2. Achar as conversas
 
@@ -90,7 +92,7 @@ Saídas:
 
 - `04-transcricoes/analise.json` — fatos, dias úteis e textos
 - `05-relatorios/figuras/dias-uteis.png` e `gantt.png`
-- `05-relatorios/Relatorio-Cronologico-Obra-<numero>-vN-rascunho.docx` enquanto `revisado` não for `true`; com `"revisado": true` sai `...-vN.docx`, a versão que vale, com o mesmo número. A versão seguinte só começa com uma conversa nova da obra, e volta a ser rascunho.
+- `05-relatorios/Relatorio-Cronologico-Obra-<numero>-vN-rascunho.docx` enquanto `revisado` não for `true` (cada remontagem regrava o mesmo rascunho); com `"revisado": true` sai `...-vN.docx`, a versão que vale, com o mesmo número, e o rascunho vai para `05-relatorios/rascunhos/`. A versão seguinte só começa com uma conversa nova da obra, e volta a ser rascunho.
 
 Com entrega em PDF ou link, o script faz também o PDF, pelo Microsoft Word ou pelo LibreOffice deste computador; sem nenhum dos dois, sai só o Word e o script avisa. Com link, a versão revisada (nunca o rascunho) é copiada para a pasta do OneDrive ou do Google Drive gravada no preparo.
 
@@ -116,7 +118,7 @@ PYTHON SKILL/scripts/run_pipeline.py --rebuild-only --recalcular --obra-dir "PAS
 
 Na última remontagem, a que vai para a pessoa, acrescente `--mostrar`: o script abre a pasta da obra com o Word já selecionado. Todo comando que grava o Word imprime uma linha `RELATORIO_WORD: <caminho>`; é por ela que você acha o arquivo. Quando sai PDF, vem também `RELATORIO_PDF: <caminho>`. Com entrega por link, a versão revisada imprime `RELATORIO_LINK: <caminho>`, a cópia na pasta da nuvem.
 
-Entregue sempre o Word que o script gravou; o arquivo versionado (`v1`, `v2`, …) é o que a pessoa abre.
+Entregue sempre o Word que o script gravou, nunca um Word escrito à mão por fora do script; o arquivo versionado (`v1`, `v2`, …) é o que a pessoa abre.
 
 ## 6. O que dizer à pessoa
 

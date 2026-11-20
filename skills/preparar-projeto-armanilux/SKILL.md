@@ -51,7 +51,7 @@ O instalador aceita um Python 3.10 a 3.13 que já exista; fora disso, instala co
 
 O instalador pode levar de 10 a 40 minutos (bibliotecas, LibreOffice e, com sim na pergunta 5, o download de cerca de 484 MB). Dê ao comando o tempo limite mais longo que o seu aplicativo permitir (60 minutos ou mais) ou rode em segundo plano. Se o aplicativo cortar o comando por tempo, rode de novo: o que já foi instalado fica, e ele continua.
 
-A pessoa não sabe que precisa pedir para você continuar. Fique no mesmo turno até o instalador acabar e mostrar o código de saída: em segundo plano, acompanhe a saída até o fim. Só então siga para o passo 3, no mesmo turno, até gravar o `config.json`. Se a sua resposta tiver de terminar antes disso, a última linha dela é: `A preparação ainda não terminou. Escreva "continue" para eu terminar.`
+A pessoa não sabe que precisa pedir para você continuar. Fique no mesmo turno até o instalador acabar e mostrar o código de saída, acompanhando a saída até o fim. Só então siga para o passo 3, no mesmo turno, até gravar o `config.json`. Se a sua resposta tiver de terminar antes disso, a última linha dela é: `A preparação ainda não terminou. Escreva "continue" para eu terminar.`
 
 Se terminar com erro, explique em português e pare. Não mande a pessoa atrás de um arquivo.
 

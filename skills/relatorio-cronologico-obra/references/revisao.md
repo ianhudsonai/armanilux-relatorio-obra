@@ -12,7 +12,7 @@ Leia tudo antes de escrever. Não basta a lista de candidatos.
 - **Mensagens coladas.** No `.txt`, mensagem de outra conversa colada no grupo aparece como uma linha dentro da mensagem de quem colou, no formato `[12:25, 03/07/2026] Nome: texto` ou `[03/07, 12:25] Nome: texto`. A data, a hora e o autor do fato são os dessa linha (os originais); quem colou e quando é a mensagem em volta. No `analise.json`, o fato que veio de uma colada termina com "(encaminhada no grupo por … em …)".
 - **Áudios e vídeos.** Leia todas as transcrições em `analise.json` (`transcricoes`), não só as que parecem relevantes. Vídeo muitas vezes é o registro de uma visita ou de uma medição e traz a data e o fato que faltam no texto.
 - **Documentos.** Leia o texto de cada documento em `documentos_texto` (projetos, folhas de medição, cronogramas, memoriais). Documento sem texto (desenho técnico) aparece nas lacunas: se o seu aplicativo abre PDF, abra o arquivo em `02-projetos-pdf` e olhe; se não abre, deixe como lacuna.
-- **Imagens.** O pipeline monta `04-transcricoes/folhas-de-contato/folha-NN.jpg`: cada folha tem 12 miniaturas numeradas (fotos e um quadro de cada vídeo), com o nome do arquivo e a data da mensagem que o anexou. "(nome do arquivo)" ao lado da data quer dizer que nenhuma mensagem cita o arquivo e a data veio do nome: confira antes de usar. O `indice.json` da mesma pasta liga cada número ao arquivo. Olhe todas as folhas. Se o seu aplicativo permitir subagentes, distribua as folhas entre eles em paralelo, mesmo usando um modelo mais simples: cada um devolve só as imagens que mostram um fato da obra (trinca, base sem acabamento, frente sem liberação, peça instalada, desenho técnico), com o número, a data e o fato em uma frase. A descrição é para você, não para o relatório. Sem subagentes, olhe as folhas você mesmo. Se uma miniatura parecer importante e pequena demais, abra o arquivo original em `03-midias`.
+- **Imagens.** O pipeline monta `04-transcricoes/folhas-de-contato/folha-NN.jpg`: cada folha tem 12 miniaturas numeradas (fotos e um quadro de cada vídeo), com o nome do arquivo e a data da mensagem que o anexou. "(nome do arquivo)" ao lado da data quer dizer que nenhuma mensagem cita o arquivo e a data veio do nome: confira antes de usar. O `indice.json` da mesma pasta liga cada número ao arquivo. Olhe todas as folhas. Se o seu aplicativo permitir subagentes, distribua as folhas entre eles em paralelo, mesmo usando um modelo mais simples: cada um devolve só as imagens que mostram um fato da obra (trinca, base sem acabamento, frente sem liberação, peça instalada, desenho técnico), com o número, a data e o fato em uma frase. Sem subagentes, olhe as folhas você mesmo. Se uma miniatura parecer importante e pequena demais, abra o arquivo original em `03-midias`.
 - **Outros formatos.** Arquivo que o computador não lê (desenho `.dwg`, cartão de contato `.vcf`, planilha `.xls` antiga) fica em `01-conversas/outros` ou aparece nas lacunas. Cartão de contato ajuda a saber quem é quem; desenho que você não consegue abrir fica como lacuna.
 - **Arquivos fora da exportação.** O WhatsApp não exporta tudo. Mensagem `<Mídia oculta>` é arquivo que não veio no zip: o nome pode aparecer, o conteúdo não. Não deduza o conteúdo pelo nome.
 
@@ -68,7 +68,7 @@ A obra só aparece como concluída (Quadro-Resumo e tabela de marcos) com um fat
 
 ### Imagens
 
-Olhe as imagens só para entender a obra. Se uma imagem mostra um fato datado (trinca, base sem acabamento, frente sem liberação, peça instalada), registre o fato em `eventos_adicionais` com a data da foto e "[fonte: foto, conferir]". Não escreva descrição de imagem para o relatório.
+Olhe as imagens só para entender a obra. Se uma imagem mostra um fato datado (trinca, base sem acabamento, frente sem liberação, peça instalada), registre o fato em `eventos_adicionais` com a data da foto e "[fonte: foto, conferir]".
 
 ### Prazo contratual
 
@@ -117,6 +117,8 @@ Escreva, com fatos do grupo e datas, e curto:
 
 O que o grupo não sustenta fica `dado não identificado`. Postura do texto: formal, neutra, a favor do registro da Armanilux, sem acusar pessoa. O relatório só se defende se for justo com os dois lados: em `atrasos_internos`, liste os deslizes da própria Armanilux que o grupo mostra (desenho de produção com material errado, entrega adiada, instalador doente, medida não conferida); registre também quando o outro lado admite um erro (por exemplo, que deixou passar uma medida na aprovação) e quando contesta a Armanilux (por exemplo, num áudio do gestor da obra), com data. Intervalo em dias úteis não é atraso atribuído. Reprocesso, espera e dependência de obra (marcenaria, contrapiso, ponto hidráulico, medição pendente) aparecem separados.
 
+Pronto quando: cada fato real do material está em `eventos` ou `eventos_adicionais`, cada prazo escrito está em `prazos_contratuais` (ou a lacuna diz que não há), e todos os textos da lista acima estão escritos.
+
 ## 4.3 Remontar até a conferência ficar vazia
 
 Remonte o Word com o comando do passo 5 do `SKILL.md`. Toda remontagem grava `04-transcricoes/verificacao.md`: o script confere cada fato contra a conversa (mesmo dia, mesma hora, mesmo primeiro nome do autor) ou contra a mídia citada (arquivo transcrito ou presente na pasta da obra), e lista o que não bateu. Fato sem autor e sem hora não tem como ser conferido: preencha os dois. Corrija cada item da lista no `analise.json` ou tire o fato. Remonte até a lista ficar vazia. Resolva também cada `Aviso de programado`, `Aviso de frente` e `Aviso de prazo` que a remontagem imprimir.
@@ -129,6 +131,8 @@ A conferência do script só vê data, hora e autor. Ela não vê se o texto diz
 - Sem subagentes, faça você mesmo uma segunda passada, item por item, procurando cada fato no `.txt`.
 
 Corrija ou tire tudo o que voltar como não sustentado ou diferente. O que não der para confirmar vira lacuna em `lacunas_adicionais`, não afirmação.
+
+Pronto quando: todo item voltou sustentado, ou foi corrigido, tirado ou virou lacuna.
 
 ## 4.5 Marcar como revisado
 
