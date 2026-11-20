@@ -360,14 +360,14 @@ def _tabelas_da_etapa_j(documento: Document, analise: dict) -> None:
         linhas = [[_data_da_linha(item), _texto_linha(item), item.get("impacto") or DADO] for item in eventos]
         cores = [_cor_do_evento(item) for item in eventos] or [None]
         _tabela_linhas(documento, ["Data", "Interferência", "Impacto"], linhas or [["—", DADO, DADO]], [2.6, 8.0, 6.8], cores)
-    total = dias_sem_frente(analise.get("eventos") or [])
-    if total:
-        datas = "1 data" if total["datas"] == 1 else f"{total['datas']} datas"
-        _leitura(
-            documento,
-            "Dias de equipe sem frente registrados no grupo",
-            f"{total['dias']}, em {datas}, de {formatar_data(total['inicio'])} a {formatar_data(total['fim'])}.",
-        )
+    for campo, rotulo in (
+        ("dias_sem_frente", "Dias de equipe sem frente registrados no grupo"),
+        ("dias_perdidos_armanilux", "Dias perdidos do lado da Armanilux"),
+    ):
+        total = dias_sem_frente(analise.get("eventos") or [], campo)
+        if total:
+            datas = "1 data" if total["datas"] == 1 else f"{total['datas']} datas"
+            _leitura(documento, rotulo, f"{total['dias']}, em {datas}, de {formatar_data(total['inicio'])} a {formatar_data(total['fim'])}.")
 
 
 def _leitura(documento: Document, rotulo: str, texto: str) -> None:
@@ -472,13 +472,15 @@ def _confronto(analise: dict) -> list[dict]:
 
 
 def _confronto_contrato(documento: Document, confronto: list[dict]) -> None:
-    """Só aparece quando o grupo informou prazo contratual. Vermelho = passou do prazo."""
+    """Só aparece quando o grupo informou prazo contratual. Vermelho = passou do prazo por causa da
+    Armanilux; com "quem segurou" do outro lado, o número fica preto e a coluna diz por quê."""
     if not confronto:
         return
-    tabela = documento.add_table(rows=1 + len(confronto), cols=3)
+    com_quem = any(item.get("quem_segurou") for item in confronto)
+    tabela = documento.add_table(rows=1 + len(confronto), cols=4 if com_quem else 3)
     tabela.style = "Table Grid"
-    _larguras(tabela, [11.0, 3.2, 3.2])
-    _cabecalho_tabela(tabela, ["Prazo contratual de referência", "Contrato", "Realizado"])
+    _larguras(tabela, [7.4, 2.4, 2.6, 5.0] if com_quem else [11.0, 3.2, 3.2])
+    _cabecalho_tabela(tabela, ["Prazo contratual de referência", "Contrato", "Realizado"] + (["Quem segurou"] if com_quem else []))
     for indice, item in enumerate(confronto, start=1):
         linha = tabela.rows[indice]
         sigla = "dias corridos" if item.get("unidade") == "dias_corridos" else "d.u."
@@ -490,7 +492,9 @@ def _confronto_contrato(documento: Document, confronto: list[dict]) -> None:
             realizado = DADO
         _texto_celula(linha.cells[0], item["descricao"] + (" *" if item.get("fonte_posterior") else ""), tamanho=9)
         _texto_celula(linha.cells[1], f"{item['limite_du']} {sigla}" if item["limite_du"] else DADO, tamanho=9)
-        _texto_celula(linha.cells[2], realizado, tamanho=9, negrito=True, cor=VERMELHO if item["excedeu"] else None)
+        _texto_celula(linha.cells[2], realizado, tamanho=9, negrito=True, cor=VERMELHO if item["excedeu"] and not item.get("externo") else None)
+        if com_quem:
+            _texto_celula(linha.cells[3], item.get("quem_segurou") or "", tamanho=9)
         if item["excedeu"]:
             for celula in linha.cells:
                 _sombrear(celula, AMARELO)
@@ -643,8 +647,14 @@ def _impacto_padrao(analise: dict) -> str:
     medidos = [item for item in _confronto(analise) if item["realizado"] is not None and item["limite_du"]]
     if not analise.get("prazos_contratuais"):
         return texto + "Prazo contratual não declarado no grupo: dado não identificado."
-    excedidos = sum(1 for item in medidos if item["excedeu"])
+    excedidos = sum(1 for item in medidos if item["excedeu"] and not item.get("externo"))
+    externos = sum(1 for item in medidos if item["excedeu"] and item.get("externo"))
     verbo = "passou" if excedidos == 1 else "passaram"
+    if externos:
+        return texto + (
+            f"{excedidos} de {len(medidos)} prazos contratuais com as duas datas {verbo} do limite por causa da Armanilux; "
+            f"{externos} por espera do outro lado (ver Análise de Prazos)."
+        )
     return texto + (
         f"{excedidos} de {len(medidos)} prazos contratuais com as duas datas {verbo} do limite (ver Análise de Prazos)."
     )

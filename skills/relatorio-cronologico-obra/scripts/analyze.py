@@ -634,7 +634,7 @@ def intervalos_marcos_de(eventos: list[dict], obra: dict | None = None) -> tuple
 
 OUTRAS_INTERFERENCIAS = "Outras interferências"
 # Campos que a revisão escreve no evento e que passam de eventos_adicionais e ajustes_eventos.
-CAMPOS_DA_REVISAO = ("frente", "grupo", "dias_sem_frente", "data_evento_ate")
+CAMPOS_DA_REVISAO = ("frente", "grupo", "dias_sem_frente", "dias_perdidos_armanilux", "data_evento_ate")
 
 
 def grupos_da_etapa_j(eventos: list[dict]) -> list[tuple[str, list[dict]]]:
@@ -651,16 +651,18 @@ def grupos_da_etapa_j(eventos: list[dict]) -> list[tuple[str, list[dict]]]:
     return list(grupos.items()) + ([(OUTRAS_INTERFERENCIAS, outras)] if outras else [])
 
 
-def dias_sem_frente(eventos: list[dict]) -> dict:
+def dias_sem_frente(eventos: list[dict], campo: str = "dias_sem_frente") -> dict:
     """Soma dos dias de equipe sem frente que a revisão contou em cada interferência
-    ("dias_sem_frente"). Sem nenhuma contagem, {}: o relatório não inventa total."""
+    ("dias_sem_frente", por causa da obra) ou dos dias perdidos do lado da Armanilux
+    ("dias_perdidos_armanilux": imprevisto, equipe, veículo). Sem nenhuma contagem, {}: o
+    relatório não inventa total."""
     # Por data, vale a maior contagem: duas mensagens do mesmo dia falam da mesma equipe parada.
     por_data: dict[str, int] = {}
     for evento in eventos:
         if evento["etapa"] != "J":
             continue
         try:
-            dias = int(evento.get("dias_sem_frente") or 0)
+            dias = int(evento.get(campo) or 0)
         except (TypeError, ValueError):
             dias = 0
         if dias > 0:
@@ -744,6 +746,9 @@ def confronto_contrato(eventos: list[dict], prazos: list[dict]) -> list[dict]:
                 # Faixa que passa do limite só no fim: o grupo não permite dizer que estourou.
                 "talvez": realizado is not None and limite is not None and realizado <= limite < maximo,
                 "fonte": prazo.get("fonte", ""),
+                # Quem segurou o período; "externo": a espera era do outro lado (aval, frente da obra).
+                "quem_segurou": (prazo.get("quem_segurou") or "").strip(),
+                "externo": bool(prazo.get("externo")),
                 # Regra escrita depois do início do período não prova que valia na época.
                 "fonte_posterior": bool(prazo.get("fonte_data") and inicio and prazo["fonte_data"] > inicio),
                 "sem_data_da_fonte": not prazo.get("fonte_data"),
