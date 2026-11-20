@@ -59,6 +59,16 @@ _LINHA_ENCAMINHADA_HORA_ANTES = re.compile(
 )
 
 
+# Aviso do WhatsApp com ":" no meio ("Ana alterou o nome do grupo de "Obra 1001: Silva"...").
+# Frases inteiras, não verbos soltos: apelido entre aspas ou "Saiu Silva" continuam autor.
+_CARA_DE_SISTEMA = re.compile(
+    r"\b(?:alterou|mudou) (?:o nome|a descrição|a imagem|o assunto|as configurações)"
+    r"|\bchanged (?:the subject|the group|this group|the description)"
+    r"|\bfixou uma mensagem|\bpinned a message",
+    re.IGNORECASE,
+)
+
+
 @dataclass
 class Mensagem:
     quando: datetime
@@ -70,6 +80,9 @@ class Mensagem:
     # Mensagem colada/reencaminhada: quem colou no grupo e quando.
     encaminhada_por: str | None = None
     encaminhada_em: datetime | None = None
+    # A ordem dia/mês do arquivo não foi provada por um número acima de 12 (ou a data só coube
+    # na outra ordem): o dia e o mês podem estar trocados.
+    data_incerta: bool = False
 
     @property
     def data(self):
@@ -97,15 +110,34 @@ def unicodedata_espaco(caractere: str) -> bool:
     return unicodedata.category(caractere) == "Zs"
 
 
-def _interpretar_data(data_texto: str, hora_texto: str, periodo: str | None) -> datetime:
+DIA_MES = "dm"  # export brasileiro
+MES_DIA = "md"  # WhatsApp em inglês (EUA)
+
+
+def _ordem_das_datas(linhas: list[str]) -> tuple[str, bool]:
+    """(ordem, confirmada) para o arquivo todo: decidir linha a linha mistura as duas ordens.
+    Prova a ordem um número acima de 12, ou o zero na frente (dia/mês). AM/PM não prova (celular brasileiro com relógio de
+    12 horas também mostra). Sem prova, ou com prova das duas ordens, vale dia/mês sem confirmação."""
+    dia_primeiro = mes_primeiro = False
+    for linha in linhas:
+        casou = _DATA_HORA_ANDROID.match(linha) or _DATA_HORA_IPHONE.match(linha)
+        if not casou:
+            continue
+        texto_a, texto_b = casou.group(1).split("/")[:2]
+        # O zero na frente ("03/07") é do formato dia/mês (Brasil, Reino Unido); o WhatsApp dos EUA
+        # escreve "7/3/26", sem zero.
+        dia_primeiro = dia_primeiro or int(texto_a) > 12 or texto_a.startswith("0") or texto_b.startswith("0")
+        mes_primeiro = mes_primeiro or int(texto_b) > 12
+    if dia_primeiro != mes_primeiro:
+        return (DIA_MES if dia_primeiro else MES_DIA), True
+    return DIA_MES, False
+
+
+def _interpretar_data(data_texto: str, hora_texto: str, periodo: str | None, ordem: str = DIA_MES) -> datetime:
     parte_a, parte_b, ano = (int(pedaço) for pedaço in data_texto.split("/"))
     if ano < 100:
         ano += 2000
-    # Export brasileiro é dia/mês. Se o segundo número não cabe em mês, é mês/dia.
-    if parte_b > 12 and parte_a <= 12:
-        mes, dia = parte_a, parte_b
-    else:
-        dia, mes = parte_a, parte_b
+    dia, mes = (parte_b, parte_a) if ordem == MES_DIA else (parte_a, parte_b)
     pedacos_hora = hora_texto.split(":")
     hora = int(pedacos_hora[0])
     minuto = int(pedacos_hora[1])
@@ -119,12 +151,26 @@ def _interpretar_data(data_texto: str, hora_texto: str, periodo: str | None) -> 
     return datetime(ano, mes, dia, hora, minuto, segundo)
 
 
+def _data_da_linha(casou: re.Match, ordem: str, confirmada: bool) -> tuple[datetime | None, bool]:
+    """(quando, incerta). Data impossível na ordem do arquivo (1/18/26 num arquivo dia/mês) é lida
+    na outra ordem e fica incerta: o arquivo mistura as duas ordens."""
+    try:
+        return _interpretar_data(casou.group(1), casou.group(2), casou.group(3), ordem), not confirmada
+    except ValueError:
+        pass
+    outra = MES_DIA if ordem == DIA_MES else DIA_MES
+    try:
+        return _interpretar_data(casou.group(1), casou.group(2), casou.group(3), outra), True
+    except ValueError:
+        return None, True
+
+
 def _separar_autor(resto: str) -> tuple[str | None, str]:
     if ": " not in resto:
         return None, resto.strip()
     autor, texto = resto.split(": ", 1)
     autor = corrigir_mojibake(autor.strip())
-    if not autor or len(autor) > 80:
+    if not autor or len(autor) > 80 or _CARA_DE_SISTEMA.search(autor):
         return None, resto.strip()
     return autor, texto.strip()
 
@@ -223,8 +269,9 @@ def analisar_conversa(texto: str) -> list[Mensagem]:
             mensagens.append(parte)
         atual = None
 
-    for bruta in texto.splitlines():
-        linha = _limpar_linha(bruta)
+    linhas = [_limpar_linha(bruta) for bruta in texto.splitlines()]
+    ordem, confirmada = _ordem_das_datas(linhas)
+    for linha in linhas:
         if not linha:
             if atual is not None:
                 atual.texto += "\n"
@@ -234,9 +281,8 @@ def analisar_conversa(texto: str) -> list[Mensagem]:
             if atual is not None:
                 atual.texto += ("\n" if atual.texto else "") + linha
             continue
-        try:
-            quando = _interpretar_data(casou.group(1), casou.group(2), casou.group(3))
-        except ValueError:
+        quando, incerta = _data_da_linha(casou, ordem, confirmada)
+        if quando is None:
             if atual is not None:
                 atual.texto += ("\n" if atual.texto else "") + linha
             continue
@@ -247,6 +293,7 @@ def analisar_conversa(texto: str) -> list[Mensagem]:
             autor=autor,
             texto=corpo,
             sistema=autor is None,
+            data_incerta=incerta,
         )
     fechar()
     return mensagens
