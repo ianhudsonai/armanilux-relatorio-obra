@@ -2,7 +2,7 @@
 cd /d "%~dp0"
 echo.
 echo Armanilux - este atalho e opcional.
-echo O jeito normal e colar no Codex as tres linhas do comeco do README.
+echo O jeito normal e colar o link do repositorio no Codex ou no Claude Code e escrever: instale aqui.
 echo Se o Windows pedir permissao, clique em Sim.
 echo.
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0skills\preparar-projeto-armanilux\scripts\instalar.ps1"
