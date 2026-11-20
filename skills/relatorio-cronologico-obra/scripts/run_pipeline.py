@@ -19,6 +19,7 @@ from analyze import (
     aplicar_ajustes,
     completar_relato,
     avisos_de_frente,
+    avisos_de_programado,
     intervalos_marcos_de,
     juntar_lacunas,
     lacunas_automaticas,
@@ -235,6 +236,8 @@ def _avisar_prazos(analise: dict) -> None:
         elif item.get("sem_data_da_fonte"):
             print(f"Aviso de prazo: \"{item['descricao']}\": sem fonte_data.")
     for aviso in avisos_de_frente(analise.get("eventos") or [], analise.get("prazos_contratuais") or []):
+        print(aviso)
+    for aviso in avisos_de_programado(analise.get("eventos") or []):
         print(aviso)
 
 

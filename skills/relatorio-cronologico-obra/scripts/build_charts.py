@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from analyze import ORDEM, TITULOS
+from analyze import ORDEM, TITULOS, data_da_conclusao
 from common import LARGURA_FIGURA_CM
 
 LARGURA_POL = LARGURA_FIGURA_CM / 2.54  # mesma largura com que o Word insere a figura
@@ -135,6 +135,23 @@ def _formatar_mes(valor, _posicao=None) -> str:
     return f"{_MESES[dia.month - 1]}/{dia.strftime('%y')}"
 
 
+SEM_CONCLUSAO = "Pendências finais (sem conclusão)"
+
+
+def linhas_gantt(eventos: list[dict]) -> list[dict]:
+    """Uma linha por etapa com fato realizado: código, rótulo, primeiro e último registro. Sem fato
+    marcado como conclusão, a etapa L não se chama "Conclusão" (reclamação e reparo não concluem)."""
+    linhas = []
+    for codigo in ORDEM:
+        # Programação não é registro do que aconteceu; o fato conta na data em que ocorreu.
+        datas = [item.get("data_evento") or item["data"] for item in eventos if item["etapa"] == codigo and not item.get("programado")]
+        if not datas:
+            continue
+        nome = SEM_CONCLUSAO if codigo == "L" and not data_da_conclusao(eventos) else _nome_curto(codigo)
+        linhas.append({"codigo": codigo, "rotulo": f"{codigo}  {nome}", "inicio": min(datas), "fim": max(datas)})
+    return linhas
+
+
 def grafico_gantt(eventos: list[dict], destino: Path) -> Path:
     """Uma barra por etapa, do primeiro ao último registro. Sem borda vermelha: quase toda
     etapa de obra longa vem depois de algum intervalo longo, e a cor deixava de dizer algo."""
@@ -143,14 +160,7 @@ def grafico_gantt(eventos: list[dict], destino: Path) -> Path:
     from matplotlib.ticker import FuncFormatter
 
     destino.parent.mkdir(parents=True, exist_ok=True)
-
-    linhas = []
-    for codigo in ORDEM:
-        # Programação não é registro do que aconteceu; o fato conta na data em que ocorreu.
-        datas = [item.get("data_evento") or item["data"] for item in eventos if item["etapa"] == codigo and not item.get("programado")]
-        if not datas:
-            continue
-        linhas.append({"codigo": codigo, "inicio": min(datas), "fim": max(datas)})
+    linhas = linhas_gantt(eventos)
 
     fig, eixo = plt.subplots(figsize=(LARGURA_POL, 1.4 + 0.42 * max(len(linhas), 2)), layout="constrained")
     if not linhas:
@@ -171,7 +181,7 @@ def grafico_gantt(eventos: list[dict], destino: Path) -> Path:
                 linewidth=0.5,
             )
         eixo.set_yticks(range(len(linhas)))
-        eixo.set_yticklabels([f"{item['codigo']}  {_nome_curto(item['codigo'])}" for item in linhas], fontsize=8.5)
+        eixo.set_yticklabels([item["rotulo"] for item in linhas], fontsize=8.5)
         eixo.invert_yaxis()
         primeiro = datetime.fromisoformat(min(item["inicio"] for item in linhas))
         ultimo = datetime.fromisoformat(max(item["fim"] for item in linhas))

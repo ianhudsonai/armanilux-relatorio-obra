@@ -94,6 +94,26 @@ _ETAPAS_COM_PROGRAMACAO = {"A", "C", "H", "I", "L"}
 def diz_programado(texto: str) -> bool:
     """O texto fala em programação ("programado para amanhã", "agendamento da visita")."""
     return bool(_COMECA_PALAVRA(_PROGRAMADO).search(normalizar(texto or "")))
+
+
+# Ação que aconteceu, embora não seja marco: cobrança, pedido, envio, fato que não se realizou.
+_ACAO_REALIZADA = ("cobr", "pede", "pedi", "solicit", "envi", "nao realiz", "nao foi realiz", "nao ocorr", "nao aconteceu")
+
+
+def avisos_de_programado(eventos: list[dict]) -> list[str]:
+    """Fato marcado "programado" cujo texto conta uma ação que aconteceu (cobrança, pedido, envio,
+    medição não realizada): o Word mostraria "(programado)" ao lado de algo que já foi feito."""
+    avisos = []
+    for evento in eventos:
+        texto = evento.get("ocorrencia") or ""
+        if not evento.get("programado") or diz_programado(texto):
+            continue
+        if _COMECA_PALAVRA(_ACAO_REALIZADA).search(normalizar(texto)):
+            avisos.append(
+                f"Aviso de programado: {formatar_data(evento['data'])} ({evento['etapa']}) \"{texto[:80]}\" conta algo que "
+                "aconteceu, mas não é marco. Troque \"programado\": true por \"marco\": false."
+            )
+    return avisos
 # Intervalo entre marcos acima disto sai em vermelho na Análise de Prazos.
 LIMITE_INTERVALO_LONGO = 20
 
