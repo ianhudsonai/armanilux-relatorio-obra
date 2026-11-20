@@ -454,9 +454,18 @@ def primeiros_marcos(eventos: list[dict], frente: str | None = None) -> dict[str
     return primeiros
 
 
+# Marcos do ciclo, na ordem: chapas, medição, preliminar, aprovação, entrega, equipe, conclusão.
+# Pedido de visita (B), revisões (E, F) e interferências (J) não são passos do fluxo.
+MARCOS_DO_CICLO = ("A", "C", "D", "G", "H", "I", "L")
+
+
 def _cadeia(primeiros: dict[str, str], frente: str) -> list[dict]:
-    # Interferência (J) não é passo do fluxo: fica fora da cadeia de marcos.
-    marcos = sorted(((etapa, data) for etapa, data in primeiros.items() if etapa != "J"), key=lambda par: (par[1], _posicao(par[0])))
+    # Na ordem do ciclo; etapa com data anterior à do marco já escolhido (fora de ordem) fica fora.
+    marcos: list[tuple[str, str]] = []
+    for etapa in MARCOS_DO_CICLO:
+        data = primeiros.get(etapa)
+        if data and (not marcos or data >= marcos[-1][1]):
+            marcos.append((etapa, data))
     saida = []
     for (de, inicio), (para, fim) in zip(marcos, marcos[1:]):
         dias = dias_uteis_entre(date.fromisoformat(inicio), date.fromisoformat(fim))

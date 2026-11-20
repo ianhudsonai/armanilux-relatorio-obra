@@ -106,6 +106,24 @@ class FrentesTeste(unittest.TestCase):
         self.assertIn('"Banho: entrega": a frente "Banho" não aparece nos fatos', avisos[1])
         self.assertEqual(avisos_de_frente(EVENTOS, []), [])
 
+    def test_cadeia_so_com_marcos_do_ciclo_e_na_ordem(self):
+        # Pedido de visita (B), revisões (E, F) não são marcos; revisão anterior ao preliminar não vira passo.
+        eventos = [
+            _evento("2026-03-02", "E", "Gourmet"),
+            _evento("2026-03-04", "B", "Gourmet"),
+            _evento("2026-03-09", "D", "Gourmet"),
+            _evento("2026-03-11", "F", "Gourmet"),
+            _evento("2026-03-16", "G", "Gourmet"),
+            _evento("2026-03-18", "B", "Gourmet"),
+            _evento("2026-03-23", "I", "Gourmet"),
+        ]
+        relato = completar_relato({"obra": {}, "eventos": eventos})
+        # 09/03→16/03 = 5 d.u.; 16/03→23/03 = 5 d.u. (semanas cheias, sem feriado).
+        self.assertEqual(
+            [(m["de"], m["para"], m["dias_uteis"]) for m in relato["intervalos_marcos"]],
+            [("D", "G", 5), ("G", "I", 5)],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
