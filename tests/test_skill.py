@@ -193,8 +193,29 @@ class SkillTeste(unittest.TestCase):
             self.assertIn("segundo plano", texto, pasta.name)
             self.assertIn("rode de novo", texto, pasta.name)
 
-    def test_coladas_descritas_como_aparecem_no_txt(self):
+    def test_agente_espera_a_instalacao_terminar_e_avisa_se_o_turno_acabar(self):
+        # Visto no Codex: o agente encerrou o turno no meio da instalação e a pessoa não sabia que devia escrever "continue".
+        preparar = RAIZ / "skills" / "preparar-projeto-armanilux"
+        for pasta in (SKILL, preparar):
+            texto = (pasta / "SKILL.md").read_text(encoding="utf-8")
+            self.assertIn("código de saída", texto, pasta.name)
+            self.assertIn('Escreva "continue" para eu terminar.', texto, pasta.name)
+
+    def test_skill_do_relatorio_e_curta_e_os_detalhes_da_revisao_ficam_em_references(self):
+        # Decisão do mantenedor: o passo a passo fica curto; as regras da revisão ficam em references/revisao.md.
+        # 2200 palavras (com o cabeçalho): menos da metade das ~5.000 da 1.13, que eram orientação demais.
         texto = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        self.assertLessEqual(len(texto.split()), 2200)
+        self.assertIn("references/revisao.md", texto)
+        self.assertTrue((SKILL / "references" / "revisao.md").is_file())
+
+    def test_skill_acha_o_zip_sozinha(self):
+        texto = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("Nunca peça o caminho do zip", texto)
+        self.assertIn("--listar", texto)
+
+    def test_coladas_descritas_como_aparecem_no_txt(self):
+        texto = (SKILL / "references" / "revisao.md").read_text(encoding="utf-8")
         coladas = next(linha for linha in texto.splitlines() if "**Mensagens coladas.**" in linha)
         self.assertIn("[12:25, 03/07/2026] Nome:", coladas)
         self.assertIn("analise.json", coladas)
