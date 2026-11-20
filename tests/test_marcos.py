@@ -38,7 +38,7 @@ class MarcosTeste(unittest.TestCase):
                 ("D", "G", "2026-01-12", "2026-02-02", 15),
             ],
         )
-        self.assertEqual(relato["duracao_marcos"], {"inicio": "2026-01-05", "fim": "2026-02-02", "dias_uteis": 20})
+        self.assertEqual(relato["duracao_marcos"], {"inicio": "2026-01-05", "fim": "2026-02-02", "dias_uteis": 20, "do_grupo": False})
 
 
 class TabelaWordTeste(unittest.TestCase):
@@ -53,7 +53,9 @@ class TabelaWordTeste(unittest.TestCase):
             tabelas = [t for t in Document(str(destino)).tables if t.rows[0].cells[0].text == "Intervalo entre marcos"]
         self.assertEqual(len(tabelas), 1)
         linhas = [[celula.text for celula in linha.cells] for linha in tabelas[0].rows[1:]]
-        self.assertEqual(len(linhas), 4)
+        self.assertEqual(len(linhas), 5)
+        # O ciclo parou na aprovação (G): a entrega aparece como dado não identificado.
+        self.assertEqual(linhas[3][1], "pendente")
         self.assertEqual(linhas[0][1], "2 d.u.")
         self.assertIn("(05/01/2026)", linhas[0][0])
         self.assertIn("(07/01/2026)", linhas[0][0])
