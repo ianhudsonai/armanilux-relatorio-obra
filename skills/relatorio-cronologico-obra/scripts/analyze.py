@@ -471,15 +471,57 @@ def avisos_de_frente(eventos: list[dict], prazos: list[dict]) -> list[str]:
     return avisos
 
 
+def _momento(evento: dict) -> tuple[str, str]:
+    return (data_do_fato(evento), evento.get("hora") or "00:00")
+
+
+def _aprovacoes(escopo: list[dict]) -> tuple[list[dict], dict | None]:
+    """(aprovações revistas, aprovação que valeu) de um ciclo. Uma aprovação é revista quando,
+    depois dela e até a aprovação seguinte, há revisão (E ou F): vale a primeira não revista.
+    Mudança depois da última aprovação (já na produção) não desfaz a aprovação."""
+    aprovacoes = sorted((e for e in escopo if e["etapa"] == "G" and conta_como_marco(e)), key=_momento)
+    revisoes = [_momento(e) for e in escopo if e["etapa"] in ("E", "F") and realizado(e)]
+    revistas: list[dict] = []
+    for atual, proxima in zip(aprovacoes, aprovacoes[1:]):
+        if not any(_momento(atual) < momento <= _momento(proxima) for momento in revisoes):
+            break
+        revistas.append(atual)
+    return revistas, (aprovacoes[len(revistas)] if aprovacoes else None)
+
+
+def _ciclos(eventos: list[dict]) -> list[tuple[str, list[dict]]]:
+    """(nome, fatos) de cada ciclo: cada frente e "Obra em geral"; sem frentes, a obra toda ("")."""
+    frentes = frentes_da_obra(eventos)
+    if not frentes:
+        return [("", list(eventos))]
+    nomes = frentes if GERAL in frentes else frentes + [GERAL]
+    return [(nome, [e for e in eventos if _da_frente(e, nome)]) for nome in nomes]
+
+
 def primeiros_marcos(eventos: list[dict], frente: str | None = None) -> dict[str, str]:
-    """Primeira data realizada de cada etapa; com frente, só dos fatos dessa frente."""
+    """Primeira data realizada de cada etapa; com frente, só dos fatos dessa frente. Num ciclo
+    (uma frente, ou a obra sem frentes), a aprovação é a que valeu, não a revista depois. Na obra
+    multifrente sem frente escolhida (Quadro-Resumo), vale a primeira aprovação da obra."""
+    escopo = [e for e in eventos if _da_frente(e, frente)]
     primeiros: dict[str, str] = {}
-    for evento in eventos:
-        if not _da_frente(evento, frente) or not conta_como_marco(evento):
+    for evento in escopo:
+        if not conta_como_marco(evento):
             continue
         if data_do_fato(evento) < primeiros.get(evento["etapa"], "9999"):
             primeiros[evento["etapa"]] = data_do_fato(evento)
+    if "G" in primeiros and (frente is not None or not frentes_da_obra(eventos)):
+        primeiros["G"] = data_do_fato(_aprovacoes(escopo)[1])
     return primeiros
+
+
+def aprovacoes_revistas(eventos: list[dict]) -> list[dict]:
+    """Ciclos em que a primeira aprovação foi revista: frente, datas revistas e a que valeu."""
+    saida = []
+    for nome, escopo in _ciclos(eventos):
+        revistas, valeu = _aprovacoes(escopo)
+        if revistas:
+            saida.append({"frente": nome, "revistas": [data_do_fato(e) for e in revistas], "valeu": data_do_fato(valeu)})
+    return saida
 
 
 # Marcos do ciclo, na ordem: chapas, medição, preliminar, aprovação, entrega, equipe, conclusão.

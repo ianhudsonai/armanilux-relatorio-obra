@@ -121,7 +121,7 @@ def grafico_barras(intervalos_marcos: list[dict], destino: Path) -> Path:
         eixo.spines["right"].set_visible(False)
     # Título na figura inteira: no eixo ele ficava cortado pelos rótulos longos da esquerda.
     fig.suptitle(
-        "Dias úteis entre marcos (primeiro fato realizado de cada etapa)\nO número é intervalo de calendário, não soma de atraso.",
+        "Dias úteis entre marcos (primeiro fato realizado; na aprovação, a que valeu)\nO número é intervalo de calendário, não soma de atraso.",
         fontsize=10,
         color=MARROM,
     )

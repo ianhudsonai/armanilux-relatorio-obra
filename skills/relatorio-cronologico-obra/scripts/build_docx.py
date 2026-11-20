@@ -10,6 +10,7 @@ from analyze import (
     LIMITE_INTERVALO_LONGO,
     ORDEM,
     TITULOS,
+    aprovacoes_revistas,
     ciclos_incompletos,
     confronto_contrato,
     data_da_conclusao,
@@ -488,10 +489,11 @@ def _confronto_contrato(documento: Document, confronto: list[dict]) -> None:
 
 def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path | None, grafico_gantt: Path | None) -> None:
     documento.add_heading("Análise de Prazos — Intervalos em Dias Úteis", level=1)
+    marco = "primeiro fato realizado de cada etapa; na aprovação, a que valeu"
     if frentes_da_obra(analise.get("eventos") or []):
-        abertura = "Intervalos entre marcos medidos dentro de cada frente (primeiro fato realizado de cada etapa), em dias úteis."
+        abertura = f"Intervalos entre marcos medidos dentro de cada frente ({marco}), em dias úteis."
     else:
-        abertura = "Intervalos entre marcos (primeiro fato realizado de cada etapa), em dias úteis."
+        abertura = f"Intervalos entre marcos ({marco}), em dias úteis."
     _paragrafo(documento, abertura + " Intervalo de calendário não é atraso atribuído a ninguém.", tamanho=10)
     # Sempre dos eventos: remontar sem --recalcular não deixa número antigo ao lado do Quadro-Resumo.
     eventos = analise.get("eventos") or []
@@ -545,9 +547,22 @@ def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path 
                 for celula in linha.cells:
                     _sombrear(celula, AMARELO)
         documento.add_paragraph()
+    _aprovacoes_revistas(documento, eventos)
     _confronto_contrato(documento, _confronto(analise))
     _inserir_figura(documento, grafico_barras, "Figura 1. Dias úteis entre marcos.")
     _inserir_figura(documento, grafico_gantt, "Figura 2. Linha do tempo das etapas, do primeiro ao último registro.")
+
+
+def _aprovacoes_revistas(documento: Document, eventos: list[dict]) -> None:
+    """Aprovação seguida de revisão e de nova aprovação: diz qual foi revista e qual valeu."""
+    partes = []
+    for item in aprovacoes_revistas(eventos):
+        datas = [formatar_data(data) for data in item["revistas"]]
+        lista = datas[0] if len(datas) == 1 else f"{', '.join(datas[:-1])} e {datas[-1]}"
+        onde = f"{item['frente']}: " if item["frente"] else ""
+        partes.append(f"{onde}{lista} (valeu a de {formatar_data(item['valeu'])})")
+    if partes:
+        _leitura(documento, "Aprovações revistas", "; ".join(partes) + ".")
 
 
 def _itens(valor) -> list[str]:
