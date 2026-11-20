@@ -4,7 +4,7 @@ description: Prepara o computador de alguém da Armanilux para os relatórios de
 license: MIT
 metadata:
   author: Armanilux
-  version: "1.5"
+  version: "1.6"
   idioma: pt-BR
 ---
 
@@ -34,11 +34,11 @@ Na pergunta 4, cada opção mostra um exemplo, porque só o nome da regra é dif
 - Cliente e depois número, por exemplo "Família Almeida - 1001"
 - Só o número, por exemplo "1001"
 
-Não invente resposta. Se a pessoa não souber onde fica a pasta, use Documentos\Armanilux. Na pergunta 4, grave `{numero} - {cliente}`, `{cliente} - {numero}` ou `{numero}`, conforme a escolha, sem mostrar esses códigos para ela.
+Não invente resposta. Se a pessoa não souber onde fica a pasta, use a pasta Armanilux dentro da pasta Documentos que o Explorer mostra: `[Environment]::GetFolderPath('MyDocuments')` (com o OneDrive ligado, ela pode estar dentro do OneDrive). Na pergunta 4, grave `{numero} - {cliente}`, `{cliente} - {numero}` ou `{numero}`, conforme a escolha, sem mostrar esses códigos para ela.
 
 ## 2. Instalar as ferramentas
 
-Diga uma frase: vai instalar o que falta neste computador; quando o aplicativo pedir permissão, aprove; se o Windows abrir Sim ou Não, clique em Sim.
+Diga em poucas frases: vai instalar o que falta neste computador; pode levar até 40 minutos; não feche o ChatGPT nem desligue o computador até terminar; quando o aplicativo pedir permissão, aprove; se o Windows abrir Sim ou Não, clique em Sim.
 
 Releia o PATH e execute o instalador desta pasta. Use `-BaixarModelo` só se a pessoa disse sim na pergunta 5. Use `-Pdf` se ela escolheu PDF ou link na pergunta 3: o instalador confere se há Microsoft Word ou LibreOffice e, sem nenhum dos dois, instala o LibreOffice (gratuito, cerca de 350 MB; o Windows pode pedir Sim).
 

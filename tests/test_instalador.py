@@ -32,6 +32,43 @@ class RequisitosTeste(unittest.TestCase):
             self.assertRegex(linha, r"^[A-Za-z0-9_.-]+==\d[\w.]*$")
 
 
+class ConferenciasDoInstaladorTeste(unittest.TestCase):
+    """Visto na avaliação de prontidão: o instalador não olhava o disco nem testava as bibliotecas."""
+
+    def setUp(self):
+        self.texto = INSTALADOR.read_text(encoding="utf-8-sig")
+
+    def test_confere_espaco_livre_antes_de_instalar(self):
+        self.assertIn("function Conferir-Espaco", self.texto)
+        self.assertLess(self.texto.index("\nConferir-Espaco"), self.texto.index("Winget-Instalar \"Python.Python.3.12\""))
+
+    def test_testa_as_bibliotecas_depois_do_pip_e_tenta_o_vc_redist(self):
+        depois_do_pip = self.texto.split("pip install -r $requisitos", 1)[1]
+        self.assertIn("import docx, faster_whisper, matplotlib, holidays, PIL, numpy", depois_do_pip)
+        self.assertIn("Microsoft.VCRedist.2015+.x64", depois_do_pip)
+
+    def test_skill_avisa_quanto_tempo_leva(self):
+        skill = (PREPARO.parent / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("até 40 minutos", skill)
+        self.assertIn("não feche o ChatGPT", skill)
+
+
+@unittest.skipUnless(sys.platform.startswith("win"), "o instalador é do Windows")
+class EspacoTeste(unittest.TestCase):
+    def _suficiente(self, livre_gb: float) -> bool:
+        script = _funcao_powershell("Espaco-Suficiente") + f"\nif (Espaco-Suficiente {livre_gb}) {{ 'SIM' }} else {{ 'NAO' }}\n"
+        saida = subprocess.run(
+            ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
+            capture_output=True, text=True, timeout=60,
+        )
+        self.assertEqual(saida.returncode, 0, saida.stderr)
+        return saida.stdout.strip().splitlines()[-1] == "SIM"
+
+    def test_pede_pelo_menos_3_gb(self):
+        self.assertFalse(self._suficiente(2.5))
+        self.assertTrue(self._suficiente(3))
+
+
 @unittest.skipUnless(sys.platform.startswith("win"), "o instalador é do Windows")
 class PythonAceitoTeste(unittest.TestCase):
     def _serve(self, versao: int) -> bool:

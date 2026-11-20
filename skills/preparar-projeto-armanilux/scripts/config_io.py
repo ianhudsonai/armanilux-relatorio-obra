@@ -36,9 +36,29 @@ def caminho_config() -> Path:
     return Path.home() / ".armanilux-relatorio" / "config.json"
 
 
+def pasta_documentos() -> Path:
+    """A pasta Documentos que o Explorer mostra. Com o OneDrive ligado, ela pode ser
+    OneDrive\\Documentos, e não %USERPROFILE%\\Documents."""
+    if os.name == "nt":
+        try:
+            import winreg
+
+            with winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders",
+            ) as chave:
+                valor, _ = winreg.QueryValueEx(chave, "Personal")
+            pasta = Path(os.path.expandvars(str(valor)))
+            if pasta.is_dir():
+                return pasta
+        except OSError:
+            pass
+    return Path.home() / "Documents"
+
+
 def padroes() -> dict:
     return {
-        "pasta_raiz": str(Path.home() / "Documents" / "Armanilux"),
+        "pasta_raiz": str(pasta_documentos() / "Armanilux"),
         "nome": "",
         "funcao": "",
         "gerar_pdf": False,

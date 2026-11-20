@@ -20,6 +20,22 @@ from preparar import preparar  # noqa: E402
 from run_pipeline import executar  # noqa: E402
 
 
+class DocumentosTeste(unittest.TestCase):
+    @unittest.skipUnless(sys.platform.startswith("win"), "Documentos redirecionado é do Windows")
+    def test_pasta_padrao_e_a_pasta_documentos_que_o_explorer_mostra(self):
+        # Com Documentos no OneDrive, Path.home()/"Documents" é outra pasta, que o Explorer não mostra.
+        import subprocess
+
+        from config_io import padroes, pasta_documentos
+
+        real = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", "[Environment]::GetFolderPath('MyDocuments')"],
+            capture_output=True, text=True, timeout=60,
+        ).stdout.strip()
+        self.assertEqual(os.path.normcase(str(pasta_documentos())), os.path.normcase(real))
+        self.assertEqual(Path(padroes()["pasta_raiz"]), pasta_documentos() / "Armanilux")
+
+
 class ConfigTeste(unittest.TestCase):
     def test_gravar_ler_e_mudar_de_novo(self):
         with TemporaryDirectory() as temporario:

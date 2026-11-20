@@ -81,7 +81,9 @@ def pasta_padrao() -> Path:
     bruto = os.environ.get("ARMANILUX_OBRAS", "").strip()
     if bruto:
         return Path(bruto).expanduser()
-    return Path.home() / "Documents" / "Armanilux" / "Relatorios-de-Obra"
+    from config_io import pasta_documentos
+
+    return pasta_documentos() / "Armanilux" / "Relatorios-de-Obra"
 
 
 def _marcadores(texto: str) -> int:

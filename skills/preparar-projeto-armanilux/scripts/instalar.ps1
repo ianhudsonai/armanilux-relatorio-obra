@@ -115,6 +115,25 @@ function Achar-Ffmpeg {
     return $null
 }
 
+# Python, bibliotecas, o download dos áudios e o LibreOffice somam cerca de 2,5 GB.
+function Espaco-Suficiente([double]$livreGb) {
+    return ($livreGb -ge 3)
+}
+
+function Conferir-Espaco {
+    $letra = (Split-Path $env:USERPROFILE -Qualifier).TrimEnd(':')
+    $disco = Get-PSDrive -Name $letra -ErrorAction SilentlyContinue
+    if (-not $disco) { return }
+    $livreGb = [math]::Round($disco.Free / 1GB, 1)
+    if (-not (Espaco-Suficiente $livreGb)) {
+        Write-Host "O disco $letra`: tem só $livreGb GB livres. A instalação precisa de pelo menos 3 GB."
+        Write-Host "Libere espaço (por exemplo, esvazie a Lixeira e apague downloads antigos) e peça a preparação de novo."
+        exit 1
+    }
+    Escrever-Ok "Espaço livre no disco $letra`: $livreGb GB."
+}
+
+Conferir-Espaco
 Atualizar-Caminho
 $python = Achar-Python
 if (-not (Python-Serve $python)) {
@@ -182,6 +201,20 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "A instalação das bibliotecas falhou. Confira a internet e peça a preparação de novo."
     exit 1
 }
+
+# O pip pode terminar bem e a biblioteca não abrir (num PC novo, falta o Visual C++ do Windows).
+$teste = "import docx, faster_whisper, matplotlib, holidays, PIL, numpy"
+& $venvPython -c $teste 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Escrever-Aviso "Uma biblioteca não abriu. Vou instalar o Visual C++ do Windows, que ela precisa."
+    Winget-Instalar "Microsoft.VCRedist.2015+.x64"
+    & $venvPython -c $teste
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "As bibliotecas foram instaladas, mas não abrem neste computador. Mostre esta mensagem ao Ian."
+        exit 1
+    }
+}
+Escrever-Ok "Bibliotecas conferidas."
 
 if ($BaixarModelo) {
     Escrever-Titulo "Baixando o que o computador precisa para entender os áudios e os vídeos. Cerca de 484 MB, só desta vez, e fica só neste computador."
