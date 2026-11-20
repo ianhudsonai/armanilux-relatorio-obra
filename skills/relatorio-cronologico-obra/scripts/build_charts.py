@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from analyze import ORDEM, TITULOS
+from analyze import ORDEM, TITULOS, data_da_conclusao, data_do_fato
 from common import LARGURA_FIGURA_CM
 
 LARGURA_POL = LARGURA_FIGURA_CM / 2.54  # mesma largura com que o Word insere a figura
@@ -64,9 +64,15 @@ def _nome_curto(codigo: str) -> str:
     return NOME_CURTO.get(codigo, TITULOS.get(codigo, codigo))
 
 
-def _dia_mes_ano(iso: str) -> str:
+def _dia_mes_ano(iso: str, ate: str = "") -> str:
+    """"09/06/26"; fato sem dia exato: "09–11/06/26" (mesmo mês) ou "28/06–02/07/26"."""
     dia = datetime.fromisoformat(iso)
-    return dia.strftime("%d/%m/%y")
+    if not ate or ate == iso:
+        return dia.strftime("%d/%m/%y")
+    fim = datetime.fromisoformat(ate)
+    if (dia.year, dia.month) == (fim.year, fim.month):
+        return f"{dia:%d}–{fim:%d/%m/%y}"
+    return f"{dia:%d/%m}–{fim:%d/%m/%y}"
 
 
 def _vazio(eixo) -> None:
@@ -95,21 +101,26 @@ def grafico_barras(intervalos_marcos: list[dict], destino: Path) -> Path:
         rotulos = [
             (f"{item['frente']}\n" if item.get("frente") else "")
             + f"{item['de']} {_nome_curto(item['de'])} → {item['para']} {_nome_curto(item['para'])}\n"
-            f"{_dia_mes_ano(item['inicio'])} a {_dia_mes_ano(item['fim'])}"
+            f"{_dia_mes_ano(item['inicio'], item.get('inicio_ate', ''))} a {_dia_mes_ano(item['fim'], item.get('fim_ate', ''))}"
             for item in intervalos_marcos
         ]
         valores = [item["dias_uteis"] for item in intervalos_marcos]
+        maximos = [max(item.get("dias_uteis_max") or 0, item["dias_uteis"]) for item in intervalos_marcos]
         barras = eixo.barh(range(linhas), valores, color=DOURADO, edgecolor=MARROM, linewidth=0.6, height=0.6)
+        # Faixa (fato sem dia exato): o trecho incerto vai claro e tracejado depois da barra.
+        for indice, (valor, maximo) in enumerate(zip(valores, maximos)):
+            if maximo > valor:
+                eixo.barh(indice, maximo - valor, left=valor, color="white", edgecolor=MARROM, linewidth=0.6, height=0.6, hatch="///")
         eixo.set_yticks(range(linhas))
         eixo.set_yticklabels(rotulos, fontsize=9)
         eixo.invert_yaxis()
-        topo = max(valores) or 1
+        topo = max(maximos) or 1
         eixo.set_xlim(0, topo * 1.24)
-        for barra, valor in zip(barras, valores):
+        for barra, valor, maximo in zip(barras, valores, maximos):
             eixo.text(
-                barra.get_width() + topo * 0.015,
+                maximo + topo * 0.015,
                 barra.get_y() + barra.get_height() / 2,
-                f"{valor} d.u.",
+                f"{valor} d.u." if maximo == valor else f"{valor}–{maximo} d.u.",
                 va="center",
                 fontsize=9,
                 fontweight="bold",
@@ -121,7 +132,7 @@ def grafico_barras(intervalos_marcos: list[dict], destino: Path) -> Path:
         eixo.spines["right"].set_visible(False)
     # Título na figura inteira: no eixo ele ficava cortado pelos rótulos longos da esquerda.
     fig.suptitle(
-        "Dias úteis entre marcos (primeiro fato realizado de cada etapa)\nO número é intervalo de calendário, não soma de atraso.",
+        "Dias úteis entre marcos (primeiro fato realizado; na aprovação, a que valeu)\nO número é intervalo de calendário, não soma de atraso.",
         fontsize=10,
         color=MARROM,
     )
@@ -135,6 +146,23 @@ def _formatar_mes(valor, _posicao=None) -> str:
     return f"{_MESES[dia.month - 1]}/{dia.strftime('%y')}"
 
 
+SEM_CONCLUSAO = "Pendências finais (sem conclusão)"
+
+
+def linhas_gantt(eventos: list[dict]) -> list[dict]:
+    """Uma linha por etapa com fato realizado: código, rótulo, primeiro e último registro. Sem fato
+    marcado como conclusão, a etapa L não se chama "Conclusão" (reclamação e reparo não concluem)."""
+    linhas = []
+    for codigo in ORDEM:
+        # Programação não é registro do que aconteceu; o fato conta na data em que ocorreu.
+        datas = [data_do_fato(item) for item in eventos if item["etapa"] == codigo and not item.get("programado")]
+        if not datas:
+            continue
+        nome = SEM_CONCLUSAO if codigo == "L" and not data_da_conclusao(eventos) else _nome_curto(codigo)
+        linhas.append({"codigo": codigo, "rotulo": f"{codigo}  {nome}", "inicio": min(datas), "fim": max(datas)})
+    return linhas
+
+
 def grafico_gantt(eventos: list[dict], destino: Path) -> Path:
     """Uma barra por etapa, do primeiro ao último registro. Sem borda vermelha: quase toda
     etapa de obra longa vem depois de algum intervalo longo, e a cor deixava de dizer algo."""
@@ -143,14 +171,7 @@ def grafico_gantt(eventos: list[dict], destino: Path) -> Path:
     from matplotlib.ticker import FuncFormatter
 
     destino.parent.mkdir(parents=True, exist_ok=True)
-
-    linhas = []
-    for codigo in ORDEM:
-        # Programação não é registro do que aconteceu; o fato conta na data em que ocorreu.
-        datas = [item.get("data_evento") or item["data"] for item in eventos if item["etapa"] == codigo and not item.get("programado")]
-        if not datas:
-            continue
-        linhas.append({"codigo": codigo, "inicio": min(datas), "fim": max(datas)})
+    linhas = linhas_gantt(eventos)
 
     fig, eixo = plt.subplots(figsize=(LARGURA_POL, 1.4 + 0.42 * max(len(linhas), 2)), layout="constrained")
     if not linhas:
@@ -171,7 +192,7 @@ def grafico_gantt(eventos: list[dict], destino: Path) -> Path:
                 linewidth=0.5,
             )
         eixo.set_yticks(range(len(linhas)))
-        eixo.set_yticklabels([f"{item['codigo']}  {_nome_curto(item['codigo'])}" for item in linhas], fontsize=8.5)
+        eixo.set_yticklabels([item["rotulo"] for item in linhas], fontsize=8.5)
         eixo.invert_yaxis()
         primeiro = datetime.fromisoformat(min(item["inicio"] for item in linhas))
         ultimo = datetime.fromisoformat(max(item["fim"] for item in linhas))

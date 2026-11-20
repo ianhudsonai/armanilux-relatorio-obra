@@ -94,6 +94,31 @@ _ETAPAS_COM_PROGRAMACAO = {"A", "C", "H", "I", "L"}
 def diz_programado(texto: str) -> bool:
     """O texto fala em programação ("programado para amanhã", "agendamento da visita")."""
     return bool(_COMECA_PALAVRA(_PROGRAMADO).search(normalizar(texto or "")))
+
+
+# Ação que aconteceu, embora não seja marco: cobrança, pedido, envio, fato que não se realizou.
+_ACAO_REALIZADA = (
+    "cobr", "pede", "pedi", "solicit", "envi", "lembr", "cancel",
+    "nao realiz", "nao foi realiz", "nao ocorr", "nao aconteceu", "nao houve",
+)
+
+
+def avisos_de_programado(eventos: list[dict]) -> list[str]:
+    """Fato marcado "programado" cujo texto conta uma ação que aconteceu (cobrança, pedido, envio,
+    medição não realizada): o Word mostraria "(programado)" ao lado de algo que já foi feito."""
+    avisos = []
+    for evento in eventos:
+        texto = evento.get("ocorrencia") or ""
+        if not evento.get("programado") or diz_programado(texto):
+            continue
+        if _COMECA_PALAVRA(_ACAO_REALIZADA).search(normalizar(texto)):
+            avisos.append(
+                f"Aviso de programado: {formatar_data(evento['data'])} ({evento['etapa']}) \"{texto[:80]}\" conta algo que "
+                "aconteceu, mas não é marco. Troque \"programado\": true por \"marco\": false."
+            )
+    return avisos
+
+
 # Intervalo entre marcos acima disto sai em vermelho na Análise de Prazos.
 LIMITE_INTERVALO_LONGO = 20
 
@@ -371,6 +396,12 @@ def data_do_fato(evento: dict) -> str:
     return evento.get("data_evento") or evento["data"]
 
 
+def data_do_fato_ate(evento: dict) -> str:
+    """Último dia possível do fato: "data_evento_ate" quando o grupo só mostra que ele aconteceu
+    entre duas datas (de "data_evento" até esta); senão o próprio dia do fato."""
+    return max(evento.get("data_evento_ate") or "", data_do_fato(evento))
+
+
 def realizado(evento: dict) -> bool:
     """O fato aconteceu (não é só programação, pedido ou agendamento)."""
     return not evento.get("programado")
@@ -451,15 +482,72 @@ def avisos_de_frente(eventos: list[dict], prazos: list[dict]) -> list[str]:
     return avisos
 
 
-def primeiros_marcos(eventos: list[dict], frente: str | None = None) -> dict[str, str]:
-    """Primeira data realizada de cada etapa; com frente, só dos fatos dessa frente."""
-    primeiros: dict[str, str] = {}
-    for evento in eventos:
-        if not _da_frente(evento, frente) or not conta_como_marco(evento):
+def _momento(evento: dict) -> tuple[str, str]:
+    return (data_do_fato(evento), evento.get("hora") or "00:00")
+
+
+def _aprovacoes(escopo: list[dict]) -> tuple[list[dict], dict | None]:
+    """(aprovações revistas, aprovação que valeu) de um ciclo. Vale a aprovação que vem depois da
+    última revisão (E ou F) seguida de nova aprovação; as anteriores a ela foram revistas. Mudança
+    depois da última aprovação (já na produção) não desfaz a aprovação."""
+    aprovacoes = sorted((e for e in escopo if e["etapa"] == "G" and conta_como_marco(e)), key=_momento)
+    revisoes = [_momento(e) for e in escopo if e["etapa"] in ("E", "F") and realizado(e)]
+    valeu = 0
+    for indice in range(1, len(aprovacoes)):
+        anterior, atual = _momento(aprovacoes[indice - 1]), _momento(aprovacoes[indice])
+        if any(anterior < momento <= atual for momento in revisoes):
+            valeu = indice
+    return aprovacoes[:valeu], (aprovacoes[valeu] if aprovacoes else None)
+
+
+def _ciclos(eventos: list[dict]) -> list[tuple[str, list[dict]]]:
+    """(nome, fatos) de cada ciclo: cada frente e "Obra em geral"; sem frentes, a obra toda ("")."""
+    frentes = frentes_da_obra(eventos)
+    if not frentes:
+        return [("", list(eventos))]
+    nomes = frentes if GERAL in frentes else frentes + [GERAL]
+    return [(nome, [e for e in eventos if _da_frente(e, nome)]) for nome in nomes]
+
+
+def faixas_dos_marcos(eventos: list[dict], frente: str | None = None) -> dict[str, tuple[str, str]]:
+    """(primeiro dia possível, último dia possível) do primeiro fato realizado de cada etapa; com
+    frente, só dos fatos dessa frente. Fato com "data_evento_ate" aconteceu entre as duas datas: o
+    primeiro fato da etapa foi no máximo no menor desses últimos dias. Num ciclo (uma frente, ou a
+    obra sem frentes), a aprovação é a que valeu, não a revista depois. Na obra multifrente sem
+    frente escolhida (Quadro-Resumo), vale a primeira aprovação da obra."""
+    escopo = [e for e in eventos if _da_frente(e, frente)]
+    faixas: dict[str, tuple[str, str]] = {}
+    for evento in escopo:
+        if not conta_como_marco(evento):
             continue
-        if data_do_fato(evento) < primeiros.get(evento["etapa"], "9999"):
-            primeiros[evento["etapa"]] = data_do_fato(evento)
-    return primeiros
+        inicio, ate = faixas.get(evento["etapa"], ("9999", "9999"))
+        faixas[evento["etapa"]] = (min(inicio, data_do_fato(evento)), min(ate, data_do_fato_ate(evento)))
+    if "G" in faixas and (frente is not None or not frentes_da_obra(eventos)):
+        _revistas, valeu = _aprovacoes(escopo)
+        faixas["G"] = (data_do_fato(valeu), data_do_fato_ate(valeu))
+    return faixas
+
+
+def primeiros_marcos(eventos: list[dict], frente: str | None = None) -> dict[str, str]:
+    """Primeira data realizada de cada etapa (o começo da faixa; ver faixas_dos_marcos)."""
+    return {etapa: inicio for etapa, (inicio, _ate) in faixas_dos_marcos(eventos, frente).items()}
+
+
+def _dias_da_faixa(inicio: tuple[str, str], fim: tuple[str, str]) -> tuple[int, int]:
+    """Dias úteis entre duas faixas de datas: (o menor possível, o maior possível)."""
+    minimo = dias_uteis_entre(date.fromisoformat(inicio[1]), date.fromisoformat(fim[0])) if fim[0] >= inicio[1] else 0
+    maximo = dias_uteis_entre(date.fromisoformat(inicio[0]), date.fromisoformat(fim[1]))
+    return minimo, max(minimo, maximo)
+
+
+def aprovacoes_revistas(eventos: list[dict]) -> list[dict]:
+    """Ciclos em que a primeira aprovação foi revista: frente, datas revistas e a que valeu."""
+    saida = []
+    for nome, escopo in _ciclos(eventos):
+        revistas, valeu = _aprovacoes(escopo)
+        if revistas:
+            saida.append({"frente": nome, "revistas": [data_do_fato(e) for e in revistas], "valeu": data_do_fato(valeu)})
+    return saida
 
 
 # Marcos do ciclo, na ordem: chapas, medição, preliminar, aprovação, entrega, equipe, conclusão.
@@ -481,26 +569,37 @@ def marcos_em_ordem(primeiros: dict[str, str]) -> tuple[list[tuple[str, str]], l
     return mantidos, [par for par in candidatos if par not in mantidos]
 
 
-def _cadeia(primeiros: dict[str, str], frente: str) -> list[dict]:
-    marcos, _fora = marcos_em_ordem(primeiros)
+def _cadeia(faixas: dict[str, tuple[str, str]], frente: str) -> list[dict]:
+    marcos, _fora = marcos_em_ordem({etapa: inicio for etapa, (inicio, _ate) in faixas.items()})
     saida = []
     for (de, inicio), (para, fim) in zip(marcos, marcos[1:]):
-        dias = dias_uteis_entre(date.fromisoformat(inicio), date.fromisoformat(fim))
+        dias, maximo = _dias_da_faixa(faixas[de], faixas[para])
         saida.append(
-            {"frente": frente, "de": de, "para": para, "inicio": inicio, "fim": fim, "dias_uteis": dias, "longo": dias > LIMITE_INTERVALO_LONGO}
+            {
+                "frente": frente,
+                "de": de,
+                "para": para,
+                "inicio": inicio,
+                "inicio_ate": faixas[de][1],
+                "fim": fim,
+                "fim_ate": faixas[para][1],
+                "dias_uteis": dias,
+                "dias_uteis_max": maximo,
+                "longo": dias > LIMITE_INTERVALO_LONGO,
+            }
         )
     return saida
 
 
+def _faixas_por_frente(eventos: list[dict]) -> list[tuple[str, dict[str, tuple[str, str]]]]:
+    """(frente, faixas dos marcos sem J) de cada ciclo; sem frentes, um grupo só, com nome ""."""
+    grupos = [(nome, faixas_dos_marcos(eventos, nome or None)) for nome, _fatos in _ciclos(eventos)]
+    return [(nome, {e: f for e, f in faixas.items() if e != "J"}) for nome, faixas in grupos]
+
+
 def _primeiros_por_frente(eventos: list[dict]) -> list[tuple[str, dict[str, str]]]:
     """(frente, primeiros marcos sem J) de cada frente; sem frentes, um grupo só, com nome ""."""
-    frentes = frentes_da_obra(eventos)
-    if not frentes:
-        grupos = [("", primeiros_marcos(eventos))]
-    else:
-        nomes = frentes if GERAL in frentes else frentes + [GERAL]
-        grupos = [(nome, primeiros_marcos(eventos, nome)) for nome in nomes]
-    return [(nome, {e: d for e, d in primeiros.items() if e != "J"}) for nome, primeiros in grupos]
+    return [(nome, {e: inicio for e, (inicio, _ate) in faixas.items()}) for nome, faixas in _faixas_por_frente(eventos)]
 
 
 def duracao_da_obra(obra: dict | None, eventos: list[dict]) -> dict:
@@ -526,7 +625,7 @@ def intervalos_marcos_de(eventos: list[dict], obra: dict | None = None) -> tuple
     """Marco = primeiro fato realizado de cada etapa. Em obra multifrente, os intervalos são
     medidos dentro de cada frente, como no relatório aprovado; sem frentes, na obra inteira.
     Devolve também a duração da obra (duracao_da_obra)."""
-    cadeias = [_cadeia(primeiros, nome) for nome, primeiros in _primeiros_por_frente(eventos)]
+    cadeias = [_cadeia(faixas, nome) for nome, faixas in _faixas_por_frente(eventos)]
     saida = []
     for cadeia in sorted((c for c in cadeias if c), key=lambda c: c[0]["inicio"]):
         saida.extend(cadeia)
@@ -535,7 +634,7 @@ def intervalos_marcos_de(eventos: list[dict], obra: dict | None = None) -> tuple
 
 OUTRAS_INTERFERENCIAS = "Outras interferências"
 # Campos que a revisão escreve no evento e que passam de eventos_adicionais e ajustes_eventos.
-CAMPOS_DA_REVISAO = ("frente", "grupo", "dias_sem_frente")
+CAMPOS_DA_REVISAO = ("frente", "grupo", "dias_sem_frente", "dias_perdidos_armanilux", "data_evento_ate")
 
 
 def grupos_da_etapa_j(eventos: list[dict]) -> list[tuple[str, list[dict]]]:
@@ -552,16 +651,18 @@ def grupos_da_etapa_j(eventos: list[dict]) -> list[tuple[str, list[dict]]]:
     return list(grupos.items()) + ([(OUTRAS_INTERFERENCIAS, outras)] if outras else [])
 
 
-def dias_sem_frente(eventos: list[dict]) -> dict:
+def dias_sem_frente(eventos: list[dict], campo: str = "dias_sem_frente") -> dict:
     """Soma dos dias de equipe sem frente que a revisão contou em cada interferência
-    ("dias_sem_frente"). Sem nenhuma contagem, {}: o relatório não inventa total."""
+    ("dias_sem_frente", por causa da obra) ou dos dias perdidos do lado da Armanilux
+    ("dias_perdidos_armanilux": imprevisto, equipe, veículo). Sem nenhuma contagem, {}: o
+    relatório não inventa total."""
     # Por data, vale a maior contagem: duas mensagens do mesmo dia falam da mesma equipe parada.
     por_data: dict[str, int] = {}
     for evento in eventos:
         if evento["etapa"] != "J":
             continue
         try:
-            dias = int(evento.get("dias_sem_frente") or 0)
+            dias = int(evento.get(campo) or 0)
         except (TypeError, ValueError):
             dias = 0
         if dias > 0:
@@ -604,16 +705,29 @@ def confronto_contrato(eventos: list[dict], prazos: list[dict]) -> list[dict]:
     primeiro registro das etapas "de" e "para"."""
     saida = []
     for prazo in prazos or []:
-        primeiros = primeiros_marcos(eventos, prazo.get("frente") or None)
-        inicio = prazo.get("inicio") or primeiros.get(prazo.get("de", ""))
-        fim = prazo.get("fim") or primeiros.get(prazo.get("para", ""))
+        faixas = faixas_dos_marcos(eventos, prazo.get("frente") or None)
+        # Início e fim escritos na revisão valem; sem eles, a faixa do marco "de" e do "para".
+        # "inicio_ate"/"fim_ate": o grupo só mostra que o fato aconteceu entre as duas datas.
+        if prazo.get("inicio"):
+            faixa_inicio = (prazo["inicio"], max(prazo.get("inicio_ate") or "", prazo["inicio"]))
+        else:
+            faixa_inicio = faixas.get(prazo.get("de", ""))
+        if prazo.get("fim"):
+            faixa_fim = (prazo["fim"], max(prazo.get("fim_ate") or "", prazo["fim"]))
+        else:
+            faixa_fim = faixas.get(prazo.get("para", ""))
+        inicio = faixa_inicio[0] if faixa_inicio else ""
+        fim = faixa_fim[0] if faixa_fim else ""
         # Contrato que diz só "dias" conta dias corridos; a revisão marca "unidade": "dias_corridos".
         unidade = "dias_corridos" if prazo.get("unidade") == "dias_corridos" else "dias_uteis"
-        realizado = None
+        realizado = maximo = None
         programado = bool(prazo.get("programado"))  # o fim só foi programado: sem realizado
         if inicio and fim and fim >= inicio and not programado:
-            de, ate = date.fromisoformat(inicio), date.fromisoformat(fim)
-            realizado = (ate - de).days if unidade == "dias_corridos" else dias_uteis_entre(de, ate)
+            if unidade == "dias_corridos":
+                realizado = max(0, (date.fromisoformat(faixa_fim[0]) - date.fromisoformat(faixa_inicio[1])).days)
+                maximo = max(realizado, (date.fromisoformat(faixa_fim[1]) - date.fromisoformat(faixa_inicio[0])).days)
+            else:
+                realizado, maximo = _dias_da_faixa(faixa_inicio, faixa_fim)
         try:
             limite = int(float(str(prazo.get("limite_du")).replace(",", "."))) or None
         except ValueError:
@@ -626,9 +740,15 @@ def confronto_contrato(eventos: list[dict], prazos: list[dict]) -> list[dict]:
                 "inicio": inicio or "",
                 "fim": fim or "",
                 "realizado": realizado,
+                "realizado_max": maximo,
                 "programado": programado,
                 "excedeu": realizado is not None and limite is not None and realizado > limite,
+                # Faixa que passa do limite só no fim: o grupo não permite dizer que estourou.
+                "talvez": realizado is not None and limite is not None and realizado <= limite < maximo,
                 "fonte": prazo.get("fonte", ""),
+                # Quem segurou o período; "externo": a espera era do outro lado (aval, frente da obra).
+                "quem_segurou": (prazo.get("quem_segurou") or "").strip(),
+                "externo": bool(prazo.get("externo")),
                 # Regra escrita depois do início do período não prova que valia na época.
                 "fonte_posterior": bool(prazo.get("fonte_data") and inicio and prazo["fonte_data"] > inicio),
                 "sem_data_da_fonte": not prazo.get("fonte_data"),

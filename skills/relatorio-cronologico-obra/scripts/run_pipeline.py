@@ -17,8 +17,10 @@ from pathlib import Path
 
 from analyze import (
     aplicar_ajustes,
+    aprovacoes_revistas,
     completar_relato,
     avisos_de_frente,
+    avisos_de_programado,
     intervalos_marcos_de,
     juntar_lacunas,
     lacunas_automaticas,
@@ -236,6 +238,15 @@ def _avisar_prazos(analise: dict) -> None:
             print(f"Aviso de prazo: \"{item['descricao']}\": sem fonte_data.")
     for aviso in avisos_de_frente(analise.get("eventos") or [], analise.get("prazos_contratuais") or []):
         print(aviso)
+    for aviso in avisos_de_programado(analise.get("eventos") or []):
+        print(aviso)
+    for item in aprovacoes_revistas(analise.get("eventos") or []):
+        onde = f"{item['frente']}: " if item["frente"] else ""
+        datas = ", ".join(formatar_data(data) for data in item["revistas"])
+        print(
+            f"Aprovação revista: {onde}{datas}; a Análise de Prazos usa a de {formatar_data(item['valeu'])}. "
+            "Se a primeira valeu (a revisão foi pequena), marque a nova aprovação com \"marco\": false."
+        )
 
 
 def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_pdf: bool = False, mostrar: bool = False) -> Path:

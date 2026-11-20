@@ -10,18 +10,20 @@ from analyze import (
     LIMITE_INTERVALO_LONGO,
     ORDEM,
     TITULOS,
+    aprovacoes_revistas,
     ciclos_incompletos,
     confronto_contrato,
+    data_do_fato,
     data_da_conclusao,
     dias_sem_frente,
     diz_programado,
     duracao_da_obra,
+    faixas_dos_marcos,
     frentes_da_obra,
     grupos_da_etapa_j,
     intervalos_marcos_de,
     marcos_de,
     primeira_programacao,
-    primeiros_marcos,
 )
 from business_days import dias_uteis_entre
 from common import DADO, LARGURA_FIGURA_CM, formatar_data
@@ -224,12 +226,22 @@ def _linha_dourada(documento: Document) -> None:
     propriedades.append(borda)
 
 
+def _faixa(inicio: str, ate: str, ligacao: str = " a ") -> str:
+    """"09/06/2026" ou, sem dia exato no grupo, "09/06/2026 a 11/06/2026"."""
+    return formatar_data(inicio) if not ate or ate == inicio else f"{formatar_data(inicio)}{ligacao}{formatar_data(ate)}"
+
+
+def _dias(minimo: int, maximo: int | None, sigla: str = "d.u.") -> str:
+    return f"{minimo} {sigla}" if not maximo or maximo == minimo else f"{minimo}–{maximo} {sigla}"
+
+
 def _primeira(analise: dict, etapa: str) -> str:
-    """Primeira data realizada da etapa: programação não conta; vale a data do fato."""
+    """Primeira data realizada da etapa: programação não conta; vale a data do fato (ou a faixa)."""
     eventos = analise.get("eventos") or []
-    data = primeiros_marcos(eventos).get(etapa)
-    if data:
-        return formatar_data(data)
+    faixa = faixas_dos_marcos(eventos).get(etapa)
+    if faixa:
+        inicio, ate = faixa
+        return formatar_data(inicio) if inicio == ate else f"entre {formatar_data(inicio)} e {formatar_data(ate)}"
     programada = primeira_programacao(eventos, etapa)
     return f"não confirmada (programada em {formatar_data(programada)})" if programada else DADO
 
@@ -303,6 +315,14 @@ def _texto_evento(evento: dict) -> str:
     return texto or DADO
 
 
+def _texto_linha(evento: dict) -> str:
+    """Texto da linha; fato sem dia exato diz a faixa em que aconteceu."""
+    texto = _texto_evento(evento)
+    if (evento.get("data_evento_ate") or "") > data_do_fato(evento):
+        texto += f" (fato entre {formatar_data(data_do_fato(evento))} e {formatar_data(evento['data_evento_ate'])})"
+    return texto
+
+
 def _data_da_linha(evento: dict) -> str:
     """Data da mensagem; programação ganha a marca, se o texto ainda não diz."""
     data = formatar_data(evento["data"])
@@ -338,17 +358,17 @@ def _tabelas_da_etapa_j(documento: Document, analise: dict) -> None:
     for numero, (nome, eventos) in enumerate(grupos, start=1):
         if nome:
             documento.add_heading(f"J.{numero} — {nome}", level=2)
-        linhas = [[_data_da_linha(item), _texto_evento(item), item.get("impacto") or DADO] for item in eventos]
+        linhas = [[_data_da_linha(item), _texto_linha(item), item.get("impacto") or DADO] for item in eventos]
         cores = [_cor_do_evento(item) for item in eventos] or [None]
         _tabela_linhas(documento, ["Data", "Interferência", "Impacto"], linhas or [["—", DADO, DADO]], [2.6, 8.0, 6.8], cores)
-    total = dias_sem_frente(analise.get("eventos") or [])
-    if total:
-        datas = "1 data" if total["datas"] == 1 else f"{total['datas']} datas"
-        _leitura(
-            documento,
-            "Dias de equipe sem frente registrados no grupo",
-            f"{total['dias']}, em {datas}, de {formatar_data(total['inicio'])} a {formatar_data(total['fim'])}.",
-        )
+    for campo, rotulo in (
+        ("dias_sem_frente", "Dias de equipe sem frente registrados no grupo"),
+        ("dias_perdidos_armanilux", "Dias perdidos do lado da Armanilux"),
+    ):
+        total = dias_sem_frente(analise.get("eventos") or [], campo)
+        if total:
+            datas = "1 data" if total["datas"] == 1 else f"{total['datas']} datas"
+            _leitura(documento, rotulo, f"{total['dias']}, em {datas}, de {formatar_data(total['inicio'])} a {formatar_data(total['fim'])}.")
 
 
 def _leitura(documento: Document, rotulo: str, texto: str) -> None:
@@ -392,7 +412,7 @@ def _escrever_etapa(documento: Document, analise: dict, codigo: str) -> None:
     if codigo == "J":
         _tabelas_da_etapa_j(documento, analise)
     else:
-        linhas = [[_data_da_linha(item), _texto_evento(item)] for item in eventos]
+        linhas = [[_data_da_linha(item), _texto_linha(item)] for item in eventos]
         _tabela_linhas(documento, ["Data", "Evento / Ocorrência"], linhas or [["—", DADO]], [2.6, 14.8], cores)
     if codigo == "L":
         # Refeito dos eventos, como o Quadro-Resumo: remontar sem --recalcular não pode contradizê-lo.
@@ -442,7 +462,8 @@ def _nota_metodologica(documento: Document, analise: dict) -> None:
         documento,
         "Convenção de cores nas tabelas",
         "salmão = reprocesso ou retrabalho • amarelo = tempo ocioso, espera ou pendência • "
-        "na Análise de Prazos, em vermelho o que passou do prazo contratual informado (tabela de confronto) e, "
+        "na Análise de Prazos, em vermelho o que passou do prazo contratual informado (tabela de confronto; com a espera "
+        "do outro lado em \"Quem segurou\", o número fica preto na linha amarela) e, "
         f"na tabela de marcos, os intervalos acima de {LIMITE_INTERVALO_LONGO} dias úteis.",
     )
 
@@ -453,28 +474,40 @@ def _confronto(analise: dict) -> list[dict]:
 
 
 def _confronto_contrato(documento: Document, confronto: list[dict]) -> None:
-    """Só aparece quando o grupo informou prazo contratual. Vermelho = passou do prazo."""
+    """Só aparece quando o grupo informou prazo contratual. Vermelho = passou do prazo por causa da
+    Armanilux; com "quem segurou" do outro lado, o número fica preto e a coluna diz por quê."""
     if not confronto:
         return
-    tabela = documento.add_table(rows=1 + len(confronto), cols=3)
+    com_quem = any(item.get("quem_segurou") for item in confronto)
+    tabela = documento.add_table(rows=1 + len(confronto), cols=4 if com_quem else 3)
     tabela.style = "Table Grid"
-    _larguras(tabela, [11.0, 3.2, 3.2])
-    _cabecalho_tabela(tabela, ["Prazo contratual de referência", "Contrato", "Realizado"])
+    _larguras(tabela, [7.4, 2.4, 2.6, 5.0] if com_quem else [11.0, 3.2, 3.2])
+    _cabecalho_tabela(tabela, ["Prazo contratual de referência", "Contrato", "Realizado"] + (["Quem segurou"] if com_quem else []))
     for indice, item in enumerate(confronto, start=1):
         linha = tabela.rows[indice]
         sigla = "dias corridos" if item.get("unidade") == "dias_corridos" else "d.u."
         if item.get("programado"):
             realizado = "programado, sem confirmação"
         elif item["realizado"] is not None:
-            realizado = f"{item['realizado']} {sigla}"
+            realizado = _dias(item["realizado"], item.get("realizado_max"), sigla)
         else:
             realizado = DADO
         _texto_celula(linha.cells[0], item["descricao"] + (" *" if item.get("fonte_posterior") else ""), tamanho=9)
         _texto_celula(linha.cells[1], f"{item['limite_du']} {sigla}" if item["limite_du"] else DADO, tamanho=9)
-        _texto_celula(linha.cells[2], realizado, tamanho=9, negrito=True, cor=VERMELHO if item["excedeu"] else None)
+        _texto_celula(linha.cells[2], realizado, tamanho=9, negrito=True, cor=VERMELHO if item["excedeu"] and not item.get("externo") else None)
+        if com_quem:
+            _texto_celula(linha.cells[3], item.get("quem_segurou") or "", tamanho=9)
         if item["excedeu"]:
             for celula in linha.cells:
                 _sombrear(celula, AMARELO)
+    if any(item.get("talvez") for item in confronto):
+        _paragrafo(
+            documento,
+            "Faixa de dias: o grupo não dá o dia exato do fato; a faixa passa do prazo só no fim, "
+            "então não dá para dizer que o prazo estourou.",
+            tamanho=9,
+            italico=True,
+        )
     if any(item.get("fonte_posterior") for item in confronto):
         _paragrafo(
             documento,
@@ -488,10 +521,11 @@ def _confronto_contrato(documento: Document, confronto: list[dict]) -> None:
 
 def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path | None, grafico_gantt: Path | None) -> None:
     documento.add_heading("Análise de Prazos — Intervalos em Dias Úteis", level=1)
+    marco = "primeiro fato realizado de cada etapa; na aprovação, a que valeu"
     if frentes_da_obra(analise.get("eventos") or []):
-        abertura = "Intervalos entre marcos medidos dentro de cada frente (primeiro fato realizado de cada etapa), em dias úteis."
+        abertura = f"Intervalos entre marcos medidos dentro de cada frente ({marco}), em dias úteis."
     else:
-        abertura = "Intervalos entre marcos (primeiro fato realizado de cada etapa), em dias úteis."
+        abertura = f"Intervalos entre marcos ({marco}), em dias úteis."
     _paragrafo(documento, abertura + " Intervalo de calendário não é atraso atribuído a ninguém.", tamanho=10)
     # Sempre dos eventos: remontar sem --recalcular não deixa número antigo ao lado do Quadro-Resumo.
     eventos = analise.get("eventos") or []
@@ -504,9 +538,9 @@ def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path 
         linhas = [
             (
                 _prefixo_frente(item)
-                + f"{_titulo_marco(item['de'])} ({formatar_data(item['inicio'])}) → "
-                f"{_titulo_marco(item['para'])} ({formatar_data(item['fim'])})",
-                f"{item['dias_uteis']} d.u.",
+                + f"{_titulo_marco(item['de'])} ({_faixa(item['inicio'], item.get('inicio_ate', ''))}) → "
+                f"{_titulo_marco(item['para'])} ({_faixa(item['fim'], item.get('fim_ate', ''))})",
+                _dias(item["dias_uteis"], item.get("dias_uteis_max")),
                 item["longo"],
                 item["longo"],
             )
@@ -545,9 +579,22 @@ def _analise_de_prazos(documento: Document, analise: dict, grafico_barras: Path 
                 for celula in linha.cells:
                     _sombrear(celula, AMARELO)
         documento.add_paragraph()
+    _aprovacoes_revistas(documento, eventos)
     _confronto_contrato(documento, _confronto(analise))
     _inserir_figura(documento, grafico_barras, "Figura 1. Dias úteis entre marcos.")
     _inserir_figura(documento, grafico_gantt, "Figura 2. Linha do tempo das etapas, do primeiro ao último registro.")
+
+
+def _aprovacoes_revistas(documento: Document, eventos: list[dict]) -> None:
+    """Aprovação seguida de revisão e de nova aprovação: diz qual foi revista e qual valeu."""
+    partes = []
+    for item in aprovacoes_revistas(eventos):
+        datas = [formatar_data(data) for data in item["revistas"]]
+        lista = datas[0] if len(datas) == 1 else f"{', '.join(datas[:-1])} e {datas[-1]}"
+        onde = f"{item['frente']}: " if item["frente"] else ""
+        partes.append(f"{onde}{lista} (valeu a de {formatar_data(item['valeu'])})")
+    if partes:
+        _leitura(documento, "Aprovações revistas", "; ".join(partes) + ".")
 
 
 def _itens(valor) -> list[str]:
@@ -602,8 +649,14 @@ def _impacto_padrao(analise: dict) -> str:
     medidos = [item for item in _confronto(analise) if item["realizado"] is not None and item["limite_du"]]
     if not analise.get("prazos_contratuais"):
         return texto + "Prazo contratual não declarado no grupo: dado não identificado."
-    excedidos = sum(1 for item in medidos if item["excedeu"])
+    excedidos = sum(1 for item in medidos if item["excedeu"] and not item.get("externo"))
+    externos = sum(1 for item in medidos if item["excedeu"] and item.get("externo"))
     verbo = "passou" if excedidos == 1 else "passaram"
+    if externos:
+        return texto + (
+            f"{excedidos} de {len(medidos)} prazos contratuais com as duas datas {verbo} do limite por causa da Armanilux; "
+            f"{externos} por espera do outro lado (ver Análise de Prazos)."
+        )
     return texto + (
         f"{excedidos} de {len(medidos)} prazos contratuais com as duas datas {verbo} do limite (ver Análise de Prazos)."
     )
