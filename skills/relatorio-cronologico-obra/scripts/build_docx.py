@@ -597,6 +597,13 @@ def _aprovacoes_revistas(documento: Document, eventos: list[dict]) -> None:
         _leitura(documento, "Aprovações revistas", "; ".join(partes) + ".")
 
 
+def _texto(valor) -> str:
+    """Texto único da revisão: aceita texto ou lista de parágrafos."""
+    if isinstance(valor, list):
+        return " ".join(str(item).strip() for item in valor if str(item).strip())
+    return str(valor or "").strip()
+
+
 def _itens(valor) -> list[str]:
     """Texto da revisão vira lista: aceita lista, ou texto com uma linha por item."""
     if isinstance(valor, list):
@@ -635,13 +642,15 @@ def textos_que_faltam(analise: dict) -> list[str]:
     """Campos da revisão que, vazios, saem no Word como "preencher na revisão", e o prazo contratual
     sem resposta. A versão final só sai com esta lista vazia."""
     faltam = [f"diagnostico_prompt.{chave}" for chave, _, valor in _blocos_do_diagnostico(analise) if not _itens(valor)]
-    if not (analise.get("conclusao_personalizada") or "").strip():
+    if not _texto(analise.get("conclusao_personalizada")):
         faltam.append("conclusao_personalizada")
+    if not _texto(analise.get("impactos_prazo")) and _impacto_padrao(analise).startswith(DADO):
+        faltam.append("impactos_prazo")
     if not _pontos_criticos(analise):
         faltam.append("pontos_criticos")
     if not _itens(analise.get("recomendacoes_personalizadas")):
         faltam.append("recomendacoes_personalizadas")
-    lacuna_de_prazo = any("prazo" in str(item).lower() for item in analise.get("lacunas_adicionais") or [])
+    lacuna_de_prazo = any("prazo contratual" in str(item).lower() for item in analise.get("lacunas_adicionais") or [])
     if not analise.get("prazos_contratuais") and not lacuna_de_prazo:
         faltam.append("prazo contratual (prazos_contratuais, ou em lacunas_adicionais a frase de que não há prazo declarado)")
     return faltam
@@ -691,11 +700,11 @@ def _impacto_padrao(analise: dict) -> str:
 def _conclusao_estrategica(documento: Document, analise: dict) -> None:
     documento.add_heading("Conclusão Estratégica", level=1)
     documento.add_heading("Diagnóstico da eficiência do fluxo operacional", level=2)
-    _paragrafo(documento, (analise.get("conclusao_personalizada") or "").strip() or f"{DADO} (preencher na revisão).", tamanho=10)
+    _paragrafo(documento, _texto(analise.get("conclusao_personalizada")) or f"{DADO} (preencher na revisão).", tamanho=10)
     documento.add_heading("Principais pontos críticos de atraso", level=2)
     _numerados(documento, _pontos_criticos(analise))
     documento.add_heading("Impactos no prazo final", level=2)
-    _paragrafo(documento, (analise.get("impactos_prazo") or "").strip() or _impacto_padrao(analise), tamanho=10)
+    _paragrafo(documento, _texto(analise.get("impactos_prazo")) or _impacto_padrao(analise), tamanho=10)
     documento.add_heading("Recomendações práticas", level=2)
     _numerados(documento, _itens(analise.get("recomendacoes_personalizadas")))
     fim = documento.add_paragraph()

@@ -146,6 +146,20 @@ class ReexportacaoTeste(unittest.TestCase):
         self.assertTrue(final.exists())
         self.assertNotIn("preencher na revisão", _texto_docx(final))
 
+    def test_lacuna_de_outro_prazo_nao_responde_o_prazo_contratual(self):
+        self._rodar(_zip(self.base / "export1" / "WhatsApp Chat - Obra 1001.zip", CHAT))
+        self._revisar()
+        caminho = self.obra / "04-transcricoes" / "analise.json"
+        analise = ler_json(caminho)
+        analise["lacunas_adicionais"] = ["Prazo de entrega do mármore não informado no grupo."]
+        escrever_json(caminho, analise)
+
+        saida = io.StringIO()
+        with redirect_stdout(saida):
+            self._remontar()
+        self.assertFalse((self.relatorios / "Relatorio-Cronologico-Obra-1001-v1.docx").exists())
+        self.assertIn("prazo contratual", saida.getvalue())
+
     def test_rascunho_diz_para_nao_enviar(self):
         saida = io.StringIO()
         with redirect_stdout(saida):
