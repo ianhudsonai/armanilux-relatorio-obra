@@ -85,12 +85,15 @@ def grafico_barras(intervalos_marcos: list[dict], destino: Path) -> Path:
     plt = _preparar()
     destino.parent.mkdir(parents=True, exist_ok=True)
     linhas = len(intervalos_marcos)
-    fig, eixo = plt.subplots(figsize=(LARGURA_POL, 1.5 + 0.5 * max(linhas, 2)), layout="constrained")
+    # Com frente, o nome dela vai numa linha própria do rótulo (o rótulo longo espremia as barras).
+    com_frente = any(item.get("frente") for item in intervalos_marcos)
+    altura_linha = 0.68 if com_frente else 0.5
+    fig, eixo = plt.subplots(figsize=(LARGURA_POL, 1.5 + altura_linha * max(linhas, 2)), layout="constrained")
     if not intervalos_marcos:
         _vazio(eixo)
     else:
         rotulos = [
-            (f"{item['frente']}: " if item.get("frente") else "")
+            (f"{item['frente']}\n" if item.get("frente") else "")
             + f"{item['de']} {_nome_curto(item['de'])} → {item['para']} {_nome_curto(item['para'])}\n"
             f"{_dia_mes_ano(item['inicio'])} a {_dia_mes_ano(item['fim'])}"
             for item in intervalos_marcos
@@ -118,7 +121,7 @@ def grafico_barras(intervalos_marcos: list[dict], destino: Path) -> Path:
         eixo.spines["right"].set_visible(False)
     # Título na figura inteira: no eixo ele ficava cortado pelos rótulos longos da esquerda.
     fig.suptitle(
-        "Dias úteis entre marcos (primeiro registro de cada etapa)\nO número é intervalo de calendário, não soma de atraso.",
+        "Dias úteis entre marcos (primeiro fato realizado de cada etapa)\nO número é intervalo de calendário, não soma de atraso.",
         fontsize=10,
         color=MARROM,
     )

@@ -106,6 +106,38 @@ class FrentesTeste(unittest.TestCase):
         self.assertIn('"Banho: entrega": a frente "Banho" não aparece nos fatos', avisos[1])
         self.assertEqual(avisos_de_frente(EVENTOS, []), [])
 
+    def test_cadeia_so_com_marcos_do_ciclo_e_na_ordem(self):
+        # Pedido de visita (B), revisões (E, F) não são marcos; revisão anterior ao preliminar não vira passo.
+        eventos = [
+            _evento("2026-03-02", "E", "Gourmet"),
+            _evento("2026-03-04", "B", "Gourmet"),
+            _evento("2026-03-09", "D", "Gourmet"),
+            _evento("2026-03-11", "F", "Gourmet"),
+            _evento("2026-03-16", "G", "Gourmet"),
+            _evento("2026-03-18", "B", "Gourmet"),
+            _evento("2026-03-23", "I", "Gourmet"),
+        ]
+        relato = completar_relato({"obra": {}, "eventos": eventos})
+        # 09/03→16/03 = 5 d.u.; 16/03→23/03 = 5 d.u. (semanas cheias, sem feriado).
+        self.assertEqual(
+            [(m["de"], m["para"], m["dias_uteis"]) for m in relato["intervalos_marcos"]],
+            [("D", "G", 5), ("G", "I", 5)],
+        )
+
+    def test_etapa_com_data_errada_nao_esconde_o_resto_e_gera_aviso(self):
+        # Chapas (A) marcadas em maio, depois da medição, do preliminar e da aprovação: sai A, ficam C → D → G.
+        eventos = [
+            _evento("2026-05-04", "A", "Banhos"),
+            _evento("2026-02-02", "C", "Banhos"),
+            _evento("2026-03-02", "D", "Banhos"),
+            _evento("2026-04-06", "G", "Banhos"),
+            _evento("2026-04-13", "G", "Living"),
+        ]
+        relato = completar_relato({"obra": {}, "eventos": eventos})
+        self.assertEqual([(m["frente"], m["de"], m["para"]) for m in relato["intervalos_marcos"]], [("Banhos", "C", "D"), ("Banhos", "D", "G")])
+        avisos = avisos_de_frente(eventos, [])
+        self.assertTrue(any("Banhos" in aviso and "04/05/2026" in aviso and "fora da ordem" in aviso for aviso in avisos), avisos)
+
 
 if __name__ == "__main__":
     unittest.main()
