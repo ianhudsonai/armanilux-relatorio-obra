@@ -236,5 +236,13 @@ class SkillTeste(unittest.TestCase):
             self.assertIsNone(PROIBIDOS.search(texto), f"{caminho}: {PROIBIDOS.search(texto)}")
 
 
+class PreparoTeste(unittest.TestCase):
+    def test_pergunta_do_nome_da_pasta_mostra_exemplo_em_cada_opcao(self):
+        # Só "número e depois cliente" é difícil de entender: cada opção leva um exemplo.
+        texto = (RAIZ / "skills" / "preparar-projeto-armanilux" / "SKILL.md").read_text(encoding="utf-8")
+        for exemplo in ('"1001 - Família Almeida"', '"Família Almeida - 1001"', '"1001"'):
+            self.assertIn(exemplo, texto)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -4,7 +4,7 @@ description: Prepara o computador de alguém da Armanilux para os relatórios de
 license: MIT
 metadata:
   author: Armanilux
-  version: "1.3"
+  version: "1.4"
   idioma: pt-BR
 ---
 
@@ -27,6 +27,12 @@ Se já existir `%USERPROFILE%\.armanilux-relatorio\config.json`, leia e use os v
 Na pergunta 3, o Word é sempre gravado também, porque é o arquivo que dá para corrigir. Link só funciona se o OneDrive ou o Google Drive estiver instalado e conectado neste computador.
 
 Na pergunta 5, use esse texto. O arquivo baixado (modelo small, `model.bin`) tem 483.546.902 bytes, cerca de 484 MB. Não diga "modelo", "Whisper" nem "transcrição" para a pessoa.
+
+Na pergunta 4, cada opção mostra um exemplo, porque só o nome da regra é difícil de entender. Use estas opções, com estes exemplos (e, se já houver configuração, diga qual é a atual com o exemplo dela):
+
+- Número e depois cliente, por exemplo "1001 - Família Almeida"
+- Cliente e depois número, por exemplo "Família Almeida - 1001"
+- Só o número, por exemplo "1001"
 
 Não invente resposta. Se a pessoa não souber onde fica a pasta, use Documentos\Armanilux. Na pergunta 4, grave `{numero} - {cliente}`, `{cliente} - {numero}` ou `{numero}`, conforme a escolha, sem mostrar esses códigos para ela.
 
