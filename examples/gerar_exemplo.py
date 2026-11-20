@@ -37,6 +37,23 @@ CHAT = """[08/01/2026, 07:59:00] As mensagens e as ligações são protegidas co
 [12/03/2026, 17:45:36] Helena Duarte: Serviços de instalação concluídos nos banheiros e na cozinha. Validação final feita no local com o engenheiro. Falta o cliente devolver o termo assinado.
 """
 
+# Os textos que a revisão escreve (references/revisao.md, 4.2) para esta obra fictícia.
+# Sem eles, "revisado": true não vira versão final.
+REVISAO_COMPLETA = {
+    "diagnostico_prompt": {
+        "reprocessos": ["22/01 e 03/02: duas revisões de projeto pedidas pela arquitetura e pelo cliente."],
+        "tempos_ociosos": ["02/03 a 09/03: cozinha sem frente, aguardando a marcenaria."],
+        "atrasos_internos": ["Nenhum atraso da Armanilux registrado no grupo."],
+        "dependencias_externas": ["Marcenaria e ponto de água da cozinha."],
+        "interferencias": ["Contrapiso irregular e ponto de água fora de posição."],
+    },
+    "pontos_criticos": ["Espera pela liberação da frente da cozinha."],
+    "impactos_prazo": "A obra durou 43 dias úteis no grupo.",
+    "conclusao_personalizada": "O fluxo foi regular, com uma espera de frente causada pela obra.",
+    "recomendacoes_personalizadas": ["Confirmar a liberação da frente antes de agendar a equipe."],
+    "lacunas_adicionais": ["Prazo contratual não declarado no grupo nem nos documentos."],
+}
+
 LEIA_ME = """Exemplo fictício
 
 A Obra 1001, a Família Almeida, a Construtora Horizonte e as pessoas desta

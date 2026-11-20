@@ -18,6 +18,7 @@ sys.path.insert(0, str(RAIZ / "examples"))
 
 import entrega  # noqa: E402
 import run_pipeline  # noqa: E402
+from gerar_exemplo import REVISAO_COMPLETA  # noqa: E402
 
 
 def _pdf_falso(docx: Path) -> Path:
@@ -122,6 +123,7 @@ class EntregaPorLinkTeste(unittest.TestCase):
         [caminho] = list(workspace.rglob("analise.json"))
         obra = caminho.parent.parent
         analise = json.loads(caminho.read_text(encoding="utf-8"))
+        analise.update(REVISAO_COMPLETA)
         analise["revisado"] = True
         caminho.write_text(json.dumps(analise, ensure_ascii=False), encoding="utf-8")
         texto = self._executar(["--rebuild-only", "--obra-dir", str(obra)])

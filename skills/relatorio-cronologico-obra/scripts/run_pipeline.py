@@ -27,7 +27,7 @@ from analyze import (
     montar_analise,
 )
 from build_charts import grafico_barras, grafico_gantt
-from build_docx import montar_docx, proxima_versao
+from build_docx import montar_docx, proxima_versao, textos_que_faltam
 from entrega import converter_pdf, copiar_para_link, formato_entrega
 from common import configurar_saida, escrever_json, ler_json, nome_seguro
 from config_io import carregar, pasta_relatorios
@@ -258,7 +258,7 @@ def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_
     gantt = grafico_gantt(analise.get("eventos") or [], figuras / "gantt.png")
     pasta = pasta_obra / "05-relatorios"
     numero = analise["obra"].get("numero") or "sem-numero"
-    if analise.get("revisado") and not _final_liberada(problemas):
+    if analise.get("revisado") and not _final_liberada(problemas, analise):
         analise = {**analise, "revisado": False}  # só para este Word: a faixa RASCUNHO vem de "revisado"
     rascunho = not analise.get("revisado")
     versao = analise.get("versao")
@@ -290,16 +290,23 @@ def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_
         print("Fazendo o PDF (pode levar até 1 minuto)...", flush=True)
         pdf = converter_pdf(destino)
     print(f"Relatório gravado em:\n{destino}")
+    envio = (
+        "RASCUNHO: não envie a ninguém. Falta a revisão (passo 4 da skill, references/revisao.md)."
+        if rascunho
+        else "O arquivo para enviar é o Word."
+    )
     if pdf:
         print(f"PDF gravado em:\n{pdf}")
+        if rascunho:
+            print(envio)
     elif quer_pdf:
         print(
-            "O PDF não saiu. O arquivo para enviar é o Word. Se o PDF estiver aberto, feche e remonte. "
+            f"O PDF não saiu. {envio} Se o PDF estiver aberto, feche e remonte. "
             "Se o computador não tem o Microsoft Word nem o LibreOffice, rode de novo $preparar-projeto-armanilux "
             "e escolha PDF: ele instala o LibreOffice."
         )
     else:
-        print("O arquivo para enviar é o Word.")
+        print(envio)
     pendencias = analise.get("pendencias") or []
     if pendencias:
         print(f"Pendências com status Pendente: {len(pendencias)}.")
@@ -317,8 +324,17 @@ def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_
     return destino
 
 
-def _final_liberada(problemas: int | None) -> bool:
-    """Com "revisado": true, a versão final só sai se a conferência rodou e não achou pendência."""
+def _final_liberada(problemas: int | None, analise: dict) -> bool:
+    """Com "revisado": true, a versão final só sai com os textos da revisão escritos e a conferência
+    rodada sem pendência."""
+    faltam = textos_que_faltam(analise)
+    if faltam:
+        print(
+            "O analise.json está com \"revisado\": true, mas a revisão não escreveu: "
+            f"{', '.join(faltam)}. Gravei rascunho, não a versão final. "
+            "Escreva esses campos (references/revisao.md, 4.2) e remonte."
+        )
+        return False
     if problemas == 0:
         return True
     if problemas is None:

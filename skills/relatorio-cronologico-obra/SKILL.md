@@ -4,7 +4,7 @@ description: Gera o Relatório Cronológico de Obra da Armanilux (etapas A a L, 
 license: MIT
 metadata:
   author: Armanilux
-  version: "1.14"
+  version: "1.15"
   idioma: pt-BR
 ---
 
@@ -104,7 +104,7 @@ A leitura automática é só um rascunho, e esta revisão é obrigatória: não 
 2. **Registrar no `analise.json`** (4.2): fatos que faltaram, correções, programado e marco, frentes, etapa J, cores, conclusão, prazo contratual (só com fonte escrita da época), pendências, lacunas e os textos do relatório.
 3. **Remontar** (4.3) com o comando do passo 5 até `04-transcricoes/verificacao.md` não listar nenhum fato e cada aviso da remontagem estar resolvido.
 4. **Conferência independente** (4.4): um subagente novo, sem o contexto desta conversa, confere o conteúdo item por item; sem subagentes, uma segunda passada sua. Corrija tudo o que não for sustentado.
-5. **Marcar como revisado** (4.5): só então grave `"revisado": true` e remonte. Com a conferência pendente, o script grava rascunho mesmo assim e diz por quê.
+5. **Marcar como revisado** (4.5): só então grave `"revisado": true` e remonte. Com a conferência pendente ou um texto da revisão vazio, o script grava rascunho mesmo assim e diz o que falta.
 
 ## 5. Remontar o Word
 

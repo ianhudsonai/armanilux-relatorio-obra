@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills" / "relator
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "examples"))
 
 import run_pipeline  # noqa: E402
+from gerar_exemplo import REVISAO_COMPLETA  # noqa: E402
 
 
 class EntregaTeste(unittest.TestCase):
@@ -66,6 +67,7 @@ class EntregaTeste(unittest.TestCase):
 
             [caminho] = list(obra.rglob("analise.json"))
             analise = json.loads(caminho.read_text(encoding="utf-8"))
+            analise.update(REVISAO_COMPLETA)
             analise["revisado"] = True
             caminho.write_text(json.dumps(analise, ensure_ascii=False), encoding="utf-8")
             run_pipeline.executar(["--rebuild-only", "--obra-dir", str(obra)])
@@ -101,6 +103,7 @@ class EntregaTeste(unittest.TestCase):
             obra = self._obra(Path(temporario))
             [caminho] = list(obra.rglob("analise.json"))
             analise = json.loads(caminho.read_text(encoding="utf-8"))
+            analise.update(REVISAO_COMPLETA)
             analise["revisado"] = True
             caminho.write_text(json.dumps(analise, ensure_ascii=False), encoding="utf-8")
             saida = io.StringIO()

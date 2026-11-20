@@ -14,8 +14,10 @@ from tempfile import TemporaryDirectory
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ / "skills" / "relatorio-cronologico-obra" / "scripts"))
 sys.path.insert(0, str(RAIZ / "skills" / "preparar-projeto-armanilux" / "scripts"))
+sys.path.insert(0, str(RAIZ / "examples"))
 
 import registro  # noqa: E402
+from gerar_exemplo import REVISAO_COMPLETA  # noqa: E402
 from descoberta import descobrir_em, examinar_arquivo, inferir_identidade, nome_parece_exportacao  # noqa: E402
 from preparar import preparar  # noqa: E402
 from run_pipeline import executar  # noqa: E402
@@ -264,6 +266,7 @@ class FluxoTeste(Ambiente):
         obra = self.base / "Armanilux" / "Relatorios-de-Obra" / "1001 - Família Almeida"
         caminho = obra / "04-transcricoes" / "analise.json"
         analise = json.loads(caminho.read_text(encoding="utf-8"))
+        analise.update(REVISAO_COMPLETA)
         analise["revisado"] = True
         caminho.write_text(json.dumps(analise, ensure_ascii=False), encoding="utf-8")
 
