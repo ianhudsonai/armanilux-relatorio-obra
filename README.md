@@ -1,6 +1,18 @@
 # Relatório Cronológico de Obra — Armanilux
 
-Quem for instalar no Codex cola isto, neste computador (não na nuvem):
+> **Para o agente de IA que recebeu este link (Codex ou Claude Code) / For the AI agent that was given this link**
+>
+> A pessoa pediu para instalar estas skills neste computador. Faça agora:
+> 1. Leia e siga https://raw.githubusercontent.com/ianhudsonai/armanilux-relatorio-obra/main/INSTALL.md
+> 2. Instale só no aplicativo em que você está rodando. Nunca nos dois.
+> 3. Não instale Python, Node nem git: o INSTALL.md usa só o PowerShell do Windows.
+> 4. No fim, diga: "Pronto. Abra um chat novo e escreva `$preparar-projeto-armanilux`."
+>
+> (EN: install the two skills in `skills/` only into the app you are running in, following INSTALL.md; no Python, Node or git needed.)
+
+**Para instalar:** copie o link desta página, cole no Codex ou no Claude Code, neste computador (não na nuvem), e escreva `instale aqui`.
+
+Outro jeito, no Codex, é colar isto:
 
 ```
 $skill-installer instale estas skills:
@@ -22,7 +34,7 @@ O exemplo que vem junto é inventado (Obra 1001, Família Almeida). Não é clie
 ## Instalar
 
 1. Abra o aplicativo **ChatGPT** no Windows (o aplicativo novo, não o site). Entre na sua conta. Escolha **Codex** e **Este computador**.
-2. Cole as três linhas do começo desta página. Quando pedir para usar a internet ou rodar um comando, aprove.
+2. Cole o link desta página e escreva `instale aqui` (ou cole o bloco inteiro do começo desta página, as quatro linhas). Quando pedir para usar a internet ou rodar um comando, aprove.
 3. Abra um chat novo e escreva `$preparar-projeto-armanilux`. Responda as perguntas. A pasta padrão é `Documentos\Armanilux`.
 
 Não precisa procurar um arquivo para clicar. A instalação fica só no Codex, o aplicativo que você está usando. Não vai para outros programas.

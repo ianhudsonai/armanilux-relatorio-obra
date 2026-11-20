@@ -54,6 +54,20 @@ class InstalacaoTeste(unittest.TestCase):
         self.assertIn("archive/refs/heads/main.zip", agentes)
         self.assertIn("Expand-Archive", agentes)
 
+    def test_link_do_repositorio_basta_para_o_agente_instalar(self):
+        # A pessoa cola só o link do repositório e "instale aqui": o agente lê o topo do README e segue o INSTALL.md.
+        leia_me = (RAIZ / "README.md").read_text(encoding="utf-8")
+        topo = leia_me[:1500]
+        self.assertIn("Para o agente", topo)
+        self.assertIn("raw.githubusercontent.com/ianhudsonai/armanilux-relatorio-obra/main/INSTALL.md", topo)
+        instalar = (RAIZ / "INSTALL.md").read_text(encoding="utf-8")
+        for trecho in (".claude\\skills", ".agents\\skills", ".codex\\skills", "Invoke-WebRequest", "Expand-Archive",
+                       "archive/refs/heads/main.zip", "SKILL.md", "$preparar-projeto-armanilux", "Nunca nos dois"):
+            self.assertIn(trecho, instalar)
+        self.assertNotIn("três linhas", leia_me)
+        self.assertNotIn("tres linhas", (RAIZ / "instalar.bat").read_text(encoding="utf-8"))
+        self.assertIn("INSTALL.md", (RAIZ / "AGENTS.md").read_text(encoding="utf-8"))
+
     def test_instalador_do_preparo_e_achado_pela_pasta_da_skill(self):
         import sys
 

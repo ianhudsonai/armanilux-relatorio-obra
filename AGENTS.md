@@ -1,5 +1,7 @@
 # Instalar as skills da Armanilux
 
+Se a pessoa colou só o link do repositório e pediu para instalar ("instale aqui"), siga o `INSTALL.md` desta pasta: ele vale para o Codex e para o Claude Code e não precisa de Python.
+
 A pessoa cola isto:
 
 ```text
@@ -42,7 +44,7 @@ O script pede rede. Se o aplicativo pedir aprovação, peça para a pessoa aprov
 
 Instale só na pasta de skills do aplicativo que está executando estas instruções. Não instale em outro aplicativo. Não procure outras ferramentas no computador para decidir o destino. A existência de uma pasta ou de um comando de outro aplicativo não muda o destino.
 
-- Se você é o Codex: `%USERPROFILE%\.codex\skills\` no Windows, `~/.codex/skills` no Linux e no Mac. Use o `$skill-installer` com o comando acima. O destino padrão dele já é essa pasta.
+- Se você é o Codex com o `$skill-installer`: ele grava em `%USERPROFILE%\.codex\skills\` no Windows, `~/.codex/skills` no Linux e no Mac. Sem o instalador, siga o `INSTALL.md`: as versões atuais do Codex leem `%USERPROFILE%\.agents\skills\`.
 - Se você é o Claude Code: `~/.claude/skills` (no Windows, `%USERPROFILE%\.claude\skills`). Não use o instalador do Codex. Copie as duas pastas só para essa pasta do Claude Code.
 - Se a pessoa pedir um aplicativo específico, instale só nele, mesmo que você seja outro aplicativo.
 
