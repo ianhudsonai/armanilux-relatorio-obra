@@ -372,9 +372,10 @@ def data_do_fato(evento: dict) -> str:
 
 
 def conta_como_marco(evento: dict) -> bool:
-    """Fato realizado que pode marcar a etapa: não é só programação nem interferência,
-    e na etapa L só a conclusão marcada."""
-    if evento.get("programado"):
+    """Fato realizado que pode marcar a etapa: não é só programação nem interferência, não foi
+    marcado fora do ciclo ("marco": false, como reposição ou peça extra), e na etapa L só a
+    conclusão marcada."""
+    if evento.get("programado") or evento.get("marco") is False:
         return False
     if evento["etapa"] == "L":
         return conclui(evento)
@@ -1266,6 +1267,8 @@ def _juntar_adicionais(base: dict) -> list[dict]:
             item["conclusao"] = True
         if extra.get("programado"):
             item["programado"] = True
+        if extra.get("marco") is False:
+            item["marco"] = False
         if extra.get("data_evento"):
             item["data_evento"] = extra["data_evento"]
         for campo in CAMPOS_DA_REVISAO:
@@ -1387,7 +1390,7 @@ def data_da_conclusao(eventos: list[dict]) -> str:
 def _situacao_marco(eventos: list[dict], codigo: str) -> str:
     if codigo == "L":
         return "Concluído" if data_da_conclusao(eventos) else "dado não identificado (pendente)"
-    if any(item["etapa"] == codigo and conta_como_marco(item) for item in eventos):
+    if any(item["etapa"] == codigo and not item.get("programado") for item in eventos):
         return "Concluído"
     if any(item["etapa"] == codigo for item in eventos):
         return "Programado, sem confirmação"
@@ -1432,7 +1435,7 @@ def aplicar_ajustes(eventos: list[dict], ajustes: list[dict]) -> list[dict]:
                 evento["impacto"] = ajuste["impacto"]
             if ajuste.get("destaque"):
                 evento["destaque"] = ajuste["destaque"]
-            for marca in ("conclusao", "programado"):
+            for marca in ("conclusao", "programado", "marco"):
                 if marca in ajuste:  # aceita false, para desmarcar
                     evento[marca] = bool(ajuste[marca])
             if ajuste.get("data_evento"):
