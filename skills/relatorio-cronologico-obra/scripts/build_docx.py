@@ -610,20 +610,46 @@ def _marcadores(documento: Document, itens: list[str]) -> None:
         _paragrafo(documento, f"• {item}", tamanho=10, depois=3)
 
 
-def _diagnostico(documento: Document, analise: dict) -> None:
-    documento.add_heading("Análise Técnica — Diagnóstico", level=1)
+def _blocos_do_diagnostico(analise: dict) -> list[tuple[str, str, object]]:
     diagnostico = analise.get("diagnostico_prompt") or {}
-    blocos = (
-        ("1. Reprocessos identificados", diagnostico.get("reprocessos")),
-        ("2. Tempos ociosos (intervalos sem avanço)", diagnostico.get("tempos_ociosos")),
-        ("3. Atrasos operacionais internos", diagnostico.get("atrasos_internos")),
-        ("4. Dependências externas", diagnostico.get("dependencias_externas")),
+    return [
+        ("reprocessos", "1. Reprocessos identificados", diagnostico.get("reprocessos")),
+        ("tempos_ociosos", "2. Tempos ociosos (intervalos sem avanço)", diagnostico.get("tempos_ociosos")),
+        ("atrasos_internos", "3. Atrasos operacionais internos", diagnostico.get("atrasos_internos")),
+        ("dependencias_externas", "4. Dependências externas", diagnostico.get("dependencias_externas")),
         (
+            "interferencias",
             "5. Interferências de obra (Etapa J): impacto no cronograma e na produtividade",
             diagnostico.get("interferencias") or analise.get("produtividade_personalizada"),
         ),
-    )
-    for titulo, valor in blocos:
+    ]
+
+
+def _pontos_criticos(analise: dict) -> list[str]:
+    return _itens(analise.get("pontos_criticos")) or [
+        f"{item['titulo']}: {item['texto']}" for item in analise.get("gargalos_personalizados") or []
+    ]
+
+
+def textos_que_faltam(analise: dict) -> list[str]:
+    """Campos da revisão que, vazios, saem no Word como "preencher na revisão", e o prazo contratual
+    sem resposta. A versão final só sai com esta lista vazia."""
+    faltam = [f"diagnostico_prompt.{chave}" for chave, _, valor in _blocos_do_diagnostico(analise) if not _itens(valor)]
+    if not (analise.get("conclusao_personalizada") or "").strip():
+        faltam.append("conclusao_personalizada")
+    if not _pontos_criticos(analise):
+        faltam.append("pontos_criticos")
+    if not _itens(analise.get("recomendacoes_personalizadas")):
+        faltam.append("recomendacoes_personalizadas")
+    lacuna_de_prazo = any("prazo" in str(item).lower() for item in analise.get("lacunas_adicionais") or [])
+    if not analise.get("prazos_contratuais") and not lacuna_de_prazo:
+        faltam.append("prazo contratual (prazos_contratuais, ou em lacunas_adicionais a frase de que não há prazo declarado)")
+    return faltam
+
+
+def _diagnostico(documento: Document, analise: dict) -> None:
+    documento.add_heading("Análise Técnica — Diagnóstico", level=1)
+    for _, titulo, valor in _blocos_do_diagnostico(analise):
         documento.add_heading(titulo, level=2)
         _marcadores(documento, _itens(valor))
 
@@ -667,10 +693,7 @@ def _conclusao_estrategica(documento: Document, analise: dict) -> None:
     documento.add_heading("Diagnóstico da eficiência do fluxo operacional", level=2)
     _paragrafo(documento, (analise.get("conclusao_personalizada") or "").strip() or f"{DADO} (preencher na revisão).", tamanho=10)
     documento.add_heading("Principais pontos críticos de atraso", level=2)
-    pontos = _itens(analise.get("pontos_criticos")) or [
-        f"{item['titulo']}: {item['texto']}" for item in analise.get("gargalos_personalizados") or []
-    ]
-    _numerados(documento, pontos)
+    _numerados(documento, _pontos_criticos(analise))
     documento.add_heading("Impactos no prazo final", level=2)
     _paragrafo(documento, (analise.get("impactos_prazo") or "").strip() or _impacto_padrao(analise), tamanho=10)
     documento.add_heading("Recomendações práticas", level=2)

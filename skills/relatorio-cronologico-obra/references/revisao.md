@@ -109,7 +109,7 @@ Escreva, com fatos do grupo e datas, e curto:
 
 - `comentarios.<etapa>.introducao`: uma ou duas linhas antes da tabela, só quando ajudam ("A aprovação de chapas ocorreu de forma fracionada.").
 - `comentarios.<etapa>.leitura`: a "Leitura da Etapa", até três frases, com o intervalo que importa em dias úteis. Sem leitura, o Word mostra só o período da etapa.
-- `diagnostico_prompt`: `{"reprocessos": [...], "tempos_ociosos": [...], "atrasos_internos": [...], "dependencias_externas": [...], "interferencias": [...]}`, cada um uma lista de tópicos curtos com data. `interferencias` é o impacto da etapa J no cronograma e na produtividade: um tópico por tipo de interferência e, se houver, o total de dias de equipe sem frente.
+- `diagnostico_prompt`: `{"reprocessos": [...], "tempos_ociosos": [...], "atrasos_internos": [...], "dependencias_externas": [...], "interferencias": [...]}`, cada um uma lista de tópicos curtos com data. Toda lista leva pelo menos um tópico: categoria sem registro no grupo leva uma frase como "Nenhum atraso da Armanilux registrado no grupo.". `interferencias` é o impacto da etapa J no cronograma e na produtividade: um tópico por tipo de interferência e, se houver, o total de dias de equipe sem frente.
 - `pontos_criticos`: lista numerada dos principais pontos críticos de atraso.
 - `impactos_prazo`: um parágrafo sobre o impacto no prazo final (duração em dias úteis e corridos; confronto com o prazo contratual, se houver).
 - `conclusao_personalizada`: o diagnóstico da eficiência do fluxo operacional, um ou dois parágrafos.
@@ -136,6 +136,6 @@ Pronto quando: todo item voltou sustentado, ou foi corrigido, tirado ou virou la
 
 ## 4.5 Marcar como revisado
 
-Só depois de 4.1 a 4.4, grave `"revisado": true` no `analise.json` e remonte. Sem isso o Word sai com a faixa vermelha "RASCUNHO NÃO REVISADO" no topo, de propósito, para ninguém enviar um relatório sem conferência. Se `verificacao.md` ainda listar fatos que não batem, ou se a conferência não rodou, o script grava rascunho mesmo com `"revisado": true` e diz por quê: volte ao 4.3.
+Só depois de 4.1 a 4.4, grave `"revisado": true` no `analise.json` e remonte. Sem isso o Word sai com a faixa vermelha "RASCUNHO NÃO REVISADO" no topo, de propósito, para ninguém enviar um relatório sem conferência. O script grava rascunho mesmo com `"revisado": true`, e diz por quê, se `verificacao.md` ainda listar fatos que não batem, se a conferência não rodou (volte ao 4.3), ou se faltar texto da revisão: as cinco listas de `diagnostico_prompt`, `pontos_criticos`, `conclusao_personalizada`, `recomendacoes_personalizadas`, e o prazo contratual (`prazos_contratuais` ou a lacuna de que não há prazo declarado). Escreva o que faltar (4.2) e remonte.
 
 A versão final tem o mesmo número do rascunho: na primeira vez, `v1`. Remontar depois disso (inclusive com `--mostrar`, ou para corrigir um erro) regrava o mesmo `vN`, sem criar `v2`. Se o Word estiver aberto, o script pede para fechar o arquivo: feche e remonte.

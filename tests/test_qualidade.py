@@ -9,11 +9,13 @@ from tempfile import TemporaryDirectory
 
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ / "skills" / "relatorio-cronologico-obra" / "scripts"))
+sys.path.insert(0, str(RAIZ / "examples"))
 
 from analyze import _endereco, _pendencias, aplicar_ajustes, completar_relato, montar_analise  # noqa: E402
 from candidatos import escrever, selecionar  # noqa: E402
 from transcribe_media import _ler_amostras  # noqa: E402
 from parse_whatsapp import analisar_conversa  # noqa: E402
+from gerar_exemplo import REVISAO_COMPLETA  # noqa: E402
 
 CHAT = (
     "[08/01/2026, 08:00:01] Ana Souza: Aprovamos as chapas do lote 3 em pessoa hoje.\n"
@@ -148,6 +150,7 @@ class RemontagemTeste(unittest.TestCase):
 
                 rascunho = sorted((obra / "05-relatorios").glob("*.docx"))[-1]
                 self.assertIn("RASCUNHO NÃO REVISADO", _texto(rascunho))
+                de_novo.update(REVISAO_COMPLETA)
                 de_novo["revisado"] = True
                 caminho.write_text(json.dumps(de_novo, ensure_ascii=False), encoding="utf-8")
                 self.assertEqual(executar(["--rebuild-only", "--recalcular", "--obra-dir", str(obra), *argv]), 0)

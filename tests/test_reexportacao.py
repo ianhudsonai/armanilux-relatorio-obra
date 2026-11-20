@@ -17,7 +17,7 @@ sys.path.insert(0, str(RAIZ / "skills" / "relatorio-cronologico-obra" / "scripts
 sys.path.insert(0, str(RAIZ / "examples"))
 
 from common import escrever_json, ler_json  # noqa: E402
-from gerar_exemplo import CHAT  # noqa: E402
+from gerar_exemplo import CHAT, REVISAO_COMPLETA  # noqa: E402
 from run_pipeline import executar  # noqa: E402
 
 FATO_NOVO = "[16/03/2026, 10:00:00] Helena Duarte: O cliente devolveu o termo assinado hoje. Obra encerrada.\n"
@@ -98,6 +98,7 @@ class ReexportacaoTeste(unittest.TestCase):
     def _revisar(self, fatos: list[dict] | None = None) -> None:
         caminho = self.obra / "04-transcricoes" / "analise.json"
         analise = ler_json(caminho)
+        analise.update(REVISAO_COMPLETA)
         analise["revisado"] = True
         analise["eventos_adicionais"] = fatos if fatos is not None else [FATO_DA_REVISAO]
         escrever_json(caminho, analise)
@@ -121,6 +122,42 @@ class ReexportacaoTeste(unittest.TestCase):
         self._revisar([FATO_DA_REVISAO])
         self._remontar()
         self.assertTrue((self.relatorios / "Relatorio-Cronologico-Obra-1001-v1.docx").exists())
+
+    def test_revisado_com_textos_da_revisao_vazios_grava_rascunho_e_diz_o_que_falta(self):
+        # Visto na avaliação de prontidão: o Word final dizia "preencher na revisão" no diagnóstico e na conclusão.
+        self._rodar(_zip(self.base / "export1" / "WhatsApp Chat - Obra 1001.zip", CHAT))
+        caminho = self.obra / "04-transcricoes" / "analise.json"
+        analise = ler_json(caminho)
+        analise["revisado"] = True
+        analise["eventos_adicionais"] = [FATO_DA_REVISAO]
+        escrever_json(caminho, analise)
+
+        saida = io.StringIO()
+        with redirect_stdout(saida):
+            self._remontar()
+
+        self.assertFalse((self.relatorios / "Relatorio-Cronologico-Obra-1001-v1.docx").exists())
+        for campo in ("diagnostico_prompt.tempos_ociosos", "conclusao_personalizada", "pontos_criticos", "recomendacoes_personalizadas", "prazo contratual"):
+            self.assertIn(campo, saida.getvalue())
+
+        self._revisar()  # revisão completa: textos escritos e prazo resolvido
+        self._remontar()
+        final = self.relatorios / "Relatorio-Cronologico-Obra-1001-v1.docx"
+        self.assertTrue(final.exists())
+        self.assertNotIn("preencher na revisão", _texto_docx(final))
+
+    def test_rascunho_diz_para_nao_enviar(self):
+        saida = io.StringIO()
+        with redirect_stdout(saida):
+            self._rodar(_zip(self.base / "export1" / "WhatsApp Chat - Obra 1001.zip", CHAT))
+        self.assertNotIn("O arquivo para enviar é o Word.", saida.getvalue())
+        self.assertIn("RASCUNHO: não envie", saida.getvalue())
+
+        self._revisar()
+        saida = io.StringIO()
+        with redirect_stdout(saida):
+            self._remontar()
+        self.assertIn("O arquivo para enviar é o Word.", saida.getvalue())
 
     def test_revisado_sem_conferencia_rodar_grava_rascunho(self):
         self._rodar(_zip(self.base / "export1" / "WhatsApp Chat - Obra 1001.zip", CHAT))
