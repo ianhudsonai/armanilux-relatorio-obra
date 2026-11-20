@@ -1342,6 +1342,11 @@ def lacunas_automaticas(mensagens: list[Mensagem], documentos: list[dict], trans
             f"A exportação do WhatsApp parece cortada: a conversa começa em {formatar_data(mensagens[0].data.isoformat())}, "
             "sem o início do grupo. O que veio antes é dado não identificado."
         )
+    if any(getattr(mensagem, "data_incerta", False) for mensagem in mensagens):
+        cortada.append(
+            "A ordem dia/mês das datas da conversa não pôde ser confirmada (nenhuma data com dia acima de 12 ou com zero na frente prova a ordem, "
+            "ou o arquivo mistura as duas). As datas foram lidas como dia/mês: confira uma data conhecida."
+        )
     lacunas = []
     fora = len(arquivos_fora_da_exportacao(mensagens))
     if fora:

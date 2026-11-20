@@ -4,7 +4,7 @@ description: Gera o Relatório Cronológico de Obra da Armanilux (etapas A a L, 
 license: MIT
 metadata:
   author: Armanilux
-  version: "1.16"
+  version: "1.17"
   idioma: pt-BR
 ---
 

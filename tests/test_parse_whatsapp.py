@@ -147,5 +147,81 @@ class ParserTeste(unittest.TestCase):
         self.assertEqual(corrigir_mojibake("medição"), "medição")
 
 
+class OrdemDaDataTeste(unittest.TestCase):
+    """WhatsApp em inglês escreve mês/dia. A ordem é decidida uma vez por arquivo, não linha a linha,
+    e só por um número acima de 12. Sem essa prova, vale dia/mês e as mensagens ficam com data_incerta."""
+
+    def test_whatsapp_em_ingles_com_um_dia_acima_de_12(self):
+        # Visto na avaliação de prontidão: "7/3/26" virava 07/03 e "7/15/26" 15/07, no mesmo arquivo.
+        texto = (
+            "7/3/26, 12:25 PM - Ana Lima: first\n"
+            "7/4/26, 9:00 AM - Ana Lima: second\n"
+            "[7/15/26, 1:05:00 PM] Ana Lima: third\n"
+        )
+        mensagens = analisar_conversa(texto)
+        self.assertEqual(
+            [m.quando for m in mensagens],
+            [datetime(2026, 7, 3, 12, 25), datetime(2026, 7, 4, 9, 0), datetime(2026, 7, 15, 13, 5)],
+        )
+        self.assertFalse(any(m.data_incerta for m in mensagens))
+
+    def test_um_dia_acima_de_12_decide_o_arquivo_todo(self):
+        mes_dia = "7/15/26, 10:00 - Ana Lima: a\n7/3/26, 10:00 - Ana Lima: b\n"
+        self.assertEqual([m.data.isoformat() for m in analisar_conversa(mes_dia)], ["2026-07-15", "2026-07-03"])
+        dia_mes = "15/07/26, 10:00 - Ana Lima: a\n03/07/26, 10:00 - Ana Lima: b\n"
+        self.assertEqual([m.data.isoformat() for m in analisar_conversa(dia_mes)], ["2026-07-15", "2026-07-03"])
+
+    def test_am_pm_sozinho_nao_vira_mes_dia(self):
+        # Celular brasileiro com relógio de 12 horas também mostra AM/PM. O zero na frente ("03/07")
+        # prova dia/mês: o WhatsApp dos EUA escreve "7/3/26", sem zero.
+        texto = "03/07/2026 12:25 PM - Ana Lima: a\n04/07/2026 1:00 PM - Ana Lima: b\n"
+        mensagens = analisar_conversa(texto)
+        self.assertEqual([m.data.isoformat() for m in mensagens], ["2026-07-03", "2026-07-04"])
+        self.assertFalse(any(m.data_incerta for m in mensagens))
+        sem_zero = analisar_conversa("3/7/26, 12:25 PM - Ana Lima: a\n")
+        self.assertEqual(sem_zero[0].data.isoformat(), "2026-07-03")
+        self.assertTrue(sem_zero[0].data_incerta)
+
+    def test_sem_dia_acima_de_12_a_data_fica_incerta_e_vira_lacuna(self):
+        from analyze import lacunas_automaticas
+
+        texto = "3/7/2026 12:25 - Ana Lima: a\n[4/7/2026, 08:00:00] Ana Lima: b\n"
+        mensagens = analisar_conversa(texto)
+        self.assertEqual([m.data.isoformat() for m in mensagens], ["2026-07-03", "2026-07-04"])
+        self.assertTrue(all(m.data_incerta for m in mensagens))
+        self.assertTrue(any("dia/mês" in lacuna for lacuna in lacunas_automaticas(mensagens, [], [])))
+
+        com_prova = texto + "15/7/2026 09:00 - Ana Lima: c\n"
+        mensagens = analisar_conversa(com_prova)
+        self.assertFalse(any(m.data_incerta for m in mensagens))
+        self.assertFalse(any("dia/mês" in lacuna for lacuna in lacunas_automaticas(mensagens, [], [])))
+
+    def test_arquivo_com_as_duas_ordens_fica_incerto(self):
+        texto = "15/07/2026 09:00 - Ana Lima: a\n7/16/2026 09:00 - Ana Lima: b\n"
+        mensagens = analisar_conversa(texto)
+        self.assertTrue(all(m.data_incerta for m in mensagens))
+
+
+class MensagemDeSistemaTeste(unittest.TestCase):
+    def test_troca_do_nome_do_grupo_com_dois_pontos_nao_vira_autor(self):
+        texto = (
+            '03/07/2026 12:25 - Ana Lima alterou o nome do grupo de "Obra 1001: Silva" para "Obra 1001"\n'
+            '03/07/2026 12:26 - Ana Lima changed the subject from "Obra: 1" to "Obra 1001"\n'
+            "03/07/2026 12:27 - Ana Lima: Bom dia\n"
+        )
+        renomeado, em_ingles, mensagem = analisar_conversa(texto)
+        for aviso in (renomeado, em_ingles):
+            self.assertIsNone(aviso.autor)
+            self.assertTrue(aviso.sistema)
+        self.assertEqual(mensagem.autor, "Ana Lima")
+
+    def test_apelido_entre_aspas_e_nome_parecido_com_verbo_continuam_autor(self):
+        texto = (
+            '03/07/2026 12:25 - Zé "Pedreiro": Cheguei na obra\n'
+            "03/07/2026 12:26 - Saiu Silva: Ok\n"
+        )
+        self.assertEqual([m.autor for m in analisar_conversa(texto)], ['Zé "Pedreiro"', "Saiu Silva"])
+
+
 if __name__ == "__main__":
     unittest.main()
