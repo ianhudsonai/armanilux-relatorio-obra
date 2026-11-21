@@ -22,9 +22,9 @@ import os
 import re
 from pathlib import Path
 
-LIMITE_CARACTERES = 8_000  # ~10 KB em UTF-8 com acentos, já com cabeçalho e rodapé
+LIMITE_BYTES = 9_000  # em UTF-8, já com cabeçalho e rodapé: abaixo dos ~10 KB que o Codex mostra
 LIMITE_LINHAS = 150
-_FOLGA_CARACTERES = 400  # cabeçalho e rodapé de cada parte
+_FOLGA_BYTES = 600  # cabeçalho e rodapé de cada parte
 _FOLGA_LINHAS = 6
 PASTA = "leitura"
 PROGRESSO = "revisao-progresso.md"
@@ -32,7 +32,8 @@ CONFERENCIA = "conferencia.md"
 INDICE = "indice.json"
 MARCA_NOTAS = "## Notas"
 COMO_CONFERIU = ("subagente", "segunda passada")
-_ITEM = re.compile(r"^- \[([ xX])\] (.+)$", re.MULTILINE)
+_ITEM = re.compile(r"^- \[([ xX])\] (.*?)\r?$", re.MULTILINE)
+_ONDE = " → procure"  # separa o item da conferência da indicação de onde procurar
 _DATA_DA_LINHA = re.compile(r"^\[(\d{2})/(\d{2})/(\d{4}) \d{2}:\d{2}\] ", re.MULTILINE)
 
 
@@ -52,23 +53,35 @@ def linha_da_mensagem(mensagem) -> str:
     return f"[{mensagem.quando.strftime('%d/%m/%Y %H:%M')}] {autor}: {(mensagem.texto or '').strip()}{sufixo}"
 
 
-def _cabe(itens: list[str], limite_caracteres: int, limite_linhas: int) -> bool:
+def _bytes(texto: str) -> int:
+    return len(texto.encode("utf-8"))
+
+
+def _cabe(itens: list[str], limite_bytes: int, limite_linhas: int) -> bool:
     texto = "\n".join(itens)
-    return len(texto) <= limite_caracteres and texto.count("\n") + 1 <= limite_linhas
+    return _bytes(texto) <= limite_bytes and texto.count("\n") + 1 <= limite_linhas
 
 
-def _pedacos(texto: str, limite_caracteres: int, limite_linhas: int) -> list[str]:
+def _inicio_que_cabe(linha: str, limite_bytes: int) -> str:
+    pedaco = linha[:limite_bytes]
+    while _bytes(pedaco) > limite_bytes:  # acento e emoji ocupam mais de um byte
+        pedaco = pedaco[: max(1, len(pedaco) * 9 // 10)]
+    return pedaco
+
+
+def _pedacos(texto: str, limite_bytes: int, limite_linhas: int) -> list[str]:
     """Texto grande demais para uma parte (mensagem enorme, documento) em pedaços que cabem."""
     pedacos: list[str] = []
     atual: list[str] = []
     for linha in texto.split("\n"):
-        while len(linha) > limite_caracteres:
+        while _bytes(linha) > limite_bytes:
             if atual:
                 pedacos.append("\n".join(atual))
                 atual = []
-            pedacos.append(linha[:limite_caracteres])
-            linha = linha[limite_caracteres:]
-        if atual and not _cabe(atual + [linha], limite_caracteres, limite_linhas):
+            pedaco = _inicio_que_cabe(linha, limite_bytes)
+            pedacos.append(pedaco)
+            linha = linha[len(pedaco):]
+        if atual and not _cabe(atual + [linha], limite_bytes, limite_linhas):
             pedacos.append("\n".join(atual))
             atual = []
         atual.append(linha)
@@ -79,11 +92,11 @@ def _pedacos(texto: str, limite_caracteres: int, limite_linhas: int) -> list[str
 
 def _paginar(dias: list[list[str]]) -> list[list[str]]:
     """Junta dias inteiros em páginas; dia que não cabe sozinho é partido por mensagem."""
-    limite_caracteres = LIMITE_CARACTERES - _FOLGA_CARACTERES
+    limite_bytes = LIMITE_BYTES - _FOLGA_BYTES
     limite_linhas = LIMITE_LINHAS - _FOLGA_LINHAS
 
     def cabe(itens: list[str]) -> bool:
-        return _cabe(itens, limite_caracteres, limite_linhas)
+        return _cabe(itens, limite_bytes, limite_linhas)
 
     paginas: list[list[str]] = []
     atual: list[str] = []
@@ -98,7 +111,7 @@ def _paginar(dias: list[list[str]]) -> list[list[str]]:
             atual = list(dia)
             continue
         for item in dia:
-            for pedaco in [item] if cabe([item]) else _pedacos(item, limite_caracteres, limite_linhas):
+            for pedaco in [item] if cabe([item]) else _pedacos(item, limite_bytes, limite_linhas):
                 if atual and not cabe(atual + [pedaco]):
                     paginas.append(atual)
                     atual = []
@@ -140,6 +153,11 @@ def _partes_da_conversa(mensagens) -> list[dict]:
     return partes
 
 
+SECAO_TRANSCRICOES = "Áudios e vídeos transcritos"
+_CABECALHO_CITADA = re.compile(r"^\[\d{2}/\d{2}/\d{4} \d{2}:\d{2}\] .*? — (.+)$", re.MULTILINE)
+_CABECALHO_SOLTA = re.compile(r"^(.+) \(nenhuma mensagem cita este arquivo\)$", re.MULTILINE)
+
+
 def _partes_das_transcricoes(mensagens, transcricoes) -> list[dict]:
     """Cada áudio ou vídeo transcrito, com a data, a hora e o autor da mensagem que o anexou."""
     from common import nome_seguro
@@ -166,8 +184,10 @@ def _partes_das_transcricoes(mensagens, transcricoes) -> list[dict]:
     for numero, pagina in enumerate(_paginar(_por_dia(itens)), start=1):
         datas = _datas(pagina)
         periodo = f" de {_br(min(datas))} a {_br(max(datas))}" if datas else ""
-        descricao = f"áudios e vídeos transcritos{periodo}, {len(pagina)} arquivos"
-        partes.append({"nome": f"transcricoes-{numero:03d}.txt", "secao": "Áudios e vídeos transcritos", "descricao": descricao, "linhas": pagina})
+        texto = "\n".join(pagina)
+        arquivos = _CABECALHO_CITADA.findall(texto) + _CABECALHO_SOLTA.findall(texto)
+        descricao = f"áudios e vídeos transcritos{periodo}, {len(arquivos)} arquivos"
+        partes.append({"nome": f"transcricoes-{numero:03d}.txt", "secao": SECAO_TRANSCRICOES, "descricao": descricao, "linhas": pagina, "arquivos": arquivos})
     return partes
 
 
@@ -178,17 +198,17 @@ def _partes_dos_documentos(documentos) -> list[dict]:
         texto = (documento.get("texto") or "").strip()
         if not texto:
             continue
-        pedacos = _pedacos(texto, LIMITE_CARACTERES - _FOLGA_CARACTERES, LIMITE_LINHAS - _FOLGA_LINHAS)
+        pedacos = _pedacos(texto, LIMITE_BYTES - _FOLGA_BYTES, LIMITE_LINHAS - _FOLGA_LINHAS)
         for indice, pedaco in enumerate(pedacos, start=1):
             descricao = f"documento {documento.get('arquivo')} (parte {indice} de {len(pedacos)})"
-            partes.append({"nome": f"documento-{len(partes) + 1:03d}.txt", "secao": "Documentos", "descricao": descricao, "linhas": [pedaco]})
+            partes.append({"nome": f"documento-{len(partes) + 1:03d}.txt", "secao": "Documentos", "descricao": descricao, "linhas": [pedaco], "arquivos": [str(documento.get("arquivo"))]})
     return partes
 
 
 def _folhas(pasta_transcricoes: Path) -> list[dict]:
     pasta = pasta_transcricoes / "folhas-de-contato"
     try:
-        indice = json.loads((pasta / "indice.json").read_text(encoding="utf-8"))
+        indice = json.loads((pasta / "indice.json").read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         indice = {}
     folhas = []
@@ -221,7 +241,7 @@ def _ler(caminho: Path) -> str:
 
 
 def _escrever(caminho: Path, texto: str) -> bytes:
-    dados = ("﻿" + texto).encode("utf-8")  # com BOM: o PowerShell 5.1 lê os acentos certos
+    dados = ("\ufeff" + texto).encode("utf-8")  # com BOM: o PowerShell 5.1 lê os acentos certos
     caminho.parent.mkdir(parents=True, exist_ok=True)
     if not caminho.is_file() or caminho.read_bytes() != dados:
         caminho.write_bytes(dados)
@@ -240,10 +260,22 @@ def _notas(texto: str) -> str:
 
 
 def _guardar_antiga(caminho: Path) -> None:
-    """Parte que deixou de existir sai da pasta de leitura sem ser apagada."""
-    destino = caminho.parent / "antigas" / caminho.name
-    destino.parent.mkdir(exist_ok=True)
+    """Parte que deixou de existir sai da pasta de leitura sem ser apagada (nem a cópia anterior)."""
+    pasta = caminho.parent / "antigas"
+    pasta.mkdir(exist_ok=True)
+    destino = pasta / caminho.name
+    indice = 2
+    while destino.exists():
+        destino = pasta / f"{caminho.stem}-{indice}{caminho.suffix}"
+        indice += 1
     os.replace(caminho, destino)
+
+
+def _indice(pasta_transcricoes: Path) -> dict:
+    try:
+        return json.loads(_ler(pasta_transcricoes / PASTA / INDICE) or "{}")
+    except ValueError:
+        return {}
 
 
 def _contagem(caminho: Path) -> dict:
@@ -254,34 +286,46 @@ def _contagem(caminho: Path) -> dict:
 # ---------- revisao-progresso.md ----------
 
 
+def _gravar_parte(pasta: Path, parte: dict, indice: dict, linhas_por_secao: dict, gravadas: list) -> None:
+    caminho = pasta / parte["nome"]
+    chave = f"{PASTA}/{parte['nome']}"
+    indice[chave] = {"hash": _hash(_escrever(caminho, _texto_da_parte(parte)))}
+    for campo in ("de", "ate", "arquivos"):
+        if parte.get(campo):
+            indice[chave][campo] = parte[campo]
+    gravadas.append(caminho)
+    linhas_por_secao.setdefault(parte["secao"], []).append((chave, parte["descricao"]))
+
+
 def gerar(pasta_obra: Path, mensagens, transcricoes=None, documentos=None) -> list[Path]:
     """Grava as partes em 04-transcricoes/leitura/ e refaz revisao-progresso.md, mantendo o que já foi lido."""
     pasta_transcricoes = Path(pasta_obra) / "04-transcricoes"
     pasta = pasta_transcricoes / PASTA
     caminho_progresso = pasta_transcricoes / PROGRESSO
     texto_antigo = _ler(caminho_progresso)
-    try:
-        indice_antigo = json.loads(_ler(pasta / INDICE) or "{}")
-    except ValueError:
-        indice_antigo = {}
-    lidas = {
-        (indice_antigo.get(resto.split(" ")[0]) or {}).get("hash")
-        for marcado, resto in _itens(texto_antigo)
-        if marcado
-    } - {None}
+    indice_antigo = _indice(pasta_transcricoes)
+    itens_antigos = _itens(texto_antigo)
+    lidas = {(indice_antigo.get(resto.split(" ")[0]) or {}).get("hash") for marcado, resto in itens_antigos if marcado} - {None}
 
-    partes = _partes_da_conversa(mensagens) + _partes_das_transcricoes(mensagens, transcricoes) + _partes_dos_documentos(documentos)
     indice: dict[str, dict] = {}
     linhas_por_secao: dict[str, list[str]] = {}
     gravadas = []
-    for parte in partes:
-        caminho = pasta / parte["nome"]
-        chave = f"{PASTA}/{parte['nome']}"
-        indice[chave] = {"hash": _hash(_escrever(caminho, _texto_da_parte(parte)))}
-        if parte.get("de"):
-            indice[chave].update({"de": parte["de"], "ate": parte["ate"]})
-        gravadas.append(caminho)
-        linhas_por_secao.setdefault(parte["secao"], []).append((chave, parte["descricao"]))
+    for parte in _partes_da_conversa(mensagens):
+        _gravar_parte(pasta, parte, indice, linhas_por_secao, gravadas)
+    if transcricoes is None:
+        # Exportação nova: as partes são refeitas antes da transcrição terminar. As de transcrição
+        # que já existem ficam como estão (e marcadas), até a remontagem trazer as transcrições.
+        descricoes = dict(resto.split(" — ", 1) for _, resto in itens_antigos if " — " in resto)
+        for chave, info in indice_antigo.items():
+            if chave.startswith(f"{PASTA}/transcricoes-") and (pasta_transcricoes / chave).is_file():
+                indice[chave] = info
+                gravadas.append(pasta_transcricoes / chave)
+                linhas_por_secao.setdefault(SECAO_TRANSCRICOES, []).append((chave, descricoes.get(chave, "áudios e vídeos transcritos")))
+    else:
+        for parte in _partes_das_transcricoes(mensagens, transcricoes):
+            _gravar_parte(pasta, parte, indice, linhas_por_secao, gravadas)
+    for parte in _partes_dos_documentos(documentos):
+        _gravar_parte(pasta, parte, indice, linhas_por_secao, gravadas)
     for antiga in pasta.glob("*.txt"):
         if antiga not in gravadas:
             _guardar_antiga(antiga)
@@ -289,7 +333,7 @@ def gerar(pasta_obra: Path, mensagens, transcricoes=None, documentos=None) -> li
         indice[folha["chave"]] = {"hash": folha["hash"]}
         linhas_por_secao.setdefault("Imagens (folhas de contato)", []).append((folha["chave"], folha["descricao"]))
     pasta.mkdir(parents=True, exist_ok=True)
-    (pasta / INDICE).write_text(json.dumps(indice, ensure_ascii=False, indent=1), encoding="utf-8")
+    (pasta / INDICE).write_bytes(json.dumps(indice, ensure_ascii=False, indent=1).encode("utf-8"))
 
     total = sum(len(linhas) for linhas in linhas_por_secao.values())
     marcadas = sum(1 for linhas in linhas_por_secao.values() for chave, _ in linhas if indice[chave]["hash"] in lidas)
@@ -364,23 +408,29 @@ def _textos(analise: dict) -> list[str]:
 
 
 def _onde_procurar(evento: dict, partes: dict[str, dict]) -> str:
-    midias = evento.get("midias") or []
+    """Começa sempre com "procure": é o que separa a indicação do texto do item."""
+    midias = [Path(str(m)).name for m in evento.get("midias") or []]
     if midias:
-        return "procure " + ", ".join(Path(str(m)).name for m in midias) + " nas transcrições ou em 03-midias"
+        nomes = {nome.lower() for nome in midias}
+        achadas = [chave for chave, info in partes.items() if nomes & {a.lower() for a in info.get("arquivos") or []}]
+        if achadas:
+            return "procure em " + ", ".join(achadas) + f" ({', '.join(midias)})"
+        return "procure " + ", ".join(midias) + " nas folhas de contato ou em 03-midias"
     data = str(evento.get("data") or "")
     achadas = [chave for chave, info in partes.items() if info.get("de") and info["de"] <= data <= info["ate"]]
     return "procure em " + ", ".join(achadas) if achadas else "procure no material"
+
+
+def _sem_onde(resto: str) -> str:
+    return resto.rsplit(_ONDE, 1)[0] if _ONDE in resto else resto
 
 
 def escrever_conferencia(pasta_obra: Path, analise: dict) -> dict:
     """Refaz conferencia.md com os fatos e textos atuais. Item igual a um já conferido continua marcado."""
     pasta_transcricoes = Path(pasta_obra) / "04-transcricoes"
     caminho = pasta_transcricoes / CONFERENCIA
-    feitos = {resto.split(" → ")[0] for marcado, resto in _itens(_ler(caminho)) if marcado}
-    try:
-        partes = json.loads(_ler(pasta_transcricoes / PASTA / INDICE) or "{}")
-    except ValueError:
-        partes = {}
+    feitos = {_sem_onde(resto) for marcado, resto in _itens(_ler(caminho)) if marcado}
+    partes = _indice(pasta_transcricoes)
 
     fatos = []
     for evento in analise.get("eventos") or []:
@@ -431,3 +481,25 @@ def como_conferiu(analise: dict) -> str | None:
     como = (registro or {}).get("como") if isinstance(registro, dict) else None
     return como if como in COMO_CONFERIU else None
 
+
+def o_que_falta(pasta_obra: Path, analise: dict) -> list[str]:
+    """O que ainda segura a versão final do lado da leitura (4.1) e da conferência independente (4.4)."""
+    motivos = []
+    lidas = progresso(pasta_obra)
+    if lidas["total"] == 0 or lidas["lidas"] < lidas["total"]:
+        motivos.append(
+            f"{lidas['total'] - lidas['lidas']} de {lidas['total']} partes ainda não foram lidas "
+            "(04-transcricoes/revisao-progresso.md; references/revisao.md, 4.1)"
+        )
+    conferidos = conferencia(pasta_obra)
+    if conferidos["feitos"] < conferidos["total"]:
+        motivos.append(
+            f"a conferência independente ainda não marcou {conferidos['total'] - conferidos['feitos']} "
+            f"de {conferidos['total']} itens (04-transcricoes/conferencia.md; references/revisao.md, 4.4)"
+        )
+    if not como_conferiu(analise):
+        motivos.append(
+            'falta registrar no analise.json como a conferência independente foi feita: '
+            '"conferencia_independente": {"como": "subagente" ou "segunda passada", "data": "AAAA-MM-DD"}'
+        )
+    return motivos

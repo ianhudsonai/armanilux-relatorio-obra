@@ -15,7 +15,7 @@ Num grupo grande, o material não cabe numa leitura só, e o que não cabe some 
 `04-transcricoes/revisao-progresso.md` lista essas partes e as folhas de contato, uma linha `- [ ]` cada. Como trabalhar:
 
 1. Leia uma parte por comando, inteira, por exemplo `Get-Content -Raw -Encoding UTF8 "<caminho da parte>"`. Se a saída disser que linhas foram cortadas ou omitidas, leia de novo em duas metades (`-TotalCount 75` e depois `| Select-Object -Skip 75`). Para ler o material, use as partes, não o `.txt` original nem o `analise.json`.
-2. Logo depois de cada parte, registre no `analise.json` os fatos dela (4.2) e troque `[ ]` por `[x]` na linha da parte. O que ainda não é fato (quem é quem, prazo citado, dúvida, ideia para os textos) vai na seção Notas, no fim do mesmo arquivo. Assim nada se perde se a conversa for resumida ou cortada.
+2. Logo depois de cada parte, registre no `analise.json` os fatos dela (4.2) e troque `[ ]` por `[x]` na linha da parte. O que ainda não é fato (quem é quem, prazo citado, dúvida, ideia para os textos) vai na seção Notas, no fim do mesmo arquivo. Assim nada se perde se a conversa for resumida ou cortada. Enquanto o pipeline ainda roda (a transcrição, na primeira vez), não edite o `analise.json`, porque ele é regravado no fim: anote os fatos em Notas e passe para o `analise.json` quando o comando terminar.
 3. Não marque parte que não leu inteira. Cada remontagem imprime `LEITURA: X de Y partes lidas`, e a versão final só sai com todas marcadas.
 4. Ao continuar (depois de um "continue" ou num chat novo), abra `revisao-progresso.md`, releia as Notas e siga da primeira linha sem `[x]`.
 

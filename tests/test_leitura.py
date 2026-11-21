@@ -94,6 +94,80 @@ class PartesDaConversaTeste(unittest.TestCase):
             self.assertEqual(leitura.progresso(obra)["lidas"], 1)
 
 
+class MarcasQueNaoSePerdemTeste(unittest.TestCase):
+    def test_emoji_e_acento_nao_passam_do_limite_em_bytes(self):
+        mensagens = _mensagens(dias=20, por_dia=9)
+        for mensagem in mensagens:
+            mensagem.texto += " 👍🏽 ação " * 12
+        with TemporaryDirectory() as temporario:
+            obra = Path(temporario)
+            leitura.gerar(obra, mensagens)
+            for parte in (obra / "04-transcricoes" / "leitura").glob("*.txt"):
+                self.assertLessEqual(len(parte.read_bytes()), LIMITE_BYTES, parte.name)
+
+    def test_lista_salva_com_quebra_de_linha_do_windows_continua_marcada(self):
+        mensagens = _mensagens(dias=10, por_dia=9)
+        with TemporaryDirectory() as temporario:
+            obra = Path(temporario)
+            leitura.gerar(obra, mensagens)
+            caminho = obra / "04-transcricoes" / "revisao-progresso.md"
+            texto = re.sub(r"^- \[ \]", "- [x]", _ler(caminho), flags=re.MULTILINE)
+            caminho.write_bytes(texto.replace("\n", "\r\n").encode("utf-8"))
+            leitura.gerar(obra, mensagens)
+            progresso = leitura.progresso(obra)
+            self.assertEqual(progresso["lidas"], progresso["total"])
+
+    def test_transcricoes_continuam_lidas_quando_a_remontagem_ainda_nao_tem_as_novas(self):
+        # Exportação nova: as partes são refeitas antes da transcrição, que só termina depois.
+        mensagens = _mensagens(dias=3, por_dia=2)
+        transcricoes = [{"arquivo": "PTT-1.opus", "status": "ok", "texto": "Áudio da medição."}]
+        with TemporaryDirectory() as temporario:
+            obra = Path(temporario)
+            leitura.gerar(obra, mensagens, transcricoes=transcricoes)
+            caminho = obra / "04-transcricoes" / "revisao-progresso.md"
+            caminho.write_text(re.sub(r"^- \[ \]", "- [x]", _ler(caminho), flags=re.MULTILINE), encoding="utf-8")
+            leitura.gerar(obra, mensagens)  # transcrições ainda não chegaram
+            leitura.gerar(obra, mensagens, transcricoes=transcricoes)
+            self.assertIn("- [x] leitura/transcricoes-001.txt", _ler(caminho))
+            self.assertEqual(leitura.progresso(obra)["lidas"], leitura.progresso(obra)["total"])
+
+    def test_item_conferido_com_seta_no_texto_continua_marcado(self):
+        mensagens = _mensagens(dias=3, por_dia=2)
+        analise = {
+            "eventos": [{"data": "2025-06-02", "hora": "08:00", "autor": "Helena Duarte", "etapa": "C", "ocorrencia": "Medição 13/05 → 22/05."}],
+            "impactos_prazo": "Living: 13/05 → 22/05, 7 d.u.",
+        }
+        with TemporaryDirectory() as temporario:
+            obra = Path(temporario)
+            leitura.gerar(obra, mensagens)
+            leitura.escrever_conferencia(obra, analise)
+            caminho = obra / "04-transcricoes" / "conferencia.md"
+            caminho.write_text(re.sub(r"^- \[ \]", "- [x]", _ler(caminho), flags=re.MULTILINE), encoding="utf-8")
+            self.assertEqual(leitura.escrever_conferencia(obra, analise), {"feitos": 2, "total": 2})
+
+    def test_fato_de_audio_aponta_a_parte_da_transcricao(self):
+        mensagens = [
+            Mensagem(quando=datetime(2025, 9, 30, 10, 30), autor="Paulo Reis", texto="PTT-1.opus (arquivo anexado)", anexos=["PTT-1.opus"]),
+        ]
+        transcricoes = [{"arquivo": "PTT-1.opus", "status": "ok", "texto": "A medição fica para quinta."}]
+        analise = {"eventos": [{"data": "2025-09-30", "hora": "10:30", "autor": "Paulo Reis", "etapa": "C", "ocorrencia": "Medição programada.", "midias": ["PTT-1.opus"]}]}
+        with TemporaryDirectory() as temporario:
+            obra = Path(temporario)
+            leitura.gerar(obra, mensagens, transcricoes=transcricoes)
+            leitura.escrever_conferencia(obra, analise)
+            self.assertIn("leitura/transcricoes-001.txt", _ler(obra / "04-transcricoes" / "conferencia.md"))
+
+    def test_parte_que_sai_duas_vezes_nao_apaga_a_copia_antiga(self):
+        with TemporaryDirectory() as temporario:
+            obra = Path(temporario)
+            leitura.gerar(obra, _mensagens(dias=40, por_dia=9))
+            leitura.gerar(obra, _mensagens(dias=2, por_dia=2))
+            leitura.gerar(obra, _mensagens(dias=40, por_dia=9))
+            leitura.gerar(obra, _mensagens(dias=2, por_dia=2))
+            antigas = list((obra / "04-transcricoes" / "leitura" / "antigas").glob("conversa-002*.txt"))
+            self.assertEqual(len(antigas), 2)
+
+
 class TranscricoesDocumentosEImagensTeste(unittest.TestCase):
     def test_transcricoes_documentos_e_folhas_entram_na_lista(self):
         mensagens = [
