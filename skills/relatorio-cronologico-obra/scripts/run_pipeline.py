@@ -55,6 +55,9 @@ CHAVES_PRESERVAR = (
     "prazos_contratuais",
     "pontos_criticos",
     "impactos_prazo",
+    "diagnostico_temas",
+    "interpretacao_intervalos",
+    "pontos_de_controle",
 )
 
 

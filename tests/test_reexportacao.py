@@ -206,6 +206,23 @@ class ReexportacaoTeste(unittest.TestCase):
         self.assertIn("RASCUNHO NÃO REVISADO", texto)
         self.assertIn("Vistoria final com o engenheiro", texto)
 
+    def test_conversa_nova_mantem_os_campos_do_modelo_do_rogerio(self):
+        self._rodar(_zip(self.base / "export1" / "WhatsApp Chat - Obra 1001.zip", CHAT))
+        caminho = self.obra / "04-transcricoes" / "analise.json"
+        analise = ler_json(caminho)
+        novos = {
+            "diagnostico_temas": [{"tema": "Marcenaria", "avaliacao": "Gargalo documentado", "leitura": "Frente liberada em 09/03."}],
+            "interpretacao_intervalos": [{"de": "G", "para": "H", "texto": "Produção e logística."}],
+            "pontos_de_controle": ["Liberação para instalação: frente conferida."],
+        }
+        analise.update(novos)
+        escrever_json(caminho, analise)
+
+        self._rodar(_zip(self.base / "export2" / "WhatsApp Chat - Obra 1001.zip", CHAT + FATO_NOVO))
+        analise = ler_json(caminho)
+        for chave, valor in novos.items():
+            self.assertEqual(analise.get(chave), valor, chave)
+
     def test_remontagens_depois_de_revisado_regravam_a_mesma_versao(self):
         self._rodar(_zip(self.base / "export1" / "WhatsApp Chat - Obra 1001.zip", CHAT))
         self._revisar()
