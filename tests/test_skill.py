@@ -209,6 +209,17 @@ class SkillTeste(unittest.TestCase):
         self.assertIn("references/revisao.md", texto)
         self.assertTrue((SKILL / "references" / "revisao.md").is_file())
 
+    def test_revisao_le_em_partes_e_diz_quanto_leu(self):
+        # Sem subagentes, ou com pouco contexto por turno, a revisão de um grupo grande não cabe de uma vez.
+        skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        for trecho in ("revisao-progresso.md", "conferencia.md", "LEITURA:", "partes lidas"):
+            self.assertIn(trecho, skill)
+        revisao = (SKILL / "references" / "revisao.md").read_text(encoding="utf-8")
+        for trecho in ("04-transcricoes/leitura/", "256 linhas", "conferencia_independente", "segunda passada", "Notas"):
+            self.assertIn(trecho, revisao)
+        campos = (SKILL / "references" / "analise-json.md").read_text(encoding="utf-8")
+        self.assertIn("conferencia_independente", campos)
+
     def test_skill_acha_o_zip_sozinha(self):
         texto = (SKILL / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("Nunca peça o caminho do zip", texto)

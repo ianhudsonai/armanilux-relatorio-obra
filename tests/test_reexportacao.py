@@ -17,7 +17,7 @@ sys.path.insert(0, str(RAIZ / "skills" / "relatorio-cronologico-obra" / "scripts
 sys.path.insert(0, str(RAIZ / "examples"))
 
 from common import escrever_json, ler_json  # noqa: E402
-from gerar_exemplo import CHAT, REVISAO_COMPLETA  # noqa: E402
+from gerar_exemplo import CHAT, REVISAO_COMPLETA, marcar_leitura_e_conferencia  # noqa: E402
 from run_pipeline import executar  # noqa: E402
 
 FATO_NOVO = "[16/03/2026, 10:00:00] Helena Duarte: O cliente devolveu o termo assinado hoje. Obra encerrada.\n"
@@ -102,6 +102,7 @@ class ReexportacaoTeste(unittest.TestCase):
         analise["revisado"] = True
         analise["eventos_adicionais"] = fatos if fatos is not None else [FATO_DA_REVISAO]
         escrever_json(caminho, analise)
+        marcar_leitura_e_conferencia(self.obra, "--workspace", str(self.workspace), "--recalcular")
 
     def test_revisado_com_conferencia_listando_problema_grava_rascunho_e_diz_por_que(self):
         self._rodar(_zip(self.base / "export1" / "WhatsApp Chat - Obra 1001.zip", CHAT))

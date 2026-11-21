@@ -252,8 +252,33 @@ def _avisar_prazos(analise: dict) -> None:
         )
 
 
+def _revisao_em_partes(pasta_obra: Path, analise: dict) -> bool:
+    """Refaz as partes de leitura e as duas listas da revisão (o que já foi lido, o que já foi
+    conferido) e diz quanto falta. False se não deu para montar."""
+    import leitura
+
+    conversa = _conversa_extraida(pasta_obra, analise)
+    try:
+        if conversa is not None:
+            leitura.gerar(pasta_obra, ler_conversa(conversa), analise.get("transcricoes"), analise.get("documentos_texto"))
+        leitura.escrever_conferencia(pasta_obra, analise)
+    except Exception as erro:  # as listas ajudam a revisão, mas não podem impedir o Word
+        print(f"Aviso: não consegui montar as partes de leitura da revisão: {erro}")
+        return False
+    lidas = leitura.progresso(pasta_obra)
+    conferidos = leitura.conferencia(pasta_obra)
+    como = leitura.como_conferiu(analise)
+    print(f"LEITURA: {lidas['lidas']} de {lidas['total']} partes lidas (04-transcricoes/revisao-progresso.md)")
+    print(
+        f"CONFERENCIA: {conferidos['feitos']} de {conferidos['total']} itens; "
+        f"{como or 'como foi feita: não registrado'} (04-transcricoes/conferencia.md)"
+    )
+    return True
+
+
 def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_pdf: bool = False, mostrar: bool = False) -> Path:
     problemas = _conferir(pasta_obra, analise)
+    listas_montadas = _revisao_em_partes(pasta_obra, analise)
     _avisar_prazos(analise)
     figuras = pasta_obra / "05-relatorios" / "figuras"
     marcos = intervalos_marcos_de(analise.get("eventos") or [], analise.get("obra"))[0]  # dos eventos, como o Word
@@ -261,7 +286,7 @@ def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_
     gantt = grafico_gantt(analise.get("eventos") or [], figuras / "gantt.png")
     pasta = pasta_obra / "05-relatorios"
     numero = analise["obra"].get("numero") or "sem-numero"
-    if analise.get("revisado") and not _final_liberada(problemas, analise):
+    if analise.get("revisado") and not _final_liberada(problemas, analise, pasta_obra, listas_montadas):
         analise = {**analise, "revisado": False}  # só para este Word: a faixa RASCUNHO vem de "revisado"
     rascunho = not analise.get("revisado")
     versao = analise.get("versao")
@@ -327,9 +352,9 @@ def _gravar(pasta_obra: Path, analise: dict, config: dict | None = None, forcar_
     return destino
 
 
-def _final_liberada(problemas: int | None, analise: dict) -> bool:
-    """Com "revisado": true, a versão final só sai com os textos da revisão escritos e a conferência
-    rodada sem pendência."""
+def _final_liberada(problemas: int | None, analise: dict, pasta_obra: Path | None = None, listas_montadas: bool = False) -> bool:
+    """Com "revisado": true, a versão final só sai com os textos da revisão escritos, a conferência
+    do script rodada sem pendência, todo o material lido e a conferência independente feita."""
     faltam = textos_que_faltam(analise)
     if faltam:
         print(
@@ -339,7 +364,7 @@ def _final_liberada(problemas: int | None, analise: dict) -> bool:
         )
         return False
     if problemas == 0:
-        return True
+        return _revisao_completa(pasta_obra, analise, listas_montadas)
     if problemas is None:
         motivo = "a conferência dos fatos não rodou"
         pedido = "Confira se a conversa está em 01-conversas e remonte."
@@ -349,6 +374,22 @@ def _final_liberada(problemas: int | None, analise: dict) -> bool:
         pedido = "Corrija ou tire cada item da lista e remonte."
     print(f"O analise.json está com \"revisado\": true, mas {motivo}. Gravei rascunho, não a versão final. {pedido}")
     return False
+
+
+def _revisao_completa(pasta_obra: Path | None, analise: dict, listas_montadas: bool) -> bool:
+    """4.1 e 4.4 feitas: toda parte marcada como lida, todo item conferido e o jeito registrado."""
+    import leitura
+
+    if pasta_obra is None or not listas_montadas:
+        motivos = ["as listas da revisão (partes de leitura e conferência) não foram montadas"]
+    else:
+        motivos = leitura.o_que_falta(pasta_obra, analise)
+    if motivos:
+        print(
+            "O analise.json está com \"revisado\": true, mas " + "; ".join(motivos) + ". "
+            "Gravei rascunho, não a versão final."
+        )
+    return not motivos
 
 
 def _numero_da_versao(arquivo: Path) -> int:
@@ -633,6 +674,14 @@ def executar(argv: list[str] | None = None) -> int:
             print(f"Folhas de contato para revisar as imagens: {len(folhas)} (em 04-transcricoes/folhas-de-contato).")
     except Exception as erro:
         print(f"Aviso: não consegui montar as folhas de contato: {erro}")
+    try:
+        import leitura
+
+        # Antes da transcrição, para a revisão começar a ler a conversa enquanto ela roda.
+        leitura.gerar(pasta_obra, mensagens, documentos=documentos)
+        print("Partes para ler na revisão: 04-transcricoes/revisao-progresso.md (as transcrições entram ao final).")
+    except Exception as erro:
+        print(f"Aviso: não consegui montar as partes de leitura: {erro}")
     relogio.marca("vídeos vistos")
     pular, por_escolha = _pular_transcricao(args, config)
     transcricoes = transcrever_pasta(

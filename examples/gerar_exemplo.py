@@ -52,7 +52,27 @@ REVISAO_COMPLETA = {
     "conclusao_personalizada": "O fluxo foi regular, com uma espera de frente causada pela obra.",
     "recomendacoes_personalizadas": ["Confirmar a liberação da frente antes de agendar a equipe."],
     "lacunas_adicionais": ["Prazo contratual não declarado no grupo nem nos documentos."],
+    "conferencia_independente": {"como": "segunda passada", "data": "2026-03-13"},
 }
+
+
+def marcar_leitura_e_conferencia(pasta_obra: Path, *argv: str) -> None:
+    """Para os testes: remonta uma vez com o analise.json como está (o script refaz as listas da
+    revisão com os fatos e textos atuais) e marca todas as partes como lidas e todos os itens como
+    conferidos, como a revisão faria (references/revisao.md, 4.1 e 4.4)."""
+    import contextlib
+    import io
+    import re
+
+    from run_pipeline import executar
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        executar(["--rebuild-only", "--obra-dir", str(pasta_obra), *argv])
+    for nome in ("revisao-progresso.md", "conferencia.md"):
+        caminho = Path(pasta_obra) / "04-transcricoes" / nome
+        texto = caminho.read_text(encoding="utf-8-sig")
+        caminho.write_text(re.sub(r"^- \[ \]", "- [x]", texto, flags=re.MULTILINE), encoding="utf-8")
+
 
 LEIA_ME = """Exemplo fictício
 

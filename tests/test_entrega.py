@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills" / "relator
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "examples"))
 
 import run_pipeline  # noqa: E402
-from gerar_exemplo import REVISAO_COMPLETA  # noqa: E402
+from gerar_exemplo import REVISAO_COMPLETA, marcar_leitura_e_conferencia  # noqa: E402
 
 
 class EntregaTeste(unittest.TestCase):
@@ -70,6 +70,7 @@ class EntregaTeste(unittest.TestCase):
             analise.update(REVISAO_COMPLETA)
             analise["revisado"] = True
             caminho.write_text(json.dumps(analise, ensure_ascii=False), encoding="utf-8")
+            marcar_leitura_e_conferencia(obra)
             run_pipeline.executar(["--rebuild-only", "--obra-dir", str(obra)])
             self.assertTrue((relatorios / "Relatorio-Cronologico-Obra-1001-v1.docx").exists())
             run_pipeline.executar(["--rebuild-only", "--obra-dir", str(obra)])
@@ -106,6 +107,7 @@ class EntregaTeste(unittest.TestCase):
             analise.update(REVISAO_COMPLETA)
             analise["revisado"] = True
             caminho.write_text(json.dumps(analise, ensure_ascii=False), encoding="utf-8")
+            marcar_leitura_e_conferencia(obra)
             saida = io.StringIO()
             with mock.patch.object(run_pipeline, "montar_docx", side_effect=PermissionError(13, "Permission denied")):
                 with contextlib.redirect_stdout(saida):

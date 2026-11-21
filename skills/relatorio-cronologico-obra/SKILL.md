@@ -4,7 +4,7 @@ description: Gera o Relatório Cronológico de Obra da Armanilux (etapas A a L, 
 license: MIT
 metadata:
   author: Armanilux
-  version: "1.19"
+  version: "1.20"
   idioma: pt-BR
 ---
 
@@ -88,7 +88,7 @@ Os comandos do passo 2 já rodam o pipeline. Com `--zip CAMINHO` (e `--obra`, `-
 
 O script segue a resposta do preparo sobre os áudios (`baixar_modelo_whisper` no config.json). Com sim, a primeira vez pode baixar cerca de 484 MB, que ficam só neste computador; se a pessoa não quiser esperar, rode com `--skip-transcribe`. Com não, o script não transcreve nem baixa nada e avisa; se a pessoa mudar de ideia, rode de novo com `--transcrever`. Sem transcrição, diga que o que foi falado ficou como dado não identificado.
 
-A transcrição é um comando longo (veja "Comandos longos"). O pipeline mostra "Transcrevendo N/total: arquivo"; cada áudio ou vídeo é transcrito uma vez só. Em segundo plano, enquanto isso, comece a ler a conversa (passo 4). Com `--skip-transcribe`, o que já foi transcrito continua no relatório.
+A transcrição é um comando longo (veja "Comandos longos"). O pipeline mostra "Transcrevendo N/total: arquivo"; cada áudio ou vídeo é transcrito uma vez só. Em segundo plano, enquanto isso, comece a ler as partes da conversa (passo 4): elas já estão em `revisao-progresso.md`. Com `--skip-transcribe`, o que já foi transcrito continua no relatório.
 
 Saídas:
 
@@ -100,13 +100,13 @@ Com entrega em PDF ou link, o script faz também o PDF, pelo Microsoft Word ou p
 
 ## 4. Revisar a análise
 
-A leitura automática é só um rascunho, e esta revisão é obrigatória: não entregue o relatório sem ela. Leia `references/revisao.md` inteiro antes de abrir o `analise.json`; ele traz as regras de cada passo abaixo.
+A leitura automática é só um rascunho, e esta revisão é obrigatória: não entregue o relatório sem ela. Leia `references/revisao.md` inteiro antes de abrir o `analise.json` (se a saída do comando vier cortada, leia em pedaços de 60 linhas); ele traz as regras de cada passo abaixo.
 
-1. **Ler todo o material** (4.1): a conversa inteira, todas as transcrições, todos os textos de documento e todas as folhas de contato. Com subagentes, divida a conversa por período e as folhas entre eles.
+1. **Ler todo o material** (4.1), em partes: o pipeline divide a conversa, as transcrições e os textos de documento em `04-transcricoes/leitura/` e lista cada parte e cada folha de contato em `04-transcricoes/revisao-progresso.md`. Leia uma parte por vez, registre os fatos dela e marque `[x]`; depois de um "continue", siga da primeira sem `[x]`. Com subagentes, divida as partes entre eles.
 2. **Registrar no `analise.json`** (4.2): fatos que faltaram, correções, programado e marco, frentes, etapa J, cores, conclusão, prazo contratual (só com fonte escrita da época), pendências, lacunas e os textos do relatório.
 3. **Remontar** (4.3) com o comando do passo 5 até `04-transcricoes/verificacao.md` não listar nenhum fato e cada aviso da remontagem estar resolvido.
-4. **Conferência independente** (4.4): um subagente novo, sem o contexto desta conversa, confere o conteúdo item por item; sem subagentes, uma segunda passada sua. Corrija tudo o que não for sustentado.
-5. **Marcar como revisado** (4.5): só então grave `"revisado": true` e remonte. Com a conferência pendente ou um texto da revisão vazio, o script grava rascunho mesmo assim e diz o que falta.
+4. **Conferência independente** (4.4): item por item de `04-transcricoes/conferencia.md`, por um subagente novo, sem o contexto desta conversa, ou, sem subagentes, numa segunda passada sua. Corrija tudo o que não for sustentado, marque cada item e grave `conferencia_independente` no `analise.json`.
+5. **Marcar como revisado** (4.5): só então grave `"revisado": true` e remonte. Com parte sem ler, item sem conferir ou um texto da revisão vazio, o script grava rascunho mesmo assim e diz o que falta. Cada remontagem imprime `LEITURA:` e `CONFERENCIA:` com quanto já foi feito.
 
 ## 5. Remontar o Word
 
@@ -128,7 +128,7 @@ A pessoa não precisa saber onde o arquivo fica. Entregue o Word na própria con
 
 Siga a forma de entrega do preparo (`formato_entrega`). PDF: entregue o PDF da linha `RELATORIO_PDF` e diga que o Word está ao lado, para correções. Link: diga que o arquivo está na pasta do OneDrive ou do Google Drive (caminho da linha `RELATORIO_LINK`) e como mandar: clicar com o botão direito no arquivo, Compartilhar, e escolher só as pessoas que podem ver. O relatório tem dados do cliente: não sugira link aberto para qualquer pessoa. Se a linha de PDF ou de link não apareceu, entregue o Word e diga por quê, com a frase que o script imprimiu.
 
-Responda em português, curto, sem emoji. Informe o número da versão, quantas pendências ficaram com status Pendente, se a transcrição rodou, quantos fatos a conferência confirmou e quantas lacunas o relatório registra. Diga se havia prazo contratual declarado no grupo ou nos documentos; sem ele, o relatório não fala em atraso contratual. Se ficou algum "Aviso de prazo", diga qual e por quê. Se o script avisou que a conversa parece cortada, diga a data em que ela começa e peça, se o grupo começou antes, uma exportação nova sem mídia.
+Responda em português, curto, sem emoji. Informe o número da versão, quantas partes lidas de quantas (linha `LEITURA:`) e como foi a conferência independente (subagente ou segunda passada), quantas pendências ficaram com status Pendente, se a transcrição rodou, quantos fatos a conferência confirmou e quantas lacunas o relatório registra. Diga se havia prazo contratual declarado no grupo ou nos documentos; sem ele, o relatório não fala em atraso contratual. Se ficou algum "Aviso de prazo", diga qual e por quê. Se o script avisou que a conversa parece cortada, diga a data em que ela começa e peça, se o grupo começou antes, uma exportação nova sem mídia.
 
 Não copie a pasta da obra para o repositório público desta skill. Não publique o relatório em link aberto.
 

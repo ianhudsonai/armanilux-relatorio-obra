@@ -15,7 +15,7 @@ from analyze import _endereco, _pendencias, aplicar_ajustes, completar_relato, m
 from candidatos import escrever, selecionar  # noqa: E402
 from transcribe_media import _ler_amostras  # noqa: E402
 from parse_whatsapp import analisar_conversa  # noqa: E402
-from gerar_exemplo import REVISAO_COMPLETA  # noqa: E402
+from gerar_exemplo import REVISAO_COMPLETA, marcar_leitura_e_conferencia  # noqa: E402
 
 CHAT = (
     "[08/01/2026, 08:00:01] Ana Souza: Aprovamos as chapas do lote 3 em pessoa hoje.\n"
@@ -153,6 +153,7 @@ class RemontagemTeste(unittest.TestCase):
                 de_novo.update(REVISAO_COMPLETA)
                 de_novo["revisado"] = True
                 caminho.write_text(json.dumps(de_novo, ensure_ascii=False), encoding="utf-8")
+                marcar_leitura_e_conferencia(obra, "--recalcular", *argv)
                 self.assertEqual(executar(["--rebuild-only", "--recalcular", "--obra-dir", str(obra), *argv]), 0)
                 [final] = [p for p in (obra / "05-relatorios").glob("*.docx") if "rascunho" not in p.name]
                 self.assertNotIn("RASCUNHO NÃO REVISADO", _texto(final))

@@ -4,19 +4,38 @@ Como fazer o passo 4 do `SKILL.md`. Leia este arquivo inteiro antes de abrir o `
 
 A leitura automática é só um rascunho: num grupo grande ela deixa etapas vazias (chapas, medição, entrega, conclusão) e pode classificar errado. Leia todo o material para entender a obra por completo; escreva um relatório curto e correto. Tudo o que entra precisa estar no grupo: numa mensagem, numa transcrição, num documento ou numa imagem. O que você não conseguiu ler ou confirmar não some: vira lacuna, numa frase curta.
 
+## Ler em partes
+
+Num grupo grande, o material não cabe numa leitura só, e o que não cabe some sem aviso: no Codex, um comando que mostra mais de ~10 KB ou 256 linhas perde o meio. Por isso o pipeline divide tudo em partes pequenas (até ~8.000 caracteres e 150 linhas, juntando dias inteiros) em `04-transcricoes/leitura/`:
+
+- `conversa-NNN.txt`: a conversa, em ordem, cada mensagem como `[DD/MM/AAAA HH:MM] Autor: texto`, com a ordem dia/mês já decidida. "(data incerta: …)" no fim quer dizer que dia e mês podem estar trocados.
+- `transcricoes-NNN.txt`: cada áudio ou vídeo transcrito, com a data, a hora e o autor da mensagem que o anexou.
+- `documento-NNN.txt`: o texto de cada documento, em partes.
+
+`04-transcricoes/revisao-progresso.md` lista essas partes e as folhas de contato, uma linha `- [ ]` cada. Como trabalhar:
+
+1. Leia uma parte por comando, inteira, por exemplo `Get-Content -Raw -Encoding UTF8 "<caminho da parte>"`. Se a saída disser que linhas foram cortadas ou omitidas, leia de novo em duas metades (`-TotalCount 75` e depois `| Select-Object -Skip 75`). Para ler o material, use as partes, não o `.txt` original nem o `analise.json`.
+2. Logo depois de cada parte, registre no `analise.json` os fatos dela (4.2) e troque `[ ]` por `[x]` na linha da parte. O que ainda não é fato (quem é quem, prazo citado, dúvida, ideia para os textos) vai na seção Notas, no fim do mesmo arquivo. Assim nada se perde se a conversa for resumida ou cortada. Enquanto o pipeline ainda roda (a transcrição, na primeira vez), não edite o `analise.json`, porque ele é regravado no fim: anote os fatos em Notas e passe para o `analise.json` quando o comando terminar.
+3. Não marque parte que não leu inteira. Cada remontagem imprime `LEITURA: X de Y partes lidas`, e a versão final só sai com todas marcadas.
+4. Ao continuar (depois de um "continue" ou num chat novo), abra `revisao-progresso.md`, releia as Notas e siga da primeira linha sem `[x]`.
+
+O `analise.json` é grande: não abra o arquivo inteiro. Para editar, use um script Python curto que lê o JSON, muda só os campos da revisão e grava em UTF-8 (`ensure_ascii=False`).
+
+Com subagentes (o Codex e o Claude Code têm; tente primeiro): distribua as partes sem `[x]` entre eles, algumas por subagente, e as folhas de contato também, mesmo com um modelo mais simples. Cada um devolve, por parte: os fatos de cada etapa com data, hora, autor e o trecho exato; as pendências; quem é quem (empresa, função); nas folhas, só as imagens que mostram um fato da obra, com o número, a data e o fato em uma frase. Você registra e marca as partes. Se o aplicativo recusar subagentes, leia você mesmo, na ordem da lista.
+
 ## 4.1 Ler todo o material
 
-Leia tudo antes de escrever. Não basta a lista de candidatos.
+Leia tudo antes de escrever: cada linha de `revisao-progresso.md`. Não basta a lista de candidatos.
 
-- **Conversa inteira.** Leia o `.txt` de `01-conversas` do começo ao fim. Se o seu aplicativo permitir subagentes e a conversa for grande, divida por período (por exemplo, um subagente por trimestre) e peça a cada um: por data, os fatos de cada etapa com data, hora, autor e o trecho exato da mensagem; as pendências; quem é quem (empresa, função). Sem subagentes, leia você mesmo, em partes. `04-transcricoes/candidatos-por-etapa.md` serve de índice, não de limite.
-- **Mensagens coladas.** No `.txt`, mensagem de outra conversa colada no grupo aparece como uma linha dentro da mensagem de quem colou, no formato `[12:25, 03/07/2026] Nome: texto` ou `[03/07, 12:25] Nome: texto`. A data, a hora e o autor do fato são os dessa linha (os originais); quem colou e quando é a mensagem em volta. No `analise.json`, o fato que veio de uma colada termina com "(encaminhada no grupo por … em …)".
-- **Áudios e vídeos.** Leia todas as transcrições em `analise.json` (`transcricoes`), não só as que parecem relevantes. Vídeo muitas vezes é o registro de uma visita ou de uma medição e traz a data e o fato que faltam no texto.
-- **Documentos.** Leia o texto de cada documento em `documentos_texto` (projetos, folhas de medição, cronogramas, memoriais). Documento sem texto (desenho técnico) aparece nas lacunas: se o seu aplicativo abre PDF, abra o arquivo em `02-projetos-pdf` e olhe; se não abre, deixe como lacuna.
-- **Imagens.** O pipeline monta `04-transcricoes/folhas-de-contato/folha-NN.jpg`: cada folha tem 12 miniaturas numeradas (fotos e um quadro de cada vídeo), com o nome do arquivo e a data da mensagem que o anexou. "(nome do arquivo)" ao lado da data quer dizer que nenhuma mensagem cita o arquivo e a data veio do nome: confira antes de usar. O `indice.json` da mesma pasta liga cada número ao arquivo. Olhe todas as folhas. Se o seu aplicativo permitir subagentes, distribua as folhas entre eles em paralelo, mesmo usando um modelo mais simples: cada um devolve só as imagens que mostram um fato da obra (trinca, base sem acabamento, frente sem liberação, peça instalada, desenho técnico), com o número, a data e o fato em uma frase. Sem subagentes, olhe as folhas você mesmo. Se uma miniatura parecer importante e pequena demais, abra o arquivo original em `03-midias`.
+- **Conversa inteira.** Todas as partes `conversa-NNN.txt`, da primeira à última. `04-transcricoes/candidatos-por-etapa.md` serve de índice, não de limite.
+- **Mensagens coladas.** No `.txt` original, mensagem de outra conversa colada no grupo aparece como uma linha dentro da mensagem de quem colou, no formato `[12:25, 03/07/2026] Nome: texto` ou `[03/07, 12:25] Nome: texto`; na parte de leitura ela já vem como linha própria, com "(colada no grupo por … em …)". A data, a hora e o autor do fato são os dessa linha (os originais); quem colou e quando é a mensagem em volta. No `analise.json`, o fato que veio de uma colada termina com "(encaminhada no grupo por … em …)".
+- **Áudios e vídeos.** Todas as partes `transcricoes-NNN.txt`, não só o que parece relevante. Vídeo muitas vezes é o registro de uma visita ou de uma medição e traz a data e o fato que faltam no texto.
+- **Documentos.** Todas as partes `documento-NNN.txt` (projetos, folhas de medição, cronogramas, memoriais). Documento sem texto (desenho técnico) aparece nas lacunas: se o seu aplicativo abre PDF, abra o arquivo em `02-projetos-pdf` e olhe; se não abre, deixe como lacuna.
+- **Imagens.** O pipeline monta `04-transcricoes/folhas-de-contato/folha-NN.jpg`: cada folha tem 12 miniaturas numeradas (fotos e um quadro de cada vídeo), com o nome do arquivo e a data da mensagem que o anexou. "(nome do arquivo)" ao lado da data quer dizer que nenhuma mensagem cita o arquivo e a data veio do nome: confira antes de usar. O `indice.json` da mesma pasta liga cada número ao arquivo. Olhe todas as folhas, uma por vez, e marque cada uma em `revisao-progresso.md`. Se uma miniatura parecer importante e pequena demais, abra o arquivo original em `03-midias`.
 - **Outros formatos.** Arquivo que o computador não lê (desenho `.dwg`, cartão de contato `.vcf`, planilha `.xls` antiga) fica em `01-conversas/outros` ou aparece nas lacunas. Cartão de contato ajuda a saber quem é quem; desenho que você não consegue abrir fica como lacuna.
 - **Arquivos fora da exportação.** O WhatsApp não exporta tudo. Mensagem `<Mídia oculta>` é arquivo que não veio no zip: o nome pode aparecer, o conteúdo não. Não deduza o conteúdo pelo nome.
 
-Pronto quando: você leu a conversa inteira, todas as transcrições, todos os textos de documento e todas as folhas de contato.
+Pronto quando: toda linha de `revisao-progresso.md` está com `[x]` e os fatos de cada parte estão no `analise.json`.
 
 ## 4.2 Registrar no `analise.json`
 
@@ -129,17 +148,21 @@ Remonte o Word com o comando do passo 5 do `SKILL.md`. Toda remontagem grava `04
 
 ## 4.4 Conferência independente
 
-A conferência do script só vê data, hora e autor. Ela não vê se o texto diz o que a mensagem diz. Antes de dar o relatório por revisado, faça uma conferência de conteúdo por alguém que não escreveu o texto:
+A conferência do script só vê data, hora e autor. Ela não vê se o texto diz o que a mensagem diz. Antes de dar o relatório por revisado, faça uma conferência de conteúdo por alguém que não escreveu o texto.
 
-- Se o seu aplicativo permitir subagentes, abra um subagente novo, sem o contexto desta conversa. Entregue a ele só os caminhos de `analise.json`, do `.txt` da conversa, de `02-projetos-pdf`, de `03-midias` e de `04-transcricoes` (com as folhas de contato), com esta tarefa: "Para cada fato em `eventos` e cada frase de `comentarios`, `diagnostico_temas`, `interpretacao_intervalos`, `pontos_de_controle`, `diagnostico_prompt`, `pontos_criticos`, `impactos_prazo`, `conclusao_personalizada`, `recomendacoes_personalizadas`, `prazos_contratuais`, `obra_ajustes`, `pendencias_revisadas` e `lacunas_adicionais`, ache no material a mensagem, transcrição, documento ou imagem que sustenta o que está escrito. Responda, item por item: sustentado (com data, hora e autor da fonte), não sustentado, ou diferente do que a fonte diz (com o que a fonte diz). Para cada item de `prazos_contratuais`, diga também se a fonte foi escrita no grupo antes do início do período medido e se alguma mensagem anterior dá outro número ou outra unidade (dias úteis ou corridos). Não corrija nada."
-- Sem subagentes, faça você mesmo uma segunda passada, item por item, procurando cada fato no `.txt`.
+Cada remontagem refaz `04-transcricoes/conferencia.md`: uma linha `- [ ]` para cada fato de `eventos`, cada prazo de `prazos_contratuais` e cada frase dos textos do relatório (`comentarios`, `diagnostico_temas`, `interpretacao_intervalos`, `diagnostico_prompt`, `pontos_criticos`, `impactos_prazo`, `conclusao_personalizada`, `recomendacoes_personalizadas`, `pontos_de_controle`, `obra_ajustes`, `pendencias_revisadas`, `lacunas_adicionais`). Cada fato diz em que parte de `04-transcricoes/leitura/` procurar.
 
-Corrija ou tire tudo o que voltar como não sustentado ou diferente. O que não der para confirmar vira lacuna em `lacunas_adicionais`, não afirmação.
+- Com subagentes (tente primeiro): abra um subagente novo, sem o contexto desta conversa. Entregue a ele só os caminhos de `conferencia.md`, de `04-transcricoes/leitura/`, das folhas de contato, de `02-projetos-pdf` e de `03-midias`, com esta tarefa: "Para cada linha de `conferencia.md`, ache no material a mensagem, transcrição, documento ou imagem que sustenta o que está escrito. Leia uma parte de `leitura/` por comando. Responda, item por item: sustentado (com data, hora e autor da fonte), não sustentado, ou diferente do que a fonte diz (com o que a fonte diz). Para cada prazo, diga também se a fonte foi escrita no grupo antes do início do período medido e se alguma mensagem anterior dá outro número ou outra unidade (dias úteis ou corridos). Não corrija nada." Com uma lista longa, divida as linhas entre alguns subagentes.
+- Sem subagentes, faça você mesmo uma segunda passada, item por item, na ordem de `conferencia.md`: abra a parte indicada e ache a fonte. Não confie na memória da primeira leitura.
 
-Pronto quando: todo item voltou sustentado, ou foi corrigido, tirado ou virou lacuna.
+Marque `[x]` em cada item sustentado, e em cada item depois de corrigido, tirado ou virado lacuna em `lacunas_adicionais` (o que não der para confirmar vira lacuna, não afirmação). Item que você corrigiu volta sem marca na remontagem seguinte: confira de novo. Marque item por item, conforme avança, para continuar de onde parou depois de um "continue".
+
+Ao terminar, registre no `analise.json` como a conferência foi feita: `"conferencia_independente": {"como": "subagente", "data": "2026-11-21"}` ou `{"como": "segunda passada", "data": "..."}`. Cada remontagem imprime `CONFERENCIA: X de Y itens`.
+
+Pronto quando: todo item de `conferencia.md` está com `[x]` e `conferencia_independente` está gravado.
 
 ## 4.5 Marcar como revisado
 
-Só depois de 4.1 a 4.4, grave `"revisado": true` no `analise.json` e remonte. Sem isso o Word sai com a faixa vermelha "RASCUNHO NÃO REVISADO" no topo, de propósito, para ninguém enviar um relatório sem conferência. O script grava rascunho mesmo com `"revisado": true`, e diz por quê, se `verificacao.md` ainda listar fatos que não batem, se a conferência não rodou (volte ao 4.3), ou se faltar texto da revisão: as cinco listas de `diagnostico_prompt`, `pontos_criticos`, `conclusao_personalizada`, `recomendacoes_personalizadas`, e o prazo contratual (`prazos_contratuais` ou, em `lacunas_adicionais`, a frase "Prazo contratual não declarado no grupo nem nos documentos."). Escreva o que faltar (4.2) e remonte.
+Só depois de 4.1 a 4.4, grave `"revisado": true` no `analise.json` e remonte. Sem isso o Word sai com a faixa vermelha "RASCUNHO NÃO REVISADO" no topo, de propósito, para ninguém enviar um relatório sem conferência. O script grava rascunho mesmo com `"revisado": true`, e diz por quê, se `verificacao.md` ainda listar fatos que não batem, se a conferência não rodou (volte ao 4.3), se alguma parte de `revisao-progresso.md` ou item de `conferencia.md` estiver sem `[x]`, se faltar `conferencia_independente`, ou se faltar texto da revisão: as cinco listas de `diagnostico_prompt`, `pontos_criticos`, `conclusao_personalizada`, `recomendacoes_personalizadas`, e o prazo contratual (`prazos_contratuais` ou, em `lacunas_adicionais`, a frase "Prazo contratual não declarado no grupo nem nos documentos."). Escreva o que faltar (4.2) e remonte.
 
 A versão final tem o mesmo número do rascunho: na primeira vez, `v1`. Remontar depois disso (inclusive com `--mostrar`, ou para corrigir um erro) regrava o mesmo `vN`, sem criar `v2`. Se o Word estiver aberto, o script pede para fechar o arquivo: feche e remonte.
