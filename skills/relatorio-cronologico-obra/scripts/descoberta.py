@@ -27,6 +27,7 @@ IGNORAR_DIR = {
     "quadros",
     "05-relatorios",
     "01-conversas",  # já arquivado na obra; o _chat.txt extraído não é conversa nova
+    "04-transcricoes",  # as partes de leitura da revisão têm cara de conversa, mas são cópia dela
     "appdata",
 }
 _PREFIXO = re.compile(

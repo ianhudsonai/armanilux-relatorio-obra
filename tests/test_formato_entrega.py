@@ -18,7 +18,7 @@ sys.path.insert(0, str(RAIZ / "examples"))
 
 import entrega  # noqa: E402
 import run_pipeline  # noqa: E402
-from gerar_exemplo import REVISAO_COMPLETA  # noqa: E402
+from gerar_exemplo import REVISAO_COMPLETA, marcar_leitura_e_conferencia  # noqa: E402
 
 
 def _pdf_falso(docx: Path) -> Path:
@@ -126,6 +126,7 @@ class EntregaPorLinkTeste(unittest.TestCase):
         analise.update(REVISAO_COMPLETA)
         analise["revisado"] = True
         caminho.write_text(json.dumps(analise, ensure_ascii=False), encoding="utf-8")
+        marcar_leitura_e_conferencia(obra)
         texto = self._executar(["--rebuild-only", "--obra-dir", str(obra)])
 
         copia = self.nuvem / obra.name / "Relatorio-Cronologico-Obra-1001-v1.pdf"
