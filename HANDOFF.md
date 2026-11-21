@@ -7,7 +7,7 @@ Teste do Codex NESTE PC pela metade: `$preparar-projeto-armanilux` começou às 
 Os 6 bloqueadores da avaliação de 19/11 seguem corrigidos (#24-#27, conferido de novo em 20/11).
 Prontidão para o Rogério, nova avaliação (fora do repo) em `C:\Users\EuSou\Documents\Armanilux\avaliacao-2026-11-20\` (`0-resumo.md` primeiro): caminho feliz funciona; os 4 bloqueadores novos foram corrigidos em #50 (final vazia), #51 (lista estável, pasta da obra), #53 (datas) e #52 (instalador), cada um com revisão em dois eixos.
 Modelo do Rogério: ele mandou ao Ian o relatório que gosta (uma obra real, saída do ChatGPT comum). O Ian aprovou 6 partes dele, já no Word (#55); comparação em `avaliacao-2026-11-20\4-modelo-do-rogerio.md` (o txt NÃO está salvo; é obra real, nunca no repo).
-O Word final v13 da obra de teste foi enviado ao Google Drive do Ian (Meu Drive, privado) em 20/11.
+Obra de teste remontada com as partes do #55 (mesmo v13, gabarito 30 de 30); o v13 novo está no Google Drive do Ian (Meu Drive, privado) e o anterior ficou lá renomeado "...-v13-antes-modelo-Rogerio.docx" e em `D:\_ai-archive\2026-11-20\v13-antes-modelo-rogerio\`.
 Avaliação de qualidade (fora do repo) em `C:\Users\EuSou\Documents\Armanilux\avaliacao-v13-2026-11-19\`: nota v13 8,5/10 (precisão 9,0); só o prompt 6,5; gabarito 30 de 30 (`gabarito-8977.1.json`, NUNCA no repo); `pesquisa-instalacao.md` (como repos famosos instalam por link).
 
 ## Decisões desta sessão
@@ -19,7 +19,7 @@ Avaliação de qualidade (fora do repo) em `C:\Users\EuSou\Documents\Armanilux\a
 - #51: `--indice` usa a lista do último `--listar` (`registro.fixar_lista`); mesma obra com cliente escrito de outro jeito reaproveita a pasta (só se houver uma; duas avisam); "(1)", `_chat` e ano solto não viram cliente/número (ano sozinho ainda vale: pode ser a obra 2010).
 - #53: ordem dia/mês por arquivo, provada por número acima de 12 ou zero na frente ("03/07" é dia/mês; EUA escreve "7/3/26"); AM/PM não prova; sem prova, `data_incerta` e lacuna automática.
 - #52: `instalar.ps1` confere disco (bloqueia com menos de 3 GB só quando falta instalar Python ou o venv) e abre as bibliotecas depois do pip (VC++ se falhar); `config_io.pasta_documentos`/`pasta_armanilux_padrao` usam a Documentos real (OneDrive), e quem já tem `Documents\Armanilux` continua nela.
-- #55 (modelo do Rogério, aprovado pelo Ian): "Classificação usada" na Nota Metodológica; "Status:" por etapa (`comentarios.<etapa>.status`; automático só para etapa só programada); etapa L com "Sem comprovação no grupo até …"; coluna Interpretação (`interpretacao_intervalos`); diagnóstico abre com Tema | Avaliação | Leitura (`diagnostico_temas`, avaliação de lista fixa, outra segura a final); recomendações com prioridade em tabela e `pontos_de_controle` (cada um ligado a um problema da obra). Prévia da obra de teste mandada ao Ian (feita numa cópia; o v13 do Drive é o antigo).
+- #55 (modelo do Rogério, aprovado pelo Ian): "Classificação usada" na Nota Metodológica; "Status:" por etapa (`comentarios.<etapa>.status`; automático só para etapa só programada); etapa L com "Sem comprovação no grupo até …"; coluna Interpretação (`interpretacao_intervalos`); diagnóstico abre com Tema | Avaliação | Leitura (`diagnostico_temas`, avaliação de lista fixa, outra segura a final); recomendações com prioridade em tabela e `pontos_de_controle` (cada um ligado a um problema da obra). Na obra de teste, os campos novos foram escritos só a partir dos textos já revisados.
 - #48: SKILL.md do relatório enxuta (~2.000 palavras, teste limita a 2.200); as regras da revisão (4.1-4.5) estão em `references/revisao.md`, sem mudança de conteúdo.
 
 ## Não mexer
@@ -31,7 +31,7 @@ Avaliação de qualidade (fora do repo) em `C:\Users\EuSou\Documents\Armanilux\a
 - Instalar skills só no app em uso.
 
 ## Pendências (em ordem)
-1. Remontar a obra de teste com as partes do #55 (escrever `status`, `interpretacao_intervalos`, `diagnostico_temas`, recomendações com prioridade e `pontos_de_controle` a partir do grupo) e, se o Ian quiser, trocar o v13 do Drive. Mostrar ao Rogério a prévia para ele dizer se é isso.
+1. Mostrar ao Rogério o v13 novo (Drive) e perguntar se é isso que ele quer ler.
 2. Terminar o teste do Codex: Ian escreve no chat do Codex "pode continuar e terminar a configuração" (grava `config.json`). Depois, chat novo com `$relatorio-cronologico-obra`, o zip da obra de teste e `--workspace C:\Users\EuSou\Documents\Armanilux-teste-codex\Relatorios-de-Obra`, até `"revisado": true`. Ver se a regra do "continue" (#48) funciona.
 3. Pontuar o resultado do Codex: `tools/pontuar_relatorio.py --gabarito "C:\Users\EuSou\Documents\Armanilux\avaliacao-v13-2026-11-19\gabarito-8977.1.json" --obra-dir <pasta da obra do Codex>` e comparar com o 30/30 do Claude. Depois restaurar `registro.json` (e `config.json`, se o Ian quiser o modelo antigo `{cliente} - {numero}`) de `D:\_ai-archive\2026-11-20\armanilux-relatorio-config-antes-codex\`.
 4. Revisão em Codex sem subagentes (grupo de 15 meses não cabe): transcrições e documentos em arquivos por trimestre, `revisao-progresso.md` para continuar entre "continue", resposta final diz quanto foi lido; registrar que a conferência independente (4.4) rodou. Precisa de desenho antes.
